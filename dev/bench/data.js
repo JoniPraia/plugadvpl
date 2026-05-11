@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778524798099,
+  "lastUpdate": 1778524954723,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -174,6 +174,35 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0006959275834711772",
             "extra": "mean: 41.70919455555122 msec\nrounds: 18"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "4ac9297828557a19de804e51acdc28b00f4a42ce",
+          "message": "release: v0.1.0\n\n- plugin.json: bump version to 0.1.0\n- marketplace.json: bump version to 0.1.0\n\nPipeline validated via v0.1.0-rc2 on TestPyPI (Trusted Publisher OIDC).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-11T15:42:18-03:00",
+          "tree_id": "c3d718883e2c78f540053bf68f5c6820102558bc",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/4ac9297828557a19de804e51acdc28b00f4a42ce"
+        },
+        "date": 1778524954472,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 23.23216810871174,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0004196442091185085",
+            "extra": "mean: 43.0437656666669 msec\nrounds: 18"
           }
         ]
       }
