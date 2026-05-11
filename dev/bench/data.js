@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778523072940,
+  "lastUpdate": 1778523948877,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -87,6 +87,35 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0003293163753408487",
             "extra": "mean: 41.31607089473882 msec\nrounds: 19"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "fdc9c489a7bc947b94bf5bf134bbdba16e5e9d7a",
+          "message": "chore(docs): sanitize references to internal datasets and client paths\n\n- README, docs/, code docstrings: remove mentions of \"fontes padrão TOTVS\",\n  \"cliente real\", \"tenant ativo\", specific counts. Replace with\n  \"aproximadamente 2.000 fontes ADVPL\" / \"ampla base de fontes ADVPL\".\n- Genericize cli/tests/e2e_local: use PLUGADVPL_E2E_FONTES_DIR /\n  PLUGADVPL_E2E_BASELINE_DB env vars instead of hardcoded D:/Clientes paths.\n- Rename test_real_client_ingest.py -> test_e2e_local_ingest.py.\n- CONTRIBUTING.md: update to env var setup instructions.\n- Historical docs (specs/plans): also sanitized for consistency.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-11T15:24:32-03:00",
+          "tree_id": "bf36cf9c78715698d6e776c2875741eb24afc732",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/fdc9c489a7bc947b94bf5bf134bbdba16e5e9d7a"
+        },
+        "date": 1778523948299,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 23.73136700078088,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0021501054253746767",
+            "extra": "mean: 42.13832266666707 msec\nrounds: 18"
           }
         ]
       }
