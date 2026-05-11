@@ -232,19 +232,78 @@ def version() -> None:
 
 _CLAUDE_FRAGMENT_BEGIN = "<!-- BEGIN plugadvpl -->"
 _CLAUDE_FRAGMENT_END = "<!-- END plugadvpl -->"
-_CLAUDE_FRAGMENT_BODY = """## Plugadvpl — índice ADVPL local (consulte ANTES de ler fontes)
+_CLAUDE_FRAGMENT_BODY = """## Plugadvpl — índice ADVPL local (LEIA ANTES de qualquer Read em .prw/.tlpp)
 
-Este projeto possui `.plugadvpl/index.db` com metadados de TODOS os fontes ADVPL/TLPP.
-NUNCA leia um `.prw`/`.tlpp` inteiro sem antes consultar o índice.
+Este projeto possui um índice SQLite em `.plugadvpl/index.db` com metadados extraídos
+de TODOS os fontes ADVPL/TLPP do projeto: funções, tabelas referenciadas (read/write/reclock),
+campos, parâmetros MV_*, perguntas SX1, call graph (U_*, ExecBlock, MsExecAuto, FWLoadModel,
+FWExecView, métodos), SQL embarcado, includes, capabilities (MVC/JOB/REST/PE/...) e lint findings.
 
-Comandos slash:
-`/plugadvpl:arch <arq>`, `/plugadvpl:find <termo>`, `/plugadvpl:callers <f>`,
-`/plugadvpl:callees <f>`, `/plugadvpl:tables <T>`, `/plugadvpl:param <MV_*>`,
-`/plugadvpl:lint [arq]`, `/plugadvpl:status`, `/plugadvpl:ingest`,
-`/plugadvpl:reindex <arq>`, `/plugadvpl:doctor`, `/plugadvpl:grep <pat>`.
+### REGRA DURA — SEM EXCEÇÃO
 
-Encoding: fontes ADVPL legados são `cp1252` (.prw/.prx); TLPP modernos `utf-8`.
-Preserve sempre o encoding detectado em `fontes.encoding` quando editar.
+**Antes de chamar `Read` em qualquer `.prw`/`.tlpp`/`.prx`, você DEVE rodar primeiro
+um comando do plugadvpl** (via `Bash plugadvpl ...` ou `/plugadvpl:*` se houver slash).
+Fontes Protheus têm tipicamente 1.000–10.000 linhas; lê-los inteiros queima contexto e
+produz respostas vagas. O índice te dá o resumo em ~200 tokens em vez de 10.000.
+
+Só leia o `.prw` cru depois de localizar a faixa de linhas exata via índice
+(ex: `Read FATA050.prw` com offset/limit baseados em `linha_inicio`/`linha_fim` que
+o `arch` retorna).
+
+### Tabela de decisão — qual comando usar para qual pergunta
+
+| Pergunta do usuário                                         | Rode PRIMEIRO                                  |
+|-------------------------------------------------------------|------------------------------------------------|
+| "explique o fonte X" / "o que faz Y"                        | `plugadvpl arch <arq>`                         |
+| "onde está a função X?" / "tem um programa MGFTAC12, ..."   | `plugadvpl find <nome>`                        |
+| "quais fontes chamam X?" / "quem usa X?"                    | `plugadvpl callers <funcao>`                   |
+| "o que X chama por dentro?" / "quais dependências de X?"    | `plugadvpl callees <funcao>`                   |
+| "quem mexe na tabela SA1?" / "quem grava em SC5?"           | `plugadvpl tables SA1` (ou `--write/--reclock`)|
+| "quais parâmetros MV_* X usa?" / "onde MV_LOCALIZA é usado?"| `plugadvpl param MV_LOCALIZA`                  |
+| "achar fonte com 'RecLock' / 'BeginSql' / etc"              | `plugadvpl grep <termo>` (modos `--fts`/`--literal`/`--identifier`) |
+| "tem problemas / boas práticas neste fonte?"                | `plugadvpl lint [arq] [--severity critical]`   |
+| "essa função é nativa do Protheus?"                         | `plugadvpl native <nome>`                      |
+| "posso usar StaticCall / função X?"                         | `plugadvpl restricted <nome>`                  |
+
+### Workflow padrão para "explique o programa X"
+
+Quando o usuário pedir para explicar/analisar um programa (ex: "tenho um programa MGFTAC12,
+quais fontes chama, parâmetros, etc"):
+
+1. `plugadvpl find MGFTAC12` — descobre em qual arquivo está
+2. `plugadvpl arch <arquivo encontrado>` — visão geral (capabilities, funções, tabelas, includes)
+3. `plugadvpl callees MGFTAC12` — o que ele chama (call graph saindo)
+4. `plugadvpl callers MGFTAC12` — quem chama ele (call graph entrando)
+5. `plugadvpl tables <tabela_principal>` — para cada tabela relevante, ver outros que tocam
+6. `plugadvpl param <MV_X>` — para cada MV_* relevante, ver o uso global
+7. **Só depois**, se ainda restar dúvida, ler com `Read <arquivo>` usando os ranges de linha
+   identificados (ex: `linha_inicio`/`linha_fim` de uma função específica do `arch`).
+
+Sintetize o que encontrar nos passos 1–6 num parágrafo: o que faz + dependências + impacto.
+**NUNCA pule direto para `Read` do `.prw` inteiro.**
+
+### Como rodar
+
+- **Sempre disponível** (CLI Python, basta `uv` instalado):
+  `Bash → plugadvpl <subcomando> ...` ou `uvx plugadvpl@<versão> <subcomando> ...`
+- **Se o plugin Claude Code estiver instalado** (recomendado para UX):
+  use os slash commands `/plugadvpl:arch`, `/plugadvpl:find`, etc.
+
+Para ver versão / status do índice: `plugadvpl status`. Para ver todos os comandos:
+`plugadvpl --help`.
+
+### Encoding (importante para Edit/Write)
+
+Fontes legados são `cp1252` (.prw/.prx). TLPP moderno (.tlpp) pode ser `utf-8`.
+**Preserve sempre o encoding detectado em `fontes.encoding`** quando editar — gravar em
+encoding errado quebra acentuação e o compilador AppServer.
+
+### Manutenção do índice
+
+- `plugadvpl status [--check-stale]` — ver totais e arquivos desatualizados
+- `plugadvpl reindex <arq>` — após editar um fonte
+- `plugadvpl ingest --incremental` — ingest novamente arquivos modificados (default)
+- `plugadvpl doctor` — diagnósticos (encoding suspeito, FTS5, órfãos)
 """
 
 
