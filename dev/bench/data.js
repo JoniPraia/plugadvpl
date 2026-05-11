@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778534822489,
+  "lastUpdate": 1778538336186,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -406,6 +406,35 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0009198508782587664",
             "extra": "mean: 41.72618121052545 msec\nrounds: 19"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "4f2e758f5a68da9f9f7f1e08b1a29585dba05463",
+          "message": "docs: add badges, FAQ, ROADMAP, richer issue templates for community launch\n\n- README: 6 badges (PyPI version + downloads, Python, License MIT, CI, GitHub stars)\n- README: \"Comunidade\" section pointing to Issues/Discussions/Roadmap/FAQ\n- docs/FAQ.md: 12 perguntas frequentes (compatibilidade Protheus, banco, OS,\n  privacidade, FTS5 vs embeddings, CLI vs plugin, false-positives, etc)\n- docs/ROADMAP.md: visão pública v0.1 → v0.4 + backlog, milestones GitHub linkados\n- .github/ISSUE_TEMPLATE/bug_report.md: template muito mais rico (ambiente,\n  reprodução, logs, fonte mínimo)\n- .github/ISSUE_TEMPLATE/parser_issue.md: NOVO — template específico para\n  bugs de parser/lint exigindo fonte mínimo de reprodução\n- .github/ISSUE_TEMPLATE/feature_request.md: melhorado com checkbox de milestone\n\nComunidade pode chegar e contribuir sem fricção.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-11T19:25:13-03:00",
+          "tree_id": "f95e3d9ece110976b72d388d86a9ea8b61a2ec79",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/4f2e758f5a68da9f9f7f1e08b1a29585dba05463"
+        },
+        "date": 1778538335951,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 22.44036973845307,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0012754353457496224",
+            "extra": "mean: 44.56254561111055 msec\nrounds: 18"
           }
         ]
       }
