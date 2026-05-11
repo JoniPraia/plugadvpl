@@ -1,11 +1,14 @@
 {
   "name": "plugadvpl-marketplace",
-  "owner": { "name": "JoniPraia" },
+  "owner": {
+    "name": "JoniPraia"
+  },
   "plugins": [
     {
       "name": "plugadvpl",
       "source": ".",
-      "description": "Indexa fontes ADVPL/TLPP em SQLite + FTS5 para Claude consultar antes de ler arquivo cru"
+      "description": "Indexa fontes ADVPL/TLPP em SQLite + FTS5 para Claude consultar antes de ler arquivo cru",
+      "version": "0.1.0"
     }
   ]
 }
