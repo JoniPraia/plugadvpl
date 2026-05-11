@@ -273,6 +273,25 @@ Veja [CONTRIBUTING.md](CONTRIBUTING.md) para setup de dev.
 de propriedade da **TOTVS S.A.** Este plugin é um projeto independente e
 **não possui vínculo** com a TOTVS, suas franquias ou representantes.
 
+### Sobre o uso e desenvolvimento
+
+- Este plugin **não utiliza, redistribui ou expõe nenhum código-fonte do
+  produto padrão Protheus** (rotinas TOTVS internas, RPO, fontes oficiais).
+- A ferramenta foi desenvolvida e validada **exclusivamente sobre fontes
+  customizados** (User Functions, customizações MVC, pontos de entrada,
+  WebServices, jobs e demais arquivos `.prw`/`.tlpp`/`.prx` escritos pelos
+  próprios clientes em seus ambientes).
+- Os catálogos embarcados (funções nativas, funções restritas, módulos ERP,
+  pontos de entrada padrão) contêm apenas **nomes e metadados publicamente
+  documentados** na [TDN — TOTVS Developers Network](https://tdn.totvs.com/).
+  Não há código-fonte proprietário embutido.
+- Os exemplos `.prw`/`.tlpp` distribuídos em `skills/<x>/exemplos/` são
+  **código original do autor**, escritos para ilustrar padrões de
+  customização (não derivados de fontes padrão TOTVS).
+- Cabe a cada usuário garantir que possui direito de acesso e análise sobre
+  os fontes que indexar com este plugin (tipicamente customizações da própria
+  empresa ou de cliente sob contrato).
+
 ---
 
 ## Licença
