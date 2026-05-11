@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778522160887,
+  "lastUpdate": 1778522163071,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -29,6 +29,35 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00037254083679280723",
             "extra": "mean: 34.49175831818026 msec\nrounds: 22"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "019785eff98d18c3b809eb008153e9cbc36c5194",
+          "message": "fix(ci): add contents:write to bench job for gh-pages push\n\ngithub-action-benchmark needs to push benchmark data to gh-pages branch.\nDefault GITHUB_TOKEN permissions are read-only since GitHub's 2023 security\nupdate; jobs must opt-in to write permissions explicitly.\n\nAlso adds pull-requests:write for comment-on-alert feature.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-11T14:55:47-03:00",
+          "tree_id": "d63ddc8f8c57bb2a9f2456884ce8e603cabc8375",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/019785eff98d18c3b809eb008153e9cbc36c5194"
+        },
+        "date": 1778522162315,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 27.560898084983428,
+            "unit": "iter/sec",
+            "range": "stddev: 0.005010225217964556",
+            "extra": "mean: 36.28328789999955 msec\nrounds: 10"
           }
         ]
       }
