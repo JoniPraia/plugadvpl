@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778524954723,
+  "lastUpdate": 1778525150189,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -203,6 +203,35 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0004196442091185085",
             "extra": "mean: 43.0437656666669 msec\nrounds: 18"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "9d0a3ebad0cdc3f8d04c3d4a5e168b3d6ee05900",
+          "message": "fix(ci): release.yml only triggers on final semver tags (excludes -rc)\n\nTags v0.1.0-rc1 and v0.1.0-rc2 incorrectly triggered release.yml in addition\nto release-rc.yml, causing rc2 to be published to the main PyPI (intended\nonly for TestPyPI). v0.1.0 (final) shadowed it as Latest, and rc2 will be\nyanked manually, but the workflow trigger pattern is now restricted to\nprevent recurrence.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-11T15:45:29-03:00",
+          "tree_id": "def45ea9d2b5c3a76e3899e6f150c14ad647c947",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/9d0a3ebad0cdc3f8d04c3d4a5e168b3d6ee05900"
+        },
+        "date": 1778525149507,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 23.691731870014504,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0009264802399569499",
+            "extra": "mean: 42.20881805882888 msec\nrounds: 17"
           }
         ]
       }
