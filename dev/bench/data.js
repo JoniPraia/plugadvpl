@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778538336186,
+  "lastUpdate": 1778540511424,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -435,6 +435,35 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0012754353457496224",
             "extra": "mean: 44.56254561111055 msec\nrounds: 18"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "8377e941ff438f1abc31df810507e5a4d49b3b74",
+          "message": "docs(readme): add trademarks disclaimer for Protheus/ADVPL/TLPP/TOTVS\n\nMake explicit that this is an independent project with no affiliation,\nfranchise, or representation relationship with TOTVS S.A. Standard\npractice for open-source tools that orbit proprietary ecosystems.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-11T20:01:35-03:00",
+          "tree_id": "9245727172bb853c89de4dfa81539c7e24b17286",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/8377e941ff438f1abc31df810507e5a4d49b3b74"
+        },
+        "date": 1778540511080,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 24.02832311354922,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0012001920512492285",
+            "extra": "mean: 41.617552555555356 msec\nrounds: 18"
           }
         ]
       }
