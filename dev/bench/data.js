@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778525150189,
+  "lastUpdate": 1778526521177,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -232,6 +232,35 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0009264802399569499",
             "extra": "mean: 42.20881805882888 msec\nrounds: 17"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "a6a312826fbd1c86ec6f7af4ab21178edb2deb98",
+          "message": "fix(plugin): use explicit github source format in marketplace.json\n\nsource: \".\" was failing with \"This plugin uses a source type your Claude Code\nversion does not support\" on Claude Code 2.1.139. Replaced with explicit\ngithub source object which is universally supported.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-11T16:08:21-03:00",
+          "tree_id": "9e35ae3fc7c261c29ecb861df33ed45e1ad28466",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/a6a312826fbd1c86ec6f7af4ab21178edb2deb98"
+        },
+        "date": 1778526520477,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 23.395407184449326,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00024459226314801533",
+            "extra": "mean: 42.743432166664284 msec\nrounds: 18"
           }
         ]
       }
