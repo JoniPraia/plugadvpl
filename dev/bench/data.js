@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778526521177,
+  "lastUpdate": 1778527294080,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -261,6 +261,35 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00024459226314801533",
             "extra": "mean: 42.743432166664284 msec\nrounds: 18"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "e0f3303f2b6a42bf25586aa4fecedc727b52f962",
+          "message": "feat(onboarding): one-liner bootstrap + auto-detect missing deps\n\n- scripts/install.ps1: Windows PowerShell installer (winget uv + uv tool install plugadvpl)\n- scripts/install.sh: macOS/Linux bash installer (astral.sh/uv + uv tool install plugadvpl)\n- hooks/session-start.mjs: detect missing uv and emit additionalContext with installer one-liner\n- skills/setup/SKILL.md: /plugadvpl:setup orchestrates detect -> install -> init -> ingest\n- README.md: prominent \"Instalacao rapida\" section with one-liners\n- .gitattributes: force LF for .sh/.ps1/.mjs\n\nReduces install friction from \"know uv -> winget -> restart terminal -> cd -> init -> ingest\"\nto \"paste one-liner -> cd -> plugadvpl init\".\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-11T16:21:09-03:00",
+          "tree_id": "e90f199d2cbbdc71e9e76e0a23e677ff61856a1a",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/e0f3303f2b6a42bf25586aa4fecedc727b52f962"
+        },
+        "date": 1778527293806,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 23.225578541258344,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00046506822983057147",
+            "extra": "mean: 43.0559780555555 msec\nrounds: 18"
           }
         ]
       }
