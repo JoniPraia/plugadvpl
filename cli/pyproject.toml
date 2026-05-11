@@ -58,13 +58,10 @@ version-file = "plugadvpl/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["plugadvpl"]
-
-# Defensivo: garantir que SQL/JSON de migrations e lookups vão para o wheel.
-# Hatchling inclui non-Python files dentro de packages por default, mas explícito
-# evita acidentes em refactor futuro.
-[tool.hatch.build.targets.wheel.force-include]
-"plugadvpl/migrations" = "plugadvpl/migrations"
-"plugadvpl/lookups" = "plugadvpl/lookups"
+# Hatchling inclui automaticamente todos arquivos non-Python dentro do package
+# (migrations/*.sql, lookups/*.json). NÃO usar force-include aqui — ele
+# duplicaria os arquivos no wheel (gerando "Duplicate filename in local headers"
+# rejeitado pelo PyPI).
 
 [tool.ruff]
 line-length = 100
