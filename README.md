@@ -267,6 +267,14 @@ Veja [CONTRIBUTING.md](CONTRIBUTING.md) para setup de dev.
 
 ---
 
+## Disclaimer / Marcas registradas
+
+**Protheus**, **ADVPL**, **TLPP** e **TOTVS** são produtos e marcas registradas
+de propriedade da **TOTVS S.A.** Este plugin é um projeto independente e
+**não possui vínculo** com a TOTVS, suas franquias ou representantes.
+
+---
+
 ## Licença
 
 [MIT](LICENSE) © 2026 JoniPraia.
