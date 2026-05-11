@@ -9,6 +9,11 @@
 # SQL files
 *.sql            text eol=lf
 
+# Shell scripts (must be LF for shebang)
+*.sh             text eol=lf
+*.ps1            text eol=lf
+*.mjs            text eol=lf
+
 # JSON/YAML configs
 *.json           text eol=lf
 *.yml            text eol=lf

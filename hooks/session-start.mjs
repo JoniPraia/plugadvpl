@@ -54,6 +54,24 @@ function findAdvplFiles(root, depth = 0, accumulator = []) {
   return accumulator;
 }
 
+function checkUvAvailable() {
+  try {
+    execFileSync('uv', ['--version'], { stdio: 'ignore', timeout: 3000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function checkUvxAvailable() {
+  try {
+    execFileSync('uvx', ['--version'], { stdio: 'ignore', timeout: 3000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function checkStaleViaCli(root) {
   try {
     const out = execFileSync(
@@ -79,6 +97,26 @@ function main() {
     const advplFiles = findAdvplFiles(root);
     if (advplFiles.length === 0) {
       emit(null); // silent
+      return;
+    }
+
+    if (!checkUvAvailable() || !checkUvxAvailable()) {
+      const isWindows = process.platform === 'win32';
+      const installer = isWindows
+        ? '  irm https://raw.githubusercontent.com/JoniPraia/plugadvpl/main/scripts/install.ps1 | iex'
+        : '  curl -sSL https://raw.githubusercontent.com/JoniPraia/plugadvpl/main/scripts/install.sh | sh';
+
+      emit(
+        `Projeto ADVPL detectado (${advplFiles.length}+ fontes) mas \`uv\` não está instalado.\n\n` +
+          `O plugadvpl precisa do uv (gerenciador de pacotes Python) para rodar.\n` +
+          `Instale com este comando:\n\n` +
+          `${installer}\n\n` +
+          `Após instalar, abra um terminal NOVO e rode:\n` +
+          `  cd "${root}"\n` +
+          `  plugadvpl init\n` +
+          `  plugadvpl ingest\n\n` +
+          `Ou, no Claude Code, rode: /plugadvpl:setup`,
+      );
       return;
     }
 

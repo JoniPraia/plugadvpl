@@ -40,6 +40,36 @@ Claude → /plugadvpl:arch FATA050.prw   # capabilities, tabelas, funções, inc
 
 ---
 
+## Instalação rápida (one-liner)
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/JoniPraia/plugadvpl/main/scripts/install.ps1 | iex
+```
+
+**macOS / Linux:**
+```bash
+curl -sSL https://raw.githubusercontent.com/JoniPraia/plugadvpl/main/scripts/install.sh | sh
+```
+
+O script:
+1. Instala `uv` (gerenciador de pacotes Python da Astral) se ainda não estiver presente
+2. Instala `plugadvpl` globalmente via `uv tool install`
+3. Imprime próximos passos
+
+Depois é só:
+```bash
+cd <pasta-do-seu-projeto-Protheus>
+plugadvpl init
+plugadvpl ingest
+plugadvpl status
+```
+
+> Se você prefere usar o plugin via Claude Code (slash commands), instale o marketplace
+> e use `/plugadvpl:setup` que faz tudo automaticamente (ver "Plugin Claude Code" abaixo).
+
+---
+
 ## Quick start
 
 ```bash
