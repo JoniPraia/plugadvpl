@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778523948877,
+  "lastUpdate": 1778524535814,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -116,6 +116,35 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0021501054253746767",
             "extra": "mean: 42.13832266666707 msec\nrounds: 18"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "101d6ec10bbc9c6fc1f9a910976ae833e18d3b34",
+          "message": "feat: initial v0.1.0 release\n\nPlugin Claude Code + CLI Python que indexa fontes ADVPL/TLPP (TOTVS Protheus)\nem SQLite + FTS5 para Claude consultar metadados antes de ler .prw cru,\neconomizando 10-15x tokens em projetos típicos.\n\n## Inclui\n\nPlugin Claude Code:\n- 24 skills (14 slash command + 10 thematic knowledge)\n- 4 agents especializados (analyzer, impact-analyzer, code-generator, reviewer-bot)\n- 1 SessionStart hook em Node.js (cross-platform)\n- CLAUDE.md fragment idempotente\n\nCLI Python (PyPI: plugadvpl):\n- 14 subcomandos via typer: init, ingest, reindex, status, find, callers,\n  callees, tables, param, arch, lint, doctor, grep, version\n- Opções globais: --root, --format {json|table|md}, --quiet, --limit, --compact\n- Distribuição via uvx ou uv tool install\n- Suporte Python 3.11, 3.12, 3.13 em Win/Mac/Linux\n\nSchema SQLite:\n- 22 tabelas físicas + 2 FTS5 virtuais (external content + trigram)\n- 6 lookups pré-populados (279 funcoes_nativas, 194 funcoes_restritas,\n  24 lint_rules, 6 sql_macros, 8 modulos_erp, 15 pontos_entrada_padrao)\n- Migrations versionadas com tracking automático\n\nParser ADVPL/TLPP:\n- Strip-first pattern (ignora *, &&, //, /* */ e strings literais)\n- ~25 extractors module-level: funções, tabelas read/write/reclock, campos,\n  MV_* params, SX1 perguntas, call graph (U_*, ExecBlock, MsExecAuto,\n  FWLoadModel, FWExecView, méthod), includes, SQL embarcado, REST endpoints,\n  HTTP outbound, RpcSetEnv, log calls, #DEFINE, MVC hooks, WS structures,\n  TLPP namespace\n- Detecção de 20 capabilities + source_type\n\nLint engine:\n- 13 regras single-file ativas (BP-001..006, SEC-001..002, PERF-001..003,\n  MOD-001..002) executadas durante ingest\n- 11 regras cross-file/semantic catalogadas e deferidas para v0.2\n\nIngest pipeline:\n- Paralelização adaptiva: single-thread / ProcessPool (fork em Linux,\n  spawn em macOS/Windows)\n- UPSERT idempotente com hash check (skip quando conteúdo inalterado)\n- FTS5 rebuild em massa ao final (não trigger por linha)\n- --no-content (modo metadata-only) e --redact-secrets\n\nCI/CD:\n- Matrix 3 OS × 3 Python (9 combinações)\n- pytest + pytest-cov (87% coverage) + syrupy snapshots + pytest-benchmark\n- github-action-benchmark com auto-push em gh-pages + alert >10%\n- Trusted Publisher OIDC (PyPI + TestPyPI)\n- Workflow release-prepare (bump version + PR) e release (tag → publish)\n\nDocumentação:\n- README com value prop, demo, quick start, tabelas de comandos/skills\n- docs/cli-reference.md: referência completa dos 14 subcomandos\n- docs/schema.md: 22 tabelas com Mermaid ER + queries úteis\n- docs/architecture.md: fluxo + componentes + guia de contribuição\n- docs/limitations.md: lista honesta do que não funciona ainda\n- docs/troubleshooting.md: 10 erros comuns com sintoma/causa/fix\n- docs/pypi-setup.md: passo-a-passo Trusted Publisher\n- docs/superpowers/specs/ + plans/: histórico completo de design\n\n## Status\n\n- 239 testes passando (CI mode) + 3 e2e_local\n- ruff + mypy strict limpos\n- Coverage 87%\n- Validado em ampla base de fontes ADVPL\n\n## Licença\n\nMIT. Open-source para a comunidade ADVPL/Protheus.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-11T15:34:32-03:00",
+          "tree_id": "bf36cf9c78715698d6e776c2875741eb24afc732",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/101d6ec10bbc9c6fc1f9a910976ae833e18d3b34"
+        },
+        "date": 1778524535137,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 9.084913048299018,
+            "unit": "iter/sec",
+            "range": "stddev: 0.09297924666801707",
+            "extra": "mean: 110.07259999997814 msec\nrounds: 5"
           }
         ]
       }
