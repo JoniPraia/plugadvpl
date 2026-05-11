@@ -6,7 +6,10 @@
   "plugins": [
     {
       "name": "plugadvpl",
-      "source": ".",
+      "source": {
+        "source": "github",
+        "repo": "JoniPraia/plugadvpl"
+      },
       "description": "Indexa fontes ADVPL/TLPP em SQLite + FTS5 para Claude consultar antes de ler arquivo cru",
       "version": "0.1.0"
     }
