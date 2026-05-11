@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778527294080,
+  "lastUpdate": 1778528298680,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -290,6 +290,35 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00046506822983057147",
             "extra": "mean: 43.0559780555555 msec\nrounds: 18"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "bcf9784a364b4cb8e64a8ac647cbdf33bceb74cb",
+          "message": "fix(ingest): chunk_id collision when same function name appears twice\n\nBug reported in production ingest (~15/1992 files failed with\n\"UNIQUE constraint failed: fonte_chunks.id\"):\n\nSome ADVPL files have Static Function + User Function with the same name,\nor redefinitions across blocks. The old chunk_id \"{arquivo}::{nome}\" caused\ncollision on second insert.\n\nFix:\n1. Include linha_inicio in id: \"{arquivo}::{nome}@{linha_inicio}\" — uniquely\n   identifies each function instance within a file.\n2. Use INSERT OR REPLACE so reindex of a file (same line numbers) is\n   idempotent instead of raising.\n\nValidated locally — 239 tests still pass. v0.1.1 patch release.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-11T16:38:06-03:00",
+          "tree_id": "599c020cfe342a9d62efd228d759c650f3ace216",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/bcf9784a364b4cb8e64a8ac647cbdf33bceb74cb"
+        },
+        "date": 1778528297878,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 24.108384577165037,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00025800175110732553",
+            "extra": "mean: 41.47934494736654 msec\nrounds: 19"
           }
         ]
       }
