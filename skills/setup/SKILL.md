@@ -8,6 +8,17 @@ allowed-tools: [Bash]
 
 Setup automático: detecta uv, instala se necessário, e roda init + ingest no projeto atual.
 
+## Detecção de ambiente Claude Code
+
+Antes de instalar a CLI, detecte se o usuário está usando:
+
+- **Claude Code CLI nativo** (terminal `claude`): `/plugin install plugadvpl` funciona direto no chat.
+- **Extensão VSCode**: `/plugin install` NÃO funciona (limitação Claude Code). Use a UI Manage Plugins.
+
+Como detectar: rode `Bash echo $TERM_PROGRAM` — se retornar `vscode`, está na extensão; senão, provavelmente CLI nativo.
+
+Reporte ao usuário a forma correta de instalar o plugin antes de prosseguir com a CLI.
+
 ## Execução
 
 Você (Claude) deve rodar os passos abaixo via Bash, sequencialmente, NA PASTA ATUAL do projeto (cwd do usuário):

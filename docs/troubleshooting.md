@@ -75,3 +75,19 @@ Erros comuns e como resolvê-los. Cada entrada segue **Sintoma → Causa → Fix
   literal como pretendido.
 - **Fix**: usar `plugadvpl grep --literal "SA1->A1_COD"` (modo trigram).
   O default `--fts` é apropriado para palavras inteiras.
+
+## "/plugin isn't available in this environment"
+
+**Sintoma:** Você digita `/plugin install plugadvpl` no chat do Claude Code e recebe a mensagem `"/plugin isn't available in this environment."`.
+
+**Causa:** O slash command `/plugin install` **só existe no Claude Code CLI nativo** (terminal `claude`). Na extensão VSCode do Claude Code, esse comando não está disponível — é uma limitação oficial do Claude Code, não do plugadvpl.
+
+**Solução:**
+
+- **Se estiver no terminal `claude` (CLI nativo)**: o comando deveria funcionar. Verifique que você atualizou o Claude Code (`claude --update`).
+- **Se estiver na extensão VSCode**:
+  1. No chat, digite apenas `/plugin` (sem args) → abre a UI Manage Plugins
+  2. Aba **Marketplaces** → Add → `https://github.com/JoniPraia/plugadvpl.git`
+  3. Aba **Plugins** → `plugadvpl` → **Install for you (user scope)**
+
+Veja `README.md` seção "Instalando o plugin Claude Code" para detalhes.

@@ -77,9 +77,8 @@ plugadvpl status
 winget install astral-sh.uv                              # Windows
 # OU: curl -LsSf https://astral.sh/uv/install.sh | sh    # Linux/macOS
 
-# 2. Dentro do Claude Code:
-/plugin marketplace add github.com/JoniPraia/plugadvpl
-/plugin install plugadvpl
+# 2. Instale o plugin Claude Code — veja seção abaixo
+#    (caminho varia entre CLI nativo e extensão VSCode)
 
 # 3. Abra o seu projeto Protheus e rode:
 /plugadvpl:init      # cria .plugadvpl/index.db, fragment CLAUDE.md, .gitignore
@@ -95,6 +94,53 @@ Pronto. A partir daqui o Claude já consulta o índice antes de abrir qualquer `
 /plugadvpl:param MV_LOCALIZA        # onde esse parâmetro é usado
 /plugadvpl:lint --severity error    # encontrar problemas críticos
 ```
+
+---
+
+## Instalando o plugin Claude Code (opcional, para slash commands)
+
+Além da CLI, o plugadvpl também é um **plugin Claude Code** que adiciona:
+- Slash commands `/plugadvpl:arch`, `/plugadvpl:find`, `/plugadvpl:callers`, etc.
+- 15 knowledge skills temáticas que Claude carrega automaticamente (advpl-mvc, advpl-tlpp, advpl-pontos-entrada, etc.)
+- Hook `SessionStart` que detecta projetos ADVPL e sugere `/plugadvpl:init`
+- 4 subagents especializados (analyzer, impact-analyzer, code-generator, reviewer-bot)
+
+A forma de instalar depende de onde você usa o Claude Code:
+
+### Opção A — Claude Code CLI (terminal `claude`)
+
+No chat do CLI:
+
+```
+/plugin marketplace add https://github.com/JoniPraia/plugadvpl.git
+/plugin install plugadvpl
+```
+
+Aceite o trust dialog. Pronto.
+
+### Opção B — Extensão VSCode do Claude Code
+
+A extensão **não suporta** `/plugin install` direto no chat (limitação oficial do Claude Code). Use a UI:
+
+1. No chat, digite `/plugin` (sem args) — abre o painel **Manage Plugins**
+   *Alternativa*: `Ctrl+Shift+P` → "Claude Code: Manage Plugins"
+2. Aba **Marketplaces** → botão **Add** → cole `https://github.com/JoniPraia/plugadvpl.git`
+3. Aba **Plugins** → encontre `plugadvpl` → clique **Install for you (user scope)**
+4. Aceite o trust dialog
+
+Reinicie o Claude Code para garantir que skills, hooks e slash commands carregam corretamente.
+
+### Verificação
+
+Em qualquer caminho, no chat:
+
+```
+/plugadvpl:status
+```
+
+Se aparecer output com counters do índice, o plugin está instalado e funcionando.
+
+> **Importante:** O plugin precisa da CLI Python instalada também (`uv tool install plugadvpl` ou via [Instalação rápida (one-liner)](#instalação-rápida-one-liner)). O plugin é uma camada fina sobre a CLI — sem ela, os slash commands não funcionam.
 
 ---
 
