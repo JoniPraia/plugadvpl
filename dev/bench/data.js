@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778522163071,
+  "lastUpdate": 1778523072940,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -58,6 +58,35 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.005010225217964556",
             "extra": "mean: 36.28328789999955 msec\nrounds: 10"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "39e3649cc3ef288877579dae217e2cd32312c014",
+          "message": "docs+ci: release readiness — CHANGELOG 0.1.0, limitations, troubleshooting, pypi-setup, RC workflow\n\n- CHANGELOG.md: enumerate v0.1.0 deliverables under Added section\n- docs/limitations.md: honest list of parser/lint/schema/platform gaps\n- docs/troubleshooting.md: 10 common errors with sympton/cause/fix\n- docs/pypi-setup.md: step-by-step Trusted Publisher (PyPI + TestPyPI)\n- .github/workflows/release-rc.yml: TestPyPI workflow on v*-rc* tags + smoke\n\nPre-release blockers cleared. Pipeline can now be tested via v0.1.0-rc1\nbefore tagging v0.1.0 real.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-11T15:10:54-03:00",
+          "tree_id": "83736e181cdada516d3147e29c1e67b8c9ab794f",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/39e3649cc3ef288877579dae217e2cd32312c014"
+        },
+        "date": 1778523072686,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 24.203656793689447,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0003293163753408487",
+            "extra": "mean: 41.31607089473882 msec\nrounds: 19"
           }
         ]
       }
