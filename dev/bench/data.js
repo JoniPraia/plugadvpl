@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778524535814,
+  "lastUpdate": 1778524798099,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -145,6 +145,35 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.09297924666801707",
             "extra": "mean: 110.07259999997814 msec\nrounds: 5"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "10a33855446d8cfc7f0206f2dd6f6915bed20717",
+          "message": "fix(build): remove force-include to avoid duplicate filenames in wheel\n\nPyPI rejected v0.1.0-rc1 with HTTP 400 \"Duplicate filename in local headers\".\nCause: hatchling already includes all non-Python files inside discovered\npackages (packages=[\"plugadvpl\"]). The force-include block added the same\nfiles a second time, generating duplicate entries in the wheel zip.\n\nVerified local build: 26 unique files, all migrations/*.sql and lookups/*.json\npresent.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-11T15:39:46-03:00",
+          "tree_id": "83f7ffb3708b2f45f44326f27d839ae77bc5fc64",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/10a33855446d8cfc7f0206f2dd6f6915bed20717"
+        },
+        "date": 1778524797544,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 23.97552891289066,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0006959275834711772",
+            "extra": "mean: 41.70919455555122 msec\nrounds: 18"
           }
         ]
       }
