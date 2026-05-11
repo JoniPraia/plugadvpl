@@ -183,3 +183,23 @@ FWMVCRotina("XYZCAD", aCab, aItens, MODEL_OPERATION_INSERT)
 - `/plugadvpl:callers <rotina>` — descobre quem aciona o cadastro.
 - `/plugadvpl:tables <T>` — vê qual MVC usa a tabela.
 - A tabela `mvc_hooks` do índice cataloga todos os hooks declarados.
+
+## Referência profunda
+
+Para detalhes completos (~2.3k linhas), consulte [`reference.md`](reference.md) ao lado deste arquivo:
+
+- Anatomia completa de `MPFormModel`/`MPFormFields`/`MPFormGrid` com todas as propriedades configuráveis.
+- Tabela exaustiva de métodos de `oModel`/`oView` (LoadValue, SetUniqueLine, SetOptional, SetNoInsertLine, SetDescription).
+- Catálogo de eventos do ciclo de vida MVC (Activate/Deactivate, Pre/PostValidation, LineActivate).
+- Padrões para grids dependentes (cabeçalho/itens, multi-nível) com `SetRelation` e `SetUniqueLine`.
+- Integração com FWMBrowse, MarkBrowse e MsDialog para casos onde a UI saí do `FWFormView` padrão.
+
+## Exemplos práticos
+
+Veja a pasta [`exemplos/`](exemplos/) ao lado deste SKILL.md para fontes reais TLPP de produção (MVC moderno via classes):
+
+- `custom.mvc.customers.tlpp` — cadastro de monitor de integração de clientes (FWMBrowse + namespace TLPP).
+- `custom.mvc.monitors.tlpp` — monitor genérico de processos de integração.
+- `custom.mvc.quote.tlpp` — fluxo de cotação com cabeçalho + itens (sub-models).
+- `custom.mvc.transferOrder.tlpp` — ordem de transferência com validações cruzadas.
+- `custom.mvc.confirmationOfReceipt.tlpp` — confirmação de recebimento com hooks de commit.

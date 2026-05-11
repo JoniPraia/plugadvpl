@@ -162,3 +162,19 @@ EndIf
 - `/plugadvpl:callers <PE>` — vê quem dispara (provável `ExecBlock` em fonte TOTVS).
 - `/plugadvpl:arch <arq>` — entende rotina principal antes de criar PE.
 - Lookup `pontos_entrada_padrao` (carregado pelo init) — referência rápida.
+
+## Referência profunda
+
+Para detalhes completos (~1.2k linhas), consulte [`reference.md`](reference.md) ao lado deste arquivo:
+
+- Catálogo de 200+ PEs oficiais TOTVS por módulo com `paramixb_count` e tipo de retorno.
+- Diferenças entre PE pré-validação, pós-validação e pré/pós gravação.
+- Padrões para PE multi-propósito (bifurcado por contexto via `PARAMIXB[1]`).
+- Como diagnosticar conflito de PE (mesma User Function compilada em RPOs diferentes).
+- PEs especiais: `OPENMENU`, `CHKFIL`, `LOGAVISO`, `FATORM`, e gatilhos APWEBEX.
+
+## Exemplos práticos
+
+Veja a pasta [`exemplos/`](exemplos/) ao lado deste SKILL.md para fonte real ADVPL de produção:
+
+- `A300STRU.prw` — PE bifurcado (MODELDEF + VIEWDEF) que adiciona grid filha ao cadastro CNTA300 com gatilhos em cascata e validação preservada.

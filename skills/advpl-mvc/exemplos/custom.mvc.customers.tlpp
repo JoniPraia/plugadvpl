@@ -1,0 +1,143 @@
+#include "totvs.ch"
+#include "fwmvcdef.ch"
+#include "tlpp-core.th"
+#include "tlpp-rest.th"
+
+// Variáveis estáticas
+static cTitulo := "Monitor de Integração - Clientes"
+
+namespace custom.mvc.customer
+
+/*/{Protheus.doc} nomeFunction
+(long_description)
+@type user function
+@author user
+@since 04/09/2025
+@version version
+@param param_name, param_type, param_descr
+@return return_var, return_type, return_description
+@example
+(examples)
+@see (links_or_references)
+/*/
+User Function customerMonitor()
+
+	local aArea     := GetArea()
+	local oBrowse   := nil
+
+	oBrowse := FWMBrowse():New()
+	oBrowse:SetAlias( "ZZ0" )
+	oBrowse:SetDescription( cTitulo )
+	oBrowse:SetFilterDefault( "ZZ0_ENTIDA == 'SA1'" )
+
+	oBrowse:addLegend("ZZ0_STATUS == 'P'"	, "YELLOW"	, "Aguardando processamento"	)
+	oBrowse:addLegend("ZZ0_STATUS == 'R'"	, "BLUE"	, "Aguardando Reprocessamento"	)
+	oBrowse:addLegend("ZZ0_STATUS == 'I'"	, "GREEN"	, "Processado"					)
+	oBrowse:addLegend("ZZ0_STATUS == 'E'"	, "RED"		, "Erro de processamento"		)
+
+	oBrowse:Activate()
+
+	RestArea(aArea)
+
+Return nil
+
+/*
+** MenuDef
+*/ 
+User Function MenuDef() as array
+
+	local aRotina := {} as array
+
+	ADD OPTION aRotina TITLE 'Visualizar'	ACTION 'ViewDef.custom.mvc.customer.customerMonitor'	OPERATION MODEL_OPERATION_VIEW		ACCESS 0
+	ADD OPTION aRotina TITLE 'Reprocessar'	ACTION 'custom.mvc.customer.u_reprocessar()'			OPERATION 6							ACCESS 0
+
+Return aRotina
+
+/*
+** ModelDef
+*/ 
+User Function ModelDef()
+	// Cria a estrutura a ser usada no Modelo de Dados
+	Local oStruZZ0 := FWFormStruct( 1, 'ZZ0', /*bAvalCampo*/, /*lViewUsado*/ )
+	Local oStruZZ3 := FWFormStruct( 1, 'ZZ3', /*bAvalCampo*/, /*lViewUsado*/ )
+	Local oModel
+
+	// Cria o objeto do Modelo de Dados
+	oModel := MPFormModel():New( 'CUSTOMEM', /*bPreValidacao*/, /*bPosValidacao*/, /*bCommit*/, /*bCancel*/ )
+
+	// Adiciona ao modelo uma estrutura de formulário de edição por campo
+	oModel:AddFields( 'ZZ0MASTER', /*cOwner*/, oStruZZ0 )
+
+	// Adiciona ao modelo uma estrutura de formulário de edição por grid
+	oModel:AddGrid( 'ZZ3DETAIL', 'ZZ0MASTER', oStruZZ3, /*bLinePre*/, /*bLinePost*/, /*bPreVal*/, /*bPosVal*/, /*BLoad*/ )
+
+	oModel:SetPrimaryKey({})
+
+	// Faz relaciomaneto entre os compomentes do model
+	oModel:SetRelation( 'ZZ3DETAIL', { { 'ZZ3_FILIAL', 'FWxFilial( "ZZ3" )' }, { 'ZZ3_ID' , 'ZZ0_ID'  } } , ZZ3->( IndexKey( 1 ) )  )
+
+	// Adiciona a descricao do Modelo de Dados
+	oModel:SetDescription( cTitulo )
+
+	// Adiciona a descricao do Componente do Modelo de Dados
+	oModel:GetModel( 'ZZ3DETAIL' ):SetDescription( 'Dados do Cliente'  )
+Return oModel
+
+/*
+** ViewDef
+*/ 
+User Function ViewDef()
+
+	// INSTANCIA A VIEW
+	Local oView := FwFormView():New()
+
+	// INSTANCIA AS SUBVIEWS
+	Local oStruZZ0 := FwFormStruct(2, "ZZ0")
+	Local oStruZZ3 := FwFormStruct(2, "ZZ3")
+
+	// RECEBE O MODELO DE DADOS
+	Local oModel := FwLoadModel("custom.mvc.customer.customerMonitor")
+
+	// INDICA O MODELO DA VIEW
+	oView:SetModel(oModel)
+
+	// CRIA ESTRUTURA VISUAL DE CAMPOS
+	oView:AddField("VIEW_ZZ0", oStruZZ0, "ZZ0MASTER")
+
+	// CRIA A ESTRUTURA VISUAL DAS GRIDS
+	oView:AddGrid("VIEW_ZZ3", oStruZZ3, "ZZ3DETAIL")
+
+	// CRIA BOXES HORIZONTAIS
+	oView:CreateHorizontalBox( "PARTE1"	, 50 )
+	oView:CreateHorizontalBox( "PARTE2"	, 50 )
+
+	// RELACIONA OS BOXES COM AS ESTRUTURAS VISUAIS
+	oView:SetOwnerView( "VIEW_ZZ0" , "PARTE1" )
+	oView:SetOwnerView( "VIEW_ZZ3" , "PARTE2" )
+
+	// DEFINE OS TÍTULOS DAS SUBVIEWS
+	oView:EnableTitleView( "VIEW_ZZ0")
+	oView:EnableTitleView( "VIEW_ZZ3", "Dados do Cliente"	, 0 )
+
+Return oView
+
+user function reprocessar()
+	if ZZ0->ZZ0_STATUS <> "E"
+		fwAlertError( "Status da integração (Pendente/Reprocessando/Processado) não permite reprocessamento" , "Não permitido" )
+	else
+		if recLock( "ZZ0" , .F. )
+			ZZ0->ZZ0_STATUS  := "R"
+			ZZ0->( msUnlock() )
+		endif
+
+		if ZZ0->ZZ0_STATUS == "R"
+			u_xcustomerIntegration(	""					/*cTypeDebug	as character*/	,;
+						.F.					/*lSettedUp		as logical*/	,;
+						""					/*cOperation	as character*/	,;
+						ZZ0->( Recno() )	/*nRecnoZZ0		as numeric*/	,;
+						"IN"				/*cDirection	as character*/	)
+
+			fwAlertSuccess("O reprocessamento foi acionado, verifique o log após o processamento para mais detalhes.", "Reprocessando")
+		endif
+	endif
+return

@@ -1,0 +1,148 @@
+#include "totvs.ch"
+#include "fwmvcdef.ch"
+#include "tlpp-core.th"
+#include "tlpp-rest.th"
+
+// Variáveis estáticas
+static cTitulo := "Monitor de Integração - Ordem de Transferências"
+
+namespace custom.mvc.transferOrder
+
+/*/{Protheus.doc} nomeFunction
+(long_description)
+@type user function
+@author user
+@since 04/09/2025
+@version version
+@param param_name, param_type, param_descr
+@return return_var, return_type, return_description
+@example
+(examples)
+@see (links_or_references)
+/*/
+User Function transferOrderMonitor()
+
+	local aArea     := GetArea()
+	local oBrowse   := nil
+
+	oBrowse := FWMBrowse():New()
+	oBrowse:SetAlias( "ZZ0" )
+	oBrowse:SetDescription( cTitulo )
+	oBrowse:SetFilterDefault( "ZZ0_ENTIDA == 'ZZT'" )
+
+	oBrowse:addLegend("ZZ0_STATUS == 'P'"	, "YELLOW"	, "Aguardando processamento"	)
+	oBrowse:addLegend("ZZ0_STATUS == 'R'"	, "BLUE"	, "Aguardando Reprocessamento"	)
+	oBrowse:addLegend("ZZ0_STATUS == 'I'"	, "GREEN"	, "Processado"					)
+	oBrowse:addLegend("ZZ0_STATUS == 'E'"	, "RED"		, "Erro de processamento"		)
+
+	oBrowse:Activate()
+
+	RestArea(aArea)
+
+Return nil
+
+/*
+** MenuDef
+*/ 
+User Function MenuDef() as array
+
+	local aRotina := {} as array
+
+	ADD OPTION aRotina TITLE 'Visualizar'	ACTION 'ViewDef.custom.mvc.transferOrder.transferOrderMonitor'	OPERATION MODEL_OPERATION_VIEW		ACCESS 0
+	ADD OPTION aRotina TITLE 'Reprocessar'	ACTION 'custom.mvc.transferOrder.u_reprocessar()'				OPERATION 6							ACCESS 0
+
+Return aRotina
+
+/*
+** ModelDef
+*/ 
+User Function ModelDef()
+	// Cria a estrutura a ser usada no Modelo de Dados
+	Local oStruZZ0 := FWFormStruct( 1, 'ZZ0', /*bAvalCampo*/, /*lViewUsado*/ )
+	Local oStruZZT := FWFormStruct( 1, 'ZZT', /*bAvalCampo*/, /*lViewUsado*/ )
+	Local oStruZZU := FWFormStruct( 1, 'ZZU', /*bAvalCampo*/, /*lViewUsado*/ )
+	Local oModel
+
+	// Cria o objeto do Modelo de Dados
+	oModel := MPFormModel():New( 'TRANSFMD', /*bPreValidacao*/, /*bPosValidacao*/, /*bCommit*/, /*bCancel*/ )
+
+	// Adiciona ao modelo uma estrutura de formulário de edição por campo
+	oModel:AddFields( 'ZZ0MASTER', /*cOwner*/, oStruZZ0 )
+
+	// Adiciona ao modelo uma estrutura de formulário de edição por grid
+	oModel:AddGrid( 'ZZTDETAIL', 'ZZ0MASTER', oStruZZT, /*bLinePre*/, /*bLinePost*/, /*bPreVal*/, /*bPosVal*/, /*BLoad*/ )
+	oModel:AddGrid( 'ZZUDETAIL', 'ZZTDETAIL', oStruZZU, /*bLinePre*/, /*bLinePost*/, /*bPreVal*/, /*bPosVal*/, /*BLoad*/ )
+
+	oModel:SetPrimaryKey({})
+
+	// Faz relaciomaneto entre os compomentes do model
+	oModel:SetRelation( 'ZZTDETAIL', { { 'ZZT_FILIAL', 'FWxFilial( "ZZT" )' }, { 'ZZT_ID' , 'ZZ0_ID'  } } , ZZT->( IndexKey( 1 ) )  )
+	oModel:SetRelation( 'ZZUDETAIL', { { 'ZZU_FILIAL', 'FWxFilial( "ZZU" )' }, { 'ZZU_ID' , 'ZZ0_ID'  } } , ZZU->( IndexKey( 1 ) )  )
+
+	// Adiciona a descricao do Modelo de Dados
+	oModel:SetDescription( cTitulo )
+
+	// Adiciona a descricao do Componente do Modelo de Dados
+	oModel:GetModel( 'ZZTDETAIL' ):SetDescription( 'Dados da Ordem de Transferência'  )
+	oModel:GetModel( 'ZZUDETAIL' ):SetDescription( 'Itens da Ordem de Transferência'  )
+Return oModel
+
+/*
+** ViewDef
+*/ 
+User Function ViewDef()
+
+	// INSTANCIA A VIEW
+	Local oView := FwFormView():New()
+
+	// INSTANCIA AS SUBVIEWS
+	Local oStruZZ0 := FwFormStruct(2, "ZZ0")
+	Local oStruZZT := FwFormStruct(2, "ZZT")
+	Local oStruZZU := FwFormStruct(2, "ZZU")
+
+	// RECEBE O MODELO DE DADOS
+	Local oModel := FwLoadModel("custom.mvc.transferOrder.transferOrderMonitor")
+
+	// INDICA O MODELO DA VIEW
+	oView:SetModel(oModel)
+
+	// CRIA ESTRUTURA VISUAL DE CAMPOS
+	oView:AddField("VIEW_ZZ0", oStruZZ0, "ZZ0MASTER")
+
+	// CRIA A ESTRUTURA VISUAL DAS GRIDS
+	oView:AddGrid("VIEW_ZZT", oStruZZT, "ZZTDETAIL")
+	oView:AddGrid("VIEW_ZZU", oStruZZU, "ZZUDETAIL")
+
+	// CRIA BOXES HORIZONTAIS
+	oView:CreateHorizontalBox( "PARTE1"	, 40 )
+	oView:CreateHorizontalBox( "PARTE2"	, 30 )
+	oView:CreateHorizontalBox( "PARTE3"	, 30 )
+
+	// RELACIONA OS BOXES COM AS ESTRUTURAS VISUAIS
+	oView:SetOwnerView( "VIEW_ZZ0" , "PARTE1" )
+	oView:SetOwnerView( "VIEW_ZZT" , "PARTE2" )
+	oView:SetOwnerView( "VIEW_ZZU" , "PARTE3" )
+
+	// DEFINE OS TÍTULOS DAS SUBVIEWS
+	oView:EnableTitleView( "VIEW_ZZ0")
+	oView:EnableTitleView( "VIEW_ZZT", "Dados da Ordem de Transferência"	, 0 )
+	oView:EnableTitleView( "VIEW_ZZU", "Itens da Ordem de Transferência"	, 0 )
+
+Return oView
+
+user function reprocessar()
+	if ZZ0->ZZ0_STATUS <> "E"
+		fwAlertError( "Status da integração (Pendente/Reprocessando/Processado) não permite reprocessamento" , "Não permitido" )
+	else
+		if recLock( "ZZ0" , .F. )
+			ZZ0->ZZ0_STATUS  := "R"
+			ZZ0->( msUnlock() )
+		endif
+
+		if ZZ0->ZZ0_STATUS == "R"
+			startJob( "u_reprocessTransfer" , getEnvServer() , .F. , "01" , ZZ0->ZZ0_FILIAL , ZZ0->ZZ0_ID )
+
+			fwAlertSuccess("O reprocessamento foi acionado, verifique o log após o processamento para mais detalhes.", "Reprocessando")
+		endif
+	endif
+return

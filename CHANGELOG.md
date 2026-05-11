@@ -4,6 +4,24 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-11
+
+### Added
+- ~21k lines of curated ADVPL/TLPP reference documentation embedded as
+  `reference.md` supporting files in 6 existing skills (fundamentals, mvc,
+  embedded-sql, webservice, pontos-entrada, matxfis).
+- 5 new knowledge skills:
+  - `advpl-advanced` — threads, IPC, debug, OO em profundidade
+  - `advpl-tlpp` — TLPP moderno (OO, namespaces, annotations)
+  - `advpl-web` — interfaces web (Webex/HTML/WebExpress)
+  - `advpl-dicionario-sx` — SX1/SX2/SX3/SX5/SX6/SX7/SIX/SXA/SXB
+  - `advpl-mvc-avancado` — eventos, validações cruzadas, FWMVCRotAuto
+- 7 production-grade code examples embedded in `skills/<x>/exemplos/`.
+
+### Changed
+- Plugin agora tem 30 skills total (15 knowledge + 14 command + 1 setup,
+  contagem revisada após reorganização).
+
 ## [0.1.0] - 2026-05-11
 
 ### Added

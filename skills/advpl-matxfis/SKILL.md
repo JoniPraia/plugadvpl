@@ -156,3 +156,19 @@ Esta skill cobre o panorama. Acione o agente especialista quando o usuário pedi
 - `/plugadvpl:find function MaFisCalc` — usos no projeto.
 - `/plugadvpl:arch <fonte>` antes de tocar em qualquer rotina fiscal.
 - `/plugadvpl:callers <PE_fiscal>` — onde a PE está implementada.
+
+## Referência profunda
+
+Para detalhes completos (~1.3k linhas), consulte [`reference.md`](reference.md) ao lado deste arquivo:
+
+- Estrutura completa do contexto fiscal (`MaFisIni`/`MaFisEnd`/`MaFisRef`/`MaFisGet`/`MaFisCalc`).
+- Tabela exaustiva de tags fiscais (`IT_VALMERC`, `IT_VALICM`, `IT_BASEIPI`, etc.) e quando atualizar cada uma.
+- Regras de DIFAL/FCP/Partilha por UF e ajustes para emendas constitucionais (EC 87/2015).
+- Mapeamento dos registros SPED Fiscal (C100/C170/C190/E110) ↔ tabelas Protheus (SF2/SD2/SF3/CDA).
+- Cenários de NF complementar, NF de ajuste, denegação, inutilização, carta de correção.
+
+## Exemplos práticos
+
+Veja a pasta [`exemplos/`](exemplos/) ao lado deste SKILL.md para fonte real ADVPL de produção:
+
+- `DAMDFE.prw` — impressão do Documento Auxiliar do Manifesto Eletrônico (MDF-e) com tratamento de contingência, layout estruturado em `oDamdfe:SetPaperSize`/`SetMargin` e parsing do XML MDF-e via `XMLXFUN.CH`.

@@ -1,0 +1,234 @@
+#include "totvs.ch"
+#include "fwmvcdef.ch"
+#include "tlpp-core.th"
+#include "tlpp-rest.th"
+
+// Variáveis estáticas
+static cTitulo := "Monitor de Integração"
+
+namespace custom.mvc.quote
+
+/*/{Protheus.doc} nomeFunction
+(long_description)
+@type user function
+@author user
+@since 04/09/2025
+@version version
+@param param_name, param_type, param_descr
+@return return_var, return_type, return_description
+@example
+(examples)
+@see (links_or_references)
+/*/
+User Function quoteMonitor()
+
+	local aArea     := GetArea()
+	local oBrowse   := nil
+
+	oBrowse := FWMBrowse():New()
+	oBrowse:SetAlias( "ZZ0" )
+	oBrowse:SetDescription( cTitulo )
+	oBrowse:SetFilterDefault( "ZZ0_ENTIDA == 'SLQ'" )
+
+	oBrowse:addLegend("ZZ0_STATUS == 'P'"	, "YELLOW"	, "Aguardando processamento"	)
+	oBrowse:addLegend("ZZ0_STATUS == 'R'"	, "BLUE"	, "Aguardando Reprocessamento"	)
+	oBrowse:addLegend("ZZ0_STATUS == 'I'"	, "GREEN"	, "Processado"					)
+	oBrowse:addLegend("ZZ0_STATUS == 'E'"	, "RED"		, "Erro de processamento"		)
+
+	oBrowse:Activate()
+
+	RestArea(aArea)
+
+Return nil
+
+/*
+** MenuDef
+*/ 
+User Function MenuDef() as array
+
+	local aRotina := {} as array
+
+	ADD OPTION aRotina TITLE 'Visualizar'	ACTION 'ViewDef.custom.mvc.quote.quoteMonitor'	OPERATION MODEL_OPERATION_VIEW		ACCESS 0
+	ADD OPTION aRotina TITLE 'Reprocessar'	ACTION 'custom.mvc.quote.u_reprocessar()'		OPERATION 6							ACCESS 0
+	ADD OPTION aRotina TITLE 'Reenfileirar'	ACTION 'custom.mvc.quote.u_reenfileirar()'		OPERATION 6							ACCESS 0
+
+Return aRotina
+
+/*
+** ModelDef
+*/ 
+User Function ModelDef()
+	// Cria a estrutura a ser usada no Modelo de Dados
+	Local oStruZZ0 := FWFormStruct( 1, 'ZZ0', /*bAvalCampo*/, /*lViewUsado*/ )
+	Local oStruZZQ := FWFormStruct( 1, 'ZZQ', /*bAvalCampo*/, /*lViewUsado*/ )
+	Local oStruZZR := FWFormStruct( 1, 'ZZR', /*bAvalCampo*/, /*lViewUsado*/ )
+	Local oStruZZS := FWFormStruct( 1, 'ZZS', /*bAvalCampo*/, /*lViewUsado*/ )
+	Local oModel
+
+	// Cria o objeto do Modelo de Dados
+	oModel := MPFormModel():New( 'QUOTEMOD', /*bPreValidacao*/, /*bPosValidacao*/, /*bCommit*/, /*bCancel*/ )
+
+	// Adiciona ao modelo uma estrutura de formulário de edição por campo
+	oModel:AddFields( 'ZZ0MASTER', /*cOwner*/, oStruZZ0 )
+
+	// Adiciona ao modelo uma estrutura de formulário de edição por grid
+	oModel:AddGrid( 'ZZQDETAIL', 'ZZ0MASTER', oStruZZQ, /*bLinePre*/, /*bLinePost*/, /*bPreVal*/, /*bPosVal*/, /*BLoad*/ )
+	oModel:AddGrid( 'ZZRDETAIL', 'ZZQDETAIL', oStruZZR, /*bLinePre*/, /*bLinePost*/, /*bPreVal*/, /*bPosVal*/, /*BLoad*/ )
+	oModel:AddGrid( 'ZZSDETAIL', 'ZZRDETAIL', oStruZZS, /*bLinePre*/, /*bLinePost*/, /*bPreVal*/, /*bPosVal*/, /*BLoad*/ )
+
+	oModel:SetPrimaryKey({})
+
+	// Faz relaciomaneto entre os compomentes do model
+	oModel:SetRelation( 'ZZQDETAIL', { { 'ZZQ_FILIAL', 'FWxFilial( "ZZQ" )' }, { 'ZZQ_ID' , 'ZZ0_ID'  } } , ZZQ->( IndexKey( 1 ) )  )
+	oModel:SetRelation( 'ZZRDETAIL', { { 'ZZR_FILIAL', 'FWxFilial( "ZZR" )' }, { 'ZZR_ID' , 'ZZ0_ID'  } } , ZZR->( IndexKey( 1 ) )  )
+	oModel:SetRelation( 'ZZSDETAIL', { { 'ZZS_FILIAL', 'FWxFilial( "ZZS" )' }, { 'ZZS_ID' , 'ZZ0_ID'  } } , ZZS->( IndexKey( 1 ) )  )
+
+	// Adiciona a descricao do Modelo de Dados
+	oModel:SetDescription( 'Monitor de Integração de Pedido' )
+
+	// Adiciona a descricao do Componente do Modelo de Dados
+	oModel:GetModel( 'ZZQDETAIL' ):SetDescription( 'Cabeçalho do Pedido'  )
+	oModel:GetModel( 'ZZRDETAIL' ):SetDescription( 'Itens do Pedido'  )
+	oModel:GetModel( 'ZZSDETAIL' ):SetDescription( 'Dados de Pagamento'  )
+Return oModel
+
+/*
+** ViewDef
+*/ 
+User Function ViewDef()
+
+	// INSTANCIA A VIEW
+	Local oView := FwFormView():New()
+
+	// INSTANCIA AS SUBVIEWS
+	Local oStruZZ0 := FwFormStruct(2, "ZZ0")
+	Local oStruZZQ := FwFormStruct(2, "ZZQ")
+	Local oStruZZR := FwFormStruct(2, "ZZR")
+	Local oStruZZS := FwFormStruct(2, "ZZS")
+
+	// RECEBE O MODELO DE DADOS
+	Local oModel := FwLoadModel("custom.mvc.quote.quoteMonitor")
+
+	// INDICA O MODELO DA VIEW
+	oView:SetModel(oModel)
+
+	// CRIA ESTRUTURA VISUAL DE CAMPOS
+	oView:AddField("VIEW_ZZ0", oStruZZ0, "ZZ0MASTER")
+
+	// CRIA A ESTRUTURA VISUAL DAS GRIDS
+	oView:AddGrid("VIEW_ZZQ", oStruZZQ, "ZZQDETAIL")
+	oView:AddGrid("VIEW_ZZR", oStruZZR, "ZZRDETAIL")
+	oView:AddGrid("VIEW_ZZS", oStruZZS, "ZZSDETAIL")
+
+	// CRIA BOXES HORIZONTAIS
+	oView:CreateHorizontalBox( "PARTE1"	, 20 )
+	oView:CreateHorizontalBox( "PARTE2"	, 20 )
+	oView:CreateHorizontalBox( "PARTE3"	, 40 )
+	oView:CreateHorizontalBox( "PARTE4"	, 20 )
+
+	// RELACIONA OS BOXES COM AS ESTRUTURAS VISUAIS
+	oView:SetOwnerView( "VIEW_ZZ0" , "PARTE1" )
+	oView:SetOwnerView( "VIEW_ZZQ" , "PARTE2" )
+	oView:SetOwnerView( "VIEW_ZZR" , "PARTE3" )
+	oView:SetOwnerView( "VIEW_ZZS" , "PARTE4" )
+
+	// DEFINE OS TÍTULOS DAS SUBVIEWS
+	oView:EnableTitleView( "VIEW_ZZ0")
+	oView:EnableTitleView( "VIEW_ZZQ", "Cabeçalho do Pedido"	, 0 )
+	oView:EnableTitleView( "VIEW_ZZR", "Itens do Pedido"		, 0 )
+	oView:EnableTitleView( "VIEW_ZZS", "Dados de Pagamento"		, 0 )
+
+Return oView
+
+user function reprocessar()
+	if ZZ0->ZZ0_STATUS <> "E"
+		fwAlertError( "Status da integração (Pendente/Reprocessando/Processado) não permite reprocessamento" , "Não permitido" )
+	else
+		if recLock( "ZZ0" , .F. )
+			ZZ0->ZZ0_STATUS  := "R"
+			ZZ0->( msUnlock() )
+		endif
+
+		if ZZ0->ZZ0_STATUS == "R"
+			startJob( "u_reprocessQuote" , getEnvServer() , .F. , "01" , ZZ0->ZZ0_FILIAL , ZZ0->ZZ0_ID )
+
+			fwAlertSuccess("O reprocessamento foi acionado, verifique o log após o processamento para mais detalhes.", "Reprocessando")
+		endif
+	endif
+return
+
+user function reenfileirar()
+	local aAreaX			:= fwGetArea()		as array
+	local cQueryZZ0			:= ""				as character
+	local cAliasZZ0			:= ""				as character
+	local oStatement		:= nil				as object
+	local lContinua			:= .F.				as logical
+
+	cQueryZZ0 := ""
+	cQueryZZ0 += "SELECT"									+ CRLF
+	cQueryZZ0 += "	COUNT(*) QTDEERRO"						+ CRLF
+	cQueryZZ0 += "FROM " + retSQLName( "ZZ0" ) + " ZZ0"		+ CRLF
+	cQueryZZ0 += "WHERE"									+ CRLF
+	cQueryZZ0 += "		ZZ0.ZZ0_FILIAL	<>	' '"			+ CRLF
+	cQueryZZ0 += "	AND	ZZ0.D_E_L_E_T_	=	' '"			+ CRLF
+	cQueryZZ0 += "	AND	ZZ0.ZZ0_ENTIDA	=	'SLQ'"			+ CRLF
+	cQueryZZ0 += "	AND	ZZ0.ZZ0_STATUS	=	'E'"			+ CRLF
+
+	oStatement := FWExecStatement():new( cQueryZZ0 )
+
+	cAliasZZ0 := oStatement:openAlias() // oStatement:getFixQuery()
+
+	oStatement:destroy()
+	oStatement := nil
+
+	if !( cAliasZZ0 )->( EOF() )
+		lContinua := FWAlertNoYes( "Existem " + cValToChar( ( cAliasZZ0 )->QTDEERRO ) + " registros com erro. Eles serão colocados na fila para reprocessamento em job. Continua ?" , "Prosseguir?" )
+	endif
+
+	( cAliasZZ0 )->( DBCloseArea() )
+
+	if lContinua
+		cAliasZZ0 := ""
+
+		cQueryZZ0 := ""
+		cQueryZZ0 += "SELECT"									+ CRLF
+		cQueryZZ0 += "	ZZ0.R_E_C_N_O_ ZZ0RECNO"				+ CRLF
+		cQueryZZ0 += "FROM " + retSQLName( "ZZ0" ) + " ZZ0"		+ CRLF
+		cQueryZZ0 += "WHERE"									+ CRLF
+		cQueryZZ0 += "		ZZ0.ZZ0_FILIAL	<>	' '"			+ CRLF
+		cQueryZZ0 += "	AND	ZZ0.D_E_L_E_T_	=	' '"			+ CRLF
+		cQueryZZ0 += "	AND	ZZ0.ZZ0_ENTIDA	=	'SLQ'"			+ CRLF
+		cQueryZZ0 += "	AND	ZZ0.ZZ0_STATUS	=	'E'"			+ CRLF
+		cQueryZZ0 += "ORDER BY ZZ0.R_E_C_N_O_"					+ CRLF
+
+		oStatement := FWExecStatement():new( cQueryZZ0 )
+
+		cAliasZZ0 := oStatement:openAlias() // oStatement:getFixQuery()
+
+		oStatement:destroy()
+		oStatement := nil
+
+		DBSelectArea( "ZZ0" )
+
+		while !( cAliasZZ0 )->( EOF() )
+			ZZ0->( DBGoTo( ( cAliasZZ0 )->ZZ0RECNO ) )
+			if ZZ0->( recno() ) == ( cAliasZZ0 )->ZZ0RECNO
+				if ZZ0->ZZ0_STATUS  == "E"
+					if recLock( "ZZ0" , .F. )
+						ZZ0->ZZ0_STATUS := "P"
+						ZZ0->ZZ0_MENSAG := allTrim( ZZ0->ZZ0_MENSAG ) + CRLF + fwTimeStamp( 2 ) + CRLF + "ID recolocado em fila de processamento por " + allTrim( usrFullName( retCodUsr() ) ) + CRLF
+						ZZ0->( msUnLock() )
+					endif
+				endif
+			endif
+
+			( cAliasZZ0 )->( DBSkip() )
+		enddo
+
+		FWAlertWarning("Registros recolocados em fila de processamento.", "Concluído")
+
+		( cAliasZZ0 )->( DBCloseArea() )
+	endif
+
+	fwRestArea( aAreaX )
+return

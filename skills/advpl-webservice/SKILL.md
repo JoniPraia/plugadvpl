@@ -248,3 +248,14 @@ Security=1
 - `/plugadvpl:find function <WS>` — localiza WSRESTFUL/WSSERVICE.
 - A tabela `ws_services` + `ws_structures` no índice cataloga endpoints.
 - `/plugadvpl:lint <arq>` — verifica SEC-001, SEC-002 e regras correlatas.
+
+## Referência profunda
+
+Para detalhes completos (~1.5k linhas), consulte [`reference.md`](reference.md) ao lado deste arquivo:
+
+- Anatomia completa de `WSRESTFUL`/`WSSERVICE`/`WSMETHOD`/`WSDATA`/`WSSTRUCT`.
+- Configuração detalhada de `appserver.ini` para REST + SOAP (HTTPV11, HTTPURI, Security, CORS).
+- Autenticação Basic/Bearer/OAuth2 e integração com `RestAuthenticator` do framework.
+- Catálogo de métodos de `oRest` (TLPP moderno) e `::Self` (classic) com exemplos.
+- Padrões de paginação, streaming, upload/download binário em REST.
+- Documentação automática via annotations + geração de OpenAPI/Swagger.

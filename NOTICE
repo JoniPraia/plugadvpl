@@ -13,4 +13,12 @@ This product includes:
 3. Padrões de schema SQLite baseados em projeto interno anterior do autor —
    schema validado em uso interno.
 
+4. Reference documentation (~21k lines, doc/queries-sql/MVC/TLPP/etc) curated
+   by the author (JoniPraia) over multiple Protheus production projects,
+   embedded as `reference.md` supporting files in each skill in v0.2.0.
+
+5. Code examples in skills/<skill>/exemplos/ are real ADVPL/TLPP source files
+   from the author's production projects, sanitized for public distribution
+   (no client-specific identifiers).
+
 Todas as fontes acima estão sob licença MIT compatível.

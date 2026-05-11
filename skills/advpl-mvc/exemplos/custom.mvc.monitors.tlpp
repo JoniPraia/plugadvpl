@@ -1,0 +1,69 @@
+#include "totvs.ch"
+#include "fwmvcdef.ch"
+#include "topconn.ch"
+
+namespace custom.mvc.monitors
+
+/*/{Protheus.doc} custom.mvc.monitors
+Rotina para monitoramento da fila de entrada de integrações.
+@type user function
+@author TOTVS IP
+@since 04/09/2025
+@version version
+@param param_name, param_type, param_descr
+@return return_var, return_type, return_description
+@example
+(examples)
+@see (links_or_references)
+/*/
+User Function MONITOR()
+
+	private oMark
+	private cDescription := "Monitor da Fila de Entrada de Integrações"
+	private aRotina  := MenuDef()
+	
+	oMark   := FwMarkBrowse():new()
+	oMark:setAlias("ZZ0")
+	oMark:SetDescription(cDescription)
+	oMark:setFieldMark("ZZ0_OK")
+	oMark:setAllMark({|| oMark:AllMark()})
+
+	oMark:addLegend("ZZ0_STATUS == '1'", "BLUE"     , "Aguardando processamento")
+	oMark:addLegend("ZZ0_STATUS == '2'", "YELLOW"   , "Em processamento")
+	oMark:addLegend("ZZ0_STATUS == '4'", "GREEN"    , "Processado")
+	oMark:addLegend("ZZ0_STATUS == '5'", "RED"      , "Erro de processamento")
+
+	oMark:Activate()
+
+Return Nil
+
+/*
+** MenuDef
+*/ 
+User Function MenuDef()
+
+	Local aRotina := {}
+
+	ADD OPTION aRotina TITLE 'Visualizar' 	ACTION 'custom.mvc.monitors.Visualizar' OPERATION 2 ACCESS 0
+	ADD OPTION aRotina TITLE 'Reprocessar'  ACTION 'custom.mvc.monitors.Reprocessar'  OPERATION 2 ACCESS 0
+
+Return aRotina
+
+/*
+** Visualizar
+*/
+User Function Visualizar()
+
+	//TODO - Implementar FwViewExec para as rotinas MVC de customer ou quote de acordo com o registro posicionado no MarkBrowse
+ 	Alert("Visualizar")
+	
+Return NIL
+
+/*
+** Reprocessar
+*/
+User Function Reprocessar()
+
+ 	Alert("Reprocessar")
+	
+Return NIL

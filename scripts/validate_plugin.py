@@ -34,6 +34,11 @@ EXPECTED_KNOWLEDGE_SKILLS = {
     "advpl-webservice",
     "advpl-jobs-rpc",
     "advpl-code-review",
+    "advpl-advanced",
+    "advpl-tlpp",
+    "advpl-web",
+    "advpl-dicionario-sx",
+    "advpl-mvc-avancado",
 }
 EXPECTED_AGENTS = {
     "advpl-analyzer",

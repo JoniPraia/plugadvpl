@@ -146,3 +146,13 @@ If RecCount() > 0   // full scan; melhor !Eof()
 - `/plugadvpl:sql --op {select|insert|update|delete} --table <T>` — busca SQL existente.
 - `/plugadvpl:lint <arq>` — executa PERF-001..006 e SEC-001.
 - `/plugadvpl:tables <T>` — lista quem usa a tabela.
+
+## Referência profunda
+
+Para detalhes completos (~1.6k linhas), consulte [`reference.md`](reference.md) ao lado deste arquivo:
+
+- Catálogo completo de macros `%`-prefixed (`%table%`, `%notDel%`, `%xfilial%`, `%exp%`, `%Order%`, `%Limit%`, `%top%`, `%FieldsList%`).
+- Diferenças entre `BeginSql`/`TCQuery`/`TCGenQry` e quando usar cada uma.
+- Padrões de paginação (LIMIT/OFFSET por DBMS — Oracle rownum × SQL Server TOP × Postgres LIMIT).
+- Uso correto de `TCSetField` para tipagem pós-query e implicações de performance.
+- Exemplos de queries complexas com JOIN multi-tabela + filtros de filial + tratamento de NULL.

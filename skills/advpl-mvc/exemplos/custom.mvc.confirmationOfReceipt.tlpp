@@ -1,0 +1,148 @@
+#include "totvs.ch"
+#include "fwmvcdef.ch"
+#include "tlpp-core.th"
+#include "tlpp-rest.th"
+
+// Variáveis estáticas
+static cTitulo := "Monitor de Integração - Confirmação de Recebimento"
+
+namespace custom.mvc.confirmationOfReceipt
+
+/*/{Protheus.doc} nomeFunction
+(long_description)
+@type user function
+@author user
+@since 04/09/2025
+@version version
+@param param_name, param_type, param_descr
+@return return_var, return_type, return_description
+@example
+(examples)
+@see (links_or_references)
+/*/
+User Function receiptMonitor()
+
+	local aArea     := GetArea()
+	local oBrowse   := nil
+
+	oBrowse := FWMBrowse():New()
+	oBrowse:SetAlias( "ZZ0" )
+	oBrowse:SetDescription( cTitulo )
+	oBrowse:SetFilterDefault( "ZZ0_ENTIDA == 'ZZV'" )
+
+	oBrowse:addLegend("ZZ0_STATUS == 'P'"	, "YELLOW"	, "Aguardando processamento"	)
+	oBrowse:addLegend("ZZ0_STATUS == 'R'"	, "BLUE"	, "Aguardando Reprocessamento"	)
+	oBrowse:addLegend("ZZ0_STATUS == 'I'"	, "GREEN"	, "Processado"					)
+	oBrowse:addLegend("ZZ0_STATUS == 'E'"	, "RED"		, "Erro de processamento"		)
+
+	oBrowse:Activate()
+
+	RestArea(aArea)
+
+Return nil
+
+/*
+** MenuDef
+*/ 
+User Function MenuDef() as array
+
+	local aRotina := {} as array
+
+	ADD OPTION aRotina TITLE 'Visualizar'	ACTION 'ViewDef.custom.mvc.confirmationOfReceipt.receiptMonitor'	OPERATION MODEL_OPERATION_VIEW		ACCESS 0
+	ADD OPTION aRotina TITLE 'Reprocessar'	ACTION 'custom.mvc.confirmationOfReceipt.u_reprocessar()'			OPERATION 6							ACCESS 0
+
+Return aRotina
+
+/*
+** ModelDef
+*/ 
+User Function ModelDef()
+	// Cria a estrutura a ser usada no Modelo de Dados
+	Local oStruZZ0 := FWFormStruct( 1, 'ZZ0', /*bAvalCampo*/, /*lViewUsado*/ )
+	Local oStruZZV := FWFormStruct( 1, 'ZZV', /*bAvalCampo*/, /*lViewUsado*/ )
+	Local oStruZZX := FWFormStruct( 1, 'ZZX', /*bAvalCampo*/, /*lViewUsado*/ )
+	Local oModel
+
+	// Cria o objeto do Modelo de Dados
+	oModel := MPFormModel():New( 'CONFREMD', /*bPreValidacao*/, /*bPosValidacao*/, /*bCommit*/, /*bCancel*/ )
+
+	// Adiciona ao modelo uma estrutura de formulário de edição por campo
+	oModel:AddFields( 'ZZ0MASTER', /*cOwner*/, oStruZZ0 )
+
+	// Adiciona ao modelo uma estrutura de formulário de edição por grid
+	oModel:AddGrid( 'ZZVDETAIL', 'ZZ0MASTER', oStruZZV, /*bLinePre*/, /*bLinePost*/, /*bPreVal*/, /*bPosVal*/, /*BLoad*/ )
+	oModel:AddGrid( 'ZZXDETAIL', 'ZZVDETAIL', oStruZZX, /*bLinePre*/, /*bLinePost*/, /*bPreVal*/, /*bPosVal*/, /*BLoad*/ )
+
+	oModel:SetPrimaryKey({})
+
+	// Faz relaciomaneto entre os compomentes do model
+	oModel:SetRelation( 'ZZVDETAIL', { { 'ZZV_FILIAL', 'FWxFilial( "ZZV" )' }, { 'ZZV_ID' , 'ZZ0_ID'  } } , ZZV->( IndexKey( 1 ) )  )
+	oModel:SetRelation( 'ZZXDETAIL', { { 'ZZX_FILIAL', 'FWxFilial( "ZZX" )' }, { 'ZZX_ID' , 'ZZ0_ID'  } } , ZZX->( IndexKey( 1 ) )  )
+
+	// Adiciona a descricao do Modelo de Dados
+	oModel:SetDescription( cTitulo )
+
+	// Adiciona a descricao do Componente do Modelo de Dados
+	oModel:GetModel( 'ZZVDETAIL' ):SetDescription( 'Dados da Confirmação de Recebimento'  )
+	oModel:GetModel( 'ZZXDETAIL' ):SetDescription( 'Itens da Confirmação de Recebimento'  )
+Return oModel
+
+/*
+** ViewDef
+*/ 
+User Function ViewDef()
+
+	// INSTANCIA A VIEW
+	Local oView := FwFormView():New()
+
+	// INSTANCIA AS SUBVIEWS
+	Local oStruZZ0 := FwFormStruct(2, "ZZ0")
+	Local oStruZZV := FwFormStruct(2, "ZZV")
+	Local oStruZZX := FwFormStruct(2, "ZZX")
+
+	// RECEBE O MODELO DE DADOS
+	Local oModel := FwLoadModel("custom.mvc.confirmationOfReceipt.receiptMonitor")
+
+	// INDICA O MODELO DA VIEW
+	oView:SetModel(oModel)
+
+	// CRIA ESTRUTURA VISUAL DE CAMPOS
+	oView:AddField("VIEW_ZZ0", oStruZZ0, "ZZ0MASTER")
+
+	// CRIA A ESTRUTURA VISUAL DAS GRIDS
+	oView:AddGrid("VIEW_ZZV", oStruZZV, "ZZVDETAIL")
+	oView:AddGrid("VIEW_ZZX", oStruZZX, "ZZXDETAIL")
+
+	// CRIA BOXES HORIZONTAIS
+	oView:CreateHorizontalBox( "PARTE1"	, 40 )
+	oView:CreateHorizontalBox( "PARTE2"	, 30 )
+	oView:CreateHorizontalBox( "PARTE3"	, 30 )
+
+	// RELACIONA OS BOXES COM AS ESTRUTURAS VISUAIS
+	oView:SetOwnerView( "VIEW_ZZ0" , "PARTE1" )
+	oView:SetOwnerView( "VIEW_ZZV" , "PARTE2" )
+	oView:SetOwnerView( "VIEW_ZZX" , "PARTE3" )
+
+	// DEFINE OS TÍTULOS DAS SUBVIEWS
+	oView:EnableTitleView( "VIEW_ZZ0")
+	oView:EnableTitleView( "VIEW_ZZV", "Dados da Confirmação de Recebimento"	, 0 )
+	oView:EnableTitleView( "VIEW_ZZX", "Itens da Confirmação de Recebimento"	, 0 )
+
+Return oView
+
+user function reprocessar()
+	if ZZ0->ZZ0_STATUS <> "E"
+		fwAlertError( "Status da integração (Pendente/Reprocessando/Processado) não permite reprocessamento" , "Não permitido" )
+	else
+		if recLock( "ZZ0" , .F. )
+			ZZ0->ZZ0_STATUS  := "R"
+			ZZ0->( msUnlock() )
+		endif
+
+		if ZZ0->ZZ0_STATUS == "R"
+			startJob( "u_reprocessReceipt" , getEnvServer() , .F. , "01" , ZZ0->ZZ0_FILIAL , ZZ0->ZZ0_ID )
+
+			fwAlertSuccess("O reprocessamento foi acionado, verifique o log após o processamento para mais detalhes.", "Reprocessando")
+		endif
+	endif
+return

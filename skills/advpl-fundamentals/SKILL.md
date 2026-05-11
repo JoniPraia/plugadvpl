@@ -155,3 +155,13 @@ Se aparecer em `funcoes_restritas`, **não use**. Dispara `SEC-005` (crítico) n
 - `/plugadvpl:find function <nome>` — descobre se função é nativa, restrita ou customer.
 - `/plugadvpl:lint <arq>` — valida convenções (BP-001..008).
 - `/plugadvpl:callers <fn>` — vê quem chama uma função antes de renomear.
+
+## Referência profunda
+
+Para detalhes completos (~2.9k linhas), consulte [`reference.md`](reference.md) ao lado deste arquivo:
+
+- Histórico ADVPL/Clipper e arquitetura do RPO/APO compilado.
+- Diretivas de pré-processamento (`#include`, `#define`, `#command`, `#xcommand`, `#translate`) com exemplos.
+- Catálogo expandido de funções de string, data, array, conversão (Substr, At, Asc, Time, MonthName, AScan, ASort, AEval).
+- Estruturas de controle avançadas (`Begin Sequence`/`Break`/`Recover`, `For Each`, code blocks).
+- Tabela completa de prefixos de módulo (50+ módulos com tabelas/rotinas típicas) e regras de naming.
