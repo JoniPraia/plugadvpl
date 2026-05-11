@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778540511424,
+  "lastUpdate": 1778540604694,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -464,6 +464,35 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0012001920512492285",
             "extra": "mean: 41.617552555555356 msec\nrounds: 18"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "92a18684187c81cf30627a86c5e9db9630eacdd3",
+          "message": "docs(readme): clarify scope — only customer customization, not standard Protheus\n\nReinforce in the disclaimer section that:\n- No standard Protheus product source code (RPO, internal TOTVS routines)\n  is used, redistributed, or exposed by this plugin\n- The tool is developed/validated exclusively on customer customization\n  (.prw/.tlpp/.prx written by the customers themselves)\n- Embedded catalogs contain only publicly documented names/metadata (TDN),\n  not proprietary source\n- Bundled .prw/.tlpp examples in skills/<x>/exemplos/ are original work\n  by the author\n- Users are responsible for having rights to analyze the sources they index\n\nStandard practice for OSS tooling that orbits proprietary ecosystems.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-11T20:03:10-03:00",
+          "tree_id": "3483d5530cab776746e7d8f20602daede31ce462",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/92a18684187c81cf30627a86c5e9db9630eacdd3"
+        },
+        "date": 1778540604494,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 24.274427182640167,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0003204286202197908",
+            "extra": "mean: 41.195616789472545 msec\nrounds: 19"
           }
         ]
       }
