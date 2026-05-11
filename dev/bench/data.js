@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778529319498,
+  "lastUpdate": 1778534302330,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -348,6 +348,35 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0005029914692083257",
             "extra": "mean: 41.154367368421084 msec\nrounds: 19"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "05489ac6414684a8742e2c5e1deda206907a6dfa",
+          "message": "feat: integrate 21k lines of ADVPL reference docs + 5 new skills\n\n- Add reference.md (supporting files) to 6 existing skills (fundamentals,\n  mvc, embedded-sql, webservice, pontos-entrada, matxfis) — ~12k lines total\n- Create 5 new knowledge skills: advanced, tlpp, web, dicionario-sx,\n  mvc-avancado — ~9k lines total\n- Embed 7 production .prw/.tlpp examples in skills/<x>/exemplos/\n- NOTICE: credit author for curated reference + examples\n- CHANGELOG: 0.2.0 entry\n\nPlugin agora tem 15 knowledge skills + 14 command + 1 setup = 30 skills.\nConteudo expandido de ~2k para ~23k linhas de referencia ADVPL/TLPP.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-11T18:18:05-03:00",
+          "tree_id": "b87143f49326c67ad9e6a2e18c549ea6cba0fd27",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/05489ac6414684a8742e2c5e1deda206907a6dfa"
+        },
+        "date": 1778534301932,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 24.353457312184396,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0006161929069286457",
+            "extra": "mean: 41.06193166666669 msec\nrounds: 18"
           }
         ]
       }
