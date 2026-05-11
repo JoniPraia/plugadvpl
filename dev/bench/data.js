@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778534302330,
+  "lastUpdate": 1778534822489,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -377,6 +377,35 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0006161929069286457",
             "extra": "mean: 41.06193166666669 msec\nrounds: 18"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "ae57544c851537e4060c3c25d88c40fb7588c56b",
+          "message": "docs: clarify CLI vs VSCode extension install paths for plugin\n\nUser feedback: many users try `/plugin install plugadvpl` inside the VSCode\nextension chat and get \"/plugin isn't available in this environment\". This\nis an upstream Claude Code limitation — `/plugin install` slash only works\nin the native CLI terminal.\n\nUpdates:\n- README: explicit \"Opção A (CLI)\" vs \"Opção B (VSCode extension)\" with\n  exact commands/clicks for each path.\n- skills/setup/SKILL.md: detect $TERM_PROGRAM and instruct user to use\n  Manage Plugins UI when on VSCode extension.\n- docs/troubleshooting.md: dedicated entry for the \"/plugin isn't available\"\n  error explaining cause + fix.\n\nNo code change; no version bump needed. Pure docs improvement.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-11T18:26:09-03:00",
+          "tree_id": "501bd1452715d17583ffde06273963270d4d74bb",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/ae57544c851537e4060c3c25d88c40fb7588c56b"
+        },
+        "date": 1778534821792,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 23.965768517243305,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0009198508782587664",
+            "extra": "mean: 41.72618121052545 msec\nrounds: 19"
           }
         ]
       }
