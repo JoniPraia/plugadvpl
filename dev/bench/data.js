@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778528298680,
+  "lastUpdate": 1778529319498,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -319,6 +319,35 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00025800175110732553",
             "extra": "mean: 41.47934494736654 msec\nrounds: 19"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "eddc2d3bb2e2faadb52870215e0a19772eb1c262",
+          "message": "feat(init): much richer CLAUDE.md fragment to guide Claude proactively\n\nUser feedback: after install, Claude was still doing direct Read on .prw\ninstead of using plugadvpl arch/callers/etc. The fragment shipped by\nplugadvpl init was too thin (~10 lines listing slash commands only).\n\nThis rewrites the fragment (~70 lines) with:\n- Hard rule: \"Antes de Read em .prw/.tlpp, você DEVE rodar plugadvpl ANTES\"\n- Tabela de decisão: 10 perguntas comuns mapeadas para comando exato\n- Workflow padrão para \"explique programa X\" — sequência find → arch → callers/callees → tables → param\n- Como rodar via Bash plugadvpl ... ou slash command\n- Encoding guidance + manutenção do índice\n\nSince CLAUDE.md is injected on every prompt, this works mesmo sem o plugin\nClaude Code instalado (só a CLI Python já habilita).\n\nBumps to v0.1.2. After upgrade, user rode `plugadvpl init` para regravar\no fragment na pasta do projeto.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-11T16:55:03-03:00",
+          "tree_id": "2cf6afe48532c3e281133a0f2db587851af9c975",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/eddc2d3bb2e2faadb52870215e0a19772eb1c262"
+        },
+        "date": 1778529319143,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 24.29875767613739,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0005029914692083257",
+            "extra": "mean: 41.154367368421084 msec\nrounds: 19"
           }
         ]
       }
