@@ -285,7 +285,9 @@ def _write_parsed(  # noqa: PLR0912, PLR0915 — escrita verbosa: 12 tabelas dep
                 chunk_content = _redact(chunk_content)
         chunk_rows.append(
             (
-                f"{arquivo}::{nome}",
+                # ID inclui linha_inicio para distinguir funções com mesmo nome no
+                # mesmo arquivo (Static + User, redefinições, overloads).
+                f"{arquivo}::{nome}@{ini}",
                 arquivo,
                 nome,
                 nome.upper().strip(),
@@ -300,9 +302,11 @@ def _write_parsed(  # noqa: PLR0912, PLR0915 — escrita verbosa: 12 tabelas dep
         )
         counters["chunks"] += 1
     if chunk_rows:
+        # INSERT OR REPLACE: idempotente; se mesmo (arquivo, funcao, linha) reaparece
+        # após reindex, substitui em vez de levantar UNIQUE constraint.
         conn.executemany(
             """
-            INSERT INTO fonte_chunks (
+            INSERT OR REPLACE INTO fonte_chunks (
                 id, arquivo, funcao, funcao_norm, tipo_simbolo, classe,
                 linha_inicio, linha_fim, assinatura, content, modulo
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
