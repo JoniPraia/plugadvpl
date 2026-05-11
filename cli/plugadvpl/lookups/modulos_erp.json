@@ -1,0 +1,250 @@
+[
+  {
+    "codigo": "COM",
+    "nome": "Compras (SIGACOM)",
+    "prefixos_tabelas": [
+      "SC1",
+      "SC2",
+      "SC3",
+      "SC7",
+      "SC8",
+      "SCK",
+      "SCR",
+      "SDC"
+    ],
+    "prefixos_funcoes": [
+      "MATA1",
+      "MATA12",
+      "MATA14",
+      "A097",
+      "A120",
+      "A130"
+    ],
+    "rotinas_principais": [
+      "MATA110",
+      "MATA120",
+      "MATA121",
+      "MATA130",
+      "MATA131",
+      "MATA140",
+      "MATA097"
+    ]
+  },
+  {
+    "codigo": "EST",
+    "nome": "Estoque (SIGAEST)",
+    "prefixos_tabelas": [
+      "SB1",
+      "SB2",
+      "SB6",
+      "SB7",
+      "SB8",
+      "SB9",
+      "SBE",
+      "SBF",
+      "SBZ",
+      "SD1",
+      "SD2",
+      "SD3"
+    ],
+    "prefixos_funcoes": [
+      "MATA0",
+      "MATA2",
+      "MATA3",
+      "MATA4"
+    ],
+    "rotinas_principais": [
+      "MATA010",
+      "MATA020",
+      "MATA030",
+      "MATA240",
+      "MATA241",
+      "MATA250",
+      "MATA261",
+      "MATA262"
+    ]
+  },
+  {
+    "codigo": "FAT",
+    "nome": "Faturamento (SIGAFAT)",
+    "prefixos_tabelas": [
+      "SC5",
+      "SC6",
+      "SC9",
+      "SD2",
+      "SF2",
+      "SE4",
+      "SA1"
+    ],
+    "prefixos_funcoes": [
+      "MATA4",
+      "MATA46",
+      "MATA41",
+      "MA410",
+      "MA440",
+      "MATA460"
+    ],
+    "rotinas_principais": [
+      "MATA410",
+      "MATA460",
+      "MATA461",
+      "MATA440",
+      "MATA463",
+      "MATA465",
+      "MATA456",
+      "MATA920"
+    ]
+  },
+  {
+    "codigo": "FIN",
+    "nome": "Financeiro (SIGAFIN)",
+    "prefixos_tabelas": [
+      "SE1",
+      "SE2",
+      "SE5",
+      "SEA",
+      "SEB",
+      "SEC",
+      "SED",
+      "SEE",
+      "SEF",
+      "FK1",
+      "FK5",
+      "FK6"
+    ],
+    "prefixos_funcoes": [
+      "FINA0",
+      "FINA1",
+      "FA050",
+      "FA080",
+      "FINA050",
+      "FINA080"
+    ],
+    "rotinas_principais": [
+      "FINA050",
+      "FINA070",
+      "FINA080",
+      "FINA100",
+      "FINA340",
+      "FINA440",
+      "FINA460"
+    ]
+  },
+  {
+    "codigo": "FIS",
+    "nome": "Fiscal (SIGAFIS)",
+    "prefixos_tabelas": [
+      "SFT",
+      "SF1",
+      "SF2",
+      "SF3",
+      "SF6",
+      "SF7",
+      "SFE",
+      "SFI",
+      "CDA",
+      "CDE"
+    ],
+    "prefixos_funcoes": [
+      "MATA9",
+      "MATA93",
+      "MATA950",
+      "SPED"
+    ],
+    "rotinas_principais": [
+      "MATA930",
+      "MATA950",
+      "MATA951",
+      "MATA953",
+      "SPEDFISCAL",
+      "SPEDCONTRIB"
+    ]
+  },
+  {
+    "codigo": "CTB",
+    "nome": "Contabilidade (SIGACTB)",
+    "prefixos_tabelas": [
+      "CT1",
+      "CT2",
+      "CT5",
+      "CT7",
+      "CTT",
+      "CTH",
+      "CTD",
+      "CTK"
+    ],
+    "prefixos_funcoes": [
+      "CTBA0",
+      "CTBA1",
+      "CTBA2"
+    ],
+    "rotinas_principais": [
+      "CTBA020",
+      "CTBA025",
+      "CTBA100",
+      "CTBA102",
+      "CTBA130",
+      "CTBA180",
+      "CTBA240"
+    ]
+  },
+  {
+    "codigo": "PCP",
+    "nome": "Planejamento e Controle de Produção (SIGAPCP)",
+    "prefixos_tabelas": [
+      "SG1",
+      "SG2",
+      "SG5",
+      "SC2",
+      "SD3",
+      "SD4",
+      "SH1",
+      "SH6",
+      "SHA"
+    ],
+    "prefixos_funcoes": [
+      "MATA6",
+      "MATA65",
+      "MATA68",
+      "MATA37",
+      "MATA38"
+    ],
+    "rotinas_principais": [
+      "MATA370",
+      "MATA380",
+      "MATA650",
+      "MATA651",
+      "MATA680",
+      "MATA681",
+      "MATA700"
+    ]
+  },
+  {
+    "codigo": "MNT",
+    "nome": "Manutenção de Ativos (SIGAMNT)",
+    "prefixos_tabelas": [
+      "ST9",
+      "STJ",
+      "STK",
+      "STL",
+      "STM",
+      "STN",
+      "STO",
+      "STP",
+      "STQ"
+    ],
+    "prefixos_funcoes": [
+      "MNTA0",
+      "MNTA1",
+      "TMKA"
+    ],
+    "rotinas_principais": [
+      "MNTA010",
+      "MNTA200",
+      "MNTA300",
+      "MNTA310",
+      "MNTA350",
+      "MNTA400"
+    ]
+  }
+]

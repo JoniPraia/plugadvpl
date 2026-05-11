@@ -1,0 +1,16 @@
+plugadvpl — Plugin Claude Code + CLI Python para análise de fontes ADVPL/TLPP
+
+This product includes:
+
+1. Parser de fontes ADVPL portado de projeto interno anterior do autor
+   (~750 linhas, validado em aproximadamente 2.000 fontes ADVPL).
+
+2. Lookup tables (funcoes_nativas, funcoes_restritas, lint_rules, sql_macros,
+   modulos_erp, pontos_entrada_padrao) com origem no projeto advpl-specialist
+   (https://github.com/thalysjuvenal/advpl-specialist) por Thalys Augusto,
+   licença MIT. Conteúdo extraído e adaptado com crédito explícito.
+
+3. Padrões de schema SQLite baseados em projeto interno anterior do autor —
+   schema validado em uso interno.
+
+Todas as fontes acima estão sob licença MIT compatível.

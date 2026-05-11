@@ -1,0 +1,1166 @@
+[
+  {
+    "nome": "StaticCall",
+    "categoria": "blocked",
+    "bloqueada_desde": "12.1.33",
+    "alternativa": "Use public `User Function` or TLPP namespaced calls"
+  },
+  {
+    "nome": "PTInternal",
+    "categoria": "blocked",
+    "bloqueada_desde": "12.1.33",
+    "alternativa": "Redesign the logic without internal calls"
+  },
+  {
+    "nome": "VALIDAAUTONFE",
+    "categoria": "Fiscal/NF-e",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MA410IMPOS",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MALIBDOFAT",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "TFONTEX",
+    "categoria": "UI/Report",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "NFEPROCNFE",
+    "categoria": "Fiscal/NF-e",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "AVCPYFILE",
+    "categoria": "File I/O",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "F_OPCOES",
+    "categoria": "UI",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "AUTONFEENV",
+    "categoria": "Fiscal/NF-e",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MASAPREREQ",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FTVDVENDA",
+    "categoria": "Vendas",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MAALCDOC",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FISA022TRS",
+    "categoria": "Fiscal",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FGX_STATF2",
+    "categoria": "Fiscal",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "NG400TAR",
+    "categoria": "Manutencao",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "CODSITRI",
+    "categoria": "Fiscal",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "IW_MULTILINE",
+    "categoria": "UI",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FWCHKFUNCACCESS",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "WSNFESBRA",
+    "categoria": "WebService NF-e",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "SPEDDANFE",
+    "categoria": "Fiscal/SPED",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "SPEDPEXP",
+    "categoria": "Fiscal/SPED",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "WebService NFESBra",
+    "categoria": "WebService NF-e",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "CBGrvEti",
+    "categoria": "Codigo de Barras",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A460ESTORNA",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "GETNUMSC7",
+    "categoria": "Compras",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "ISCAIXALOJA",
+    "categoria": "Loja",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "XNUMCAIXA",
+    "categoria": "Loja",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "CALCEST / CALCESTL",
+    "categoria": "Estoque",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FRTGERASL",
+    "categoria": "Frete",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MSCLEARBUFFER",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "CA100INCL",
+    "categoria": "Ativo Fixo",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "SPEDNFERE2",
+    "categoria": "Fiscal/SPED",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FCARRTAB",
+    "categoria": "Frete",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "SALDOTERC",
+    "categoria": "Estoque",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FABAIXACR",
+    "categoria": "Financeiro",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A093PROD",
+    "categoria": "Compras",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "OOBJ:GETDATA",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "AVSTACTION",
+    "categoria": "Vendas",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "VTGETSENHA",
+    "categoria": "Vendas",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A450GRAVA",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "OPENSXS",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": "Framework opens tables automatically"
+  },
+  {
+    "nome": "FINA110",
+    "categoria": "Financeiro",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A410INCLUI",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FP_CODFOL",
+    "categoria": "RH",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "NFECABDOC",
+    "categoria": "Fiscal/NF-e",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "OPENSRC",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "EXTRACT",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "INCNOTA",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MOVIMENTO",
+    "categoria": "Estoque",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "ATFA050",
+    "categoria": "Ativo Fixo",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "PLSQUERY",
+    "categoria": "Saude",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "PROXNUM",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": "`GetSXENum()` for automatic numbering"
+  },
+  {
+    "nome": "FILE2PRINTER",
+    "categoria": "File I/O",
+    "bloqueada_desde": "",
+    "alternativa": "`FWMsPrinter` class"
+  },
+  {
+    "nome": "SPF_SEEK",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "SPF_UPDATE",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FWSQLUsrFilial",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "APPEND FROM",
+    "categoria": "Database",
+    "bloqueada_desde": "",
+    "alternativa": "`RecLock` + field-by-field copy"
+  },
+  {
+    "nome": "ACPORET",
+    "categoria": "Compras",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FBUSCACPO",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "LASTKEY",
+    "categoria": "UI",
+    "bloqueada_desde": "",
+    "alternativa": "Specific navigation control"
+  },
+  {
+    "nome": "RPCSETYPE",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "WFPREPENV",
+    "categoria": "Workflow",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "SALDOB2",
+    "categoria": "Estoque",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "TMSA050EDI",
+    "categoria": "EDI",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "GERATMP",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": "`CriaTrab()` for temporary tables"
+  },
+  {
+    "nome": "A103ATUSE2",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "CTBANFS",
+    "categoria": "Contabilidade",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "WAITRUNSRV",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A103CONSNFESEF",
+    "categoria": "Fiscal/NF-e",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "SPDCRIATRB",
+    "categoria": "Fiscal/SPED",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A103NFISCAL",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "TTPVIEWER",
+    "categoria": "UI",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MACANDELF2",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MADELNFS",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "RET_CBARRA",
+    "categoria": "Codigo de Barras",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A440LIBERA",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "RFMASHUPS",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FWJWT2BEAR",
+    "categoria": "Framework/Auth",
+    "bloqueada_desde": "",
+    "alternativa": "Standard JWT/OAuth implementations"
+  },
+  {
+    "nome": "CTGERPLAN",
+    "categoria": "Contabilidade",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "NXTSX5NOTA",
+    "categoria": "Fiscal",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FMONTA_TPR",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "COPY TO",
+    "categoria": "Database",
+    "bloqueada_desde": "",
+    "alternativa": "`RecLock` + field-by-field copy"
+  },
+  {
+    "nome": "FDIASAFASPERIODO",
+    "categoria": "RH",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "CBCHKTEMPLATE",
+    "categoria": "Codigo de Barras",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MsExcel",
+    "categoria": "UI/Report",
+    "bloqueada_desde": "",
+    "alternativa": "`FWMsExcel` class"
+  },
+  {
+    "nome": "ENGSX3117",
+    "categoria": "Engenharia",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FWLOOKUP",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": "`FWInputDialog()` or standard F3 lookup"
+  },
+  {
+    "nome": "FRETAFASBRA",
+    "categoria": "RH",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FWMVCROTAUTO",
+    "categoria": "Framework/MVC",
+    "bloqueada_desde": "",
+    "alternativa": "`FWExecView()` for MVC routine automation"
+  },
+  {
+    "nome": "MontaBlock",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": "Build code blocks with `{"
+  },
+  {
+    "nome": "A94EXLIBER",
+    "categoria": "Compras",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "ESTRUT",
+    "categoria": "Engenharia",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A030ALTERA",
+    "categoria": "Cadastros",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MSFCREATE",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "TMSA200PRC",
+    "categoria": "EDI",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "HEADPROVA",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "DETPROVA",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "PARAMBOX",
+    "categoria": "UI",
+    "bloqueada_desde": "",
+    "alternativa": "`Pergunte()` with SX1 or `FWInputDialog()`"
+  },
+  {
+    "nome": "FWUIWORKSHEET",
+    "categoria": "UI",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "CrdXTitAtr",
+    "categoria": "Financeiro",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MA410RODAP",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "WRITEPROFDEF",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FINDPROFDEF",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "CBOPENPORT",
+    "categoria": "Codigo de Barras",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FATATUEMPN",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MAAVALSC9",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "VLDLOCALIZ",
+    "categoria": "Estoque",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A410MultT",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "PivotTable",
+    "categoria": "UI",
+    "bloqueada_desde": "",
+    "alternativa": "`FWPivotTable`"
+  },
+  {
+    "nome": "A381Manut",
+    "categoria": "Compras",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MATXFIS",
+    "categoria": "Fiscal",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MaFisAdd",
+    "categoria": "Fiscal",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "CTGercomp",
+    "categoria": "Contabilidade",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "WFNotifyAdmin",
+    "categoria": "Workflow",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "a260Processa",
+    "categoria": "Compras",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "a415Tabela",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MaAvalCred",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A100Distri",
+    "categoria": "Compras",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "__SaveParam()",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": "`PutMV()` or custom save logic"
+  },
+  {
+    "nome": "A110APROV",
+    "categoria": "Compras",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MDeMata103",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "BuscaTaxa()",
+    "categoria": "Financeiro",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "CriaVar",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": "`FWCriaVar()`"
+  },
+  {
+    "nome": "E_FIELD",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": "`GetSx3Cache()` or `TamSx3()`"
+  },
+  {
+    "nome": "ApOleClient",
+    "categoria": "OLE/COM",
+    "bloqueada_desde": "",
+    "alternativa": "`FWMsExcel` for Excel operations"
+  },
+  {
+    "nome": "GetServerPort",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "CheckStation",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "CTBAFIN",
+    "categoria": "Contabilidade",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A415DESCAB",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A410RECALC",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "X31UPDTABLE",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FA050Venc",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A097ProcLib",
+    "categoria": "Compras",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MaAvLibPed",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A120Pedido",
+    "categoria": "Compras",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "LoadLayout()",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": "`FWLoadLayout()`"
+  },
+  {
+    "nome": "FtNfDevol",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FtNfVendas",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "TK271CallCenter",
+    "categoria": "Call Center",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "LJ7VENDA",
+    "categoria": "Loja",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MA020PcCgc",
+    "categoria": "Cadastros",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A140NFiscal",
+    "categoria": "Compras",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "procMonitorDoc",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "ProxDoc",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "PutMarcacoes",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "Fa050Visua",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "SaldoCt7",
+    "categoria": "Contabilidade",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "F4LOTE",
+    "categoria": "Estoque",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "CBRetEtiEan",
+    "categoria": "Codigo de Barras",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "RetSldEnd",
+    "categoria": "Estoque",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A310Proc",
+    "categoria": "Compras",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "SpedNFeTrf",
+    "categoria": "Fiscal/SPED",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "SetPrvt",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": "Declare `Private` variables explicitly"
+  },
+  {
+    "nome": "TK273GRVPTC",
+    "categoria": "Call Center",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "APPEXCEL",
+    "categoria": "UI/Report",
+    "bloqueada_desde": "",
+    "alternativa": "`FWMsExcel` class"
+  },
+  {
+    "nome": "VTNewEmpr",
+    "categoria": "Vendas",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "TWFMAIL",
+    "categoria": "Workflow",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MaColsToFis",
+    "categoria": "Fiscal",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FWAUTHUSER",
+    "categoria": "Framework/Auth",
+    "bloqueada_desde": "",
+    "alternativa": "Proper REST authentication mechanisms"
+  },
+  {
+    "nome": "fBuscaSal",
+    "categoria": "RH",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "XFUNWizard",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A410Altera",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MC050CON",
+    "categoria": "PCP",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "AVGXML2DBF",
+    "categoria": "XML",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MaLiberOk",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "MaRgrDesc",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "ApiForCli",
+    "categoria": "API",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A415Baixa",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "INFImpBMP",
+    "categoria": "Report",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "STBCalcSald",
+    "categoria": "Estoque",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "FVALBENNIF",
+    "categoria": "Fiscal",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A450F4Con",
+    "categoria": "Faturamento",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "EECView",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "CALLPROC",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "TWorkspace",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "TWorkspaceFolder",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "ExplEstr",
+    "categoria": "Engenharia",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "RetFldProd",
+    "categoria": "Estoque",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "STWMANAGREPORTPRINT",
+    "categoria": "Report",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "CN300VlCli",
+    "categoria": "Contratos",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "OpenFile",
+    "categoria": "File I/O",
+    "bloqueada_desde": "",
+    "alternativa": "`FT_FUse()` / `FOpen()` / `FRead()`"
+  },
+  {
+    "nome": "__CopyFile",
+    "categoria": "File I/O",
+    "bloqueada_desde": "",
+    "alternativa": "`CpyS2T()` or `FWFileCopy()`"
+  },
+  {
+    "nome": "MATFilCalc",
+    "categoria": "Fiscal",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "A161MapCot",
+    "categoria": "Compras",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "INFCodeBare",
+    "categoria": "Report",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "INFTexto",
+    "categoria": "Report",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "CallRM",
+    "categoria": "Integracao",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "DistanciaGPS",
+    "categoria": "GPS",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "TECGtCoord",
+    "categoria": "GPS",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "NG420GRAVA",
+    "categoria": "Manutencao",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "RetSem",
+    "categoria": "Framework",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "nBIWeekOfYear",
+    "categoria": "BI",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  },
+  {
+    "nome": "TAvPrinter",
+    "categoria": "Report",
+    "bloqueada_desde": "",
+    "alternativa": ""
+  }
+]

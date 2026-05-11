@@ -1,0 +1,8 @@
+#include "tlpp-core.th"
+
+Namespace com.client.module
+
+User Function ZNAMESP()
+    Local cTexto := "TLPP namespaced module"
+    ConOut(cTexto)
+Return Nil

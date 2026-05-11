@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+jobs:
+  lint-plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v8.1.0
+      - name: Validate plugin structure
+        run: python scripts/validate_plugin.py
+
+  test-cli:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: ${{ matrix.python }}
+      - run: cd cli && uv sync --frozen
+      - run: cd cli && uv run pytest tests/unit tests/integration -v --cov=plugadvpl --cov-report=xml
+      - uses: codecov/codecov-action@v4
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
+        with:
+          files: cli/coverage.xml
+          fail_ci_if_error: false
+
+  bench:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write           # needed to push benchmark data to gh-pages
+      pull-requests: write      # needed for comment-on-alert
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v8.1.0
+      - run: cd cli && uv sync --frozen
+      - run: cd cli && uv run pytest tests/bench --benchmark-only --benchmark-json=output.json
+      - uses: benchmark-action/github-action-benchmark@v1
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        with:
+          tool: pytest
+          output-file-path: cli/output.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          alert-threshold: '110%'
+          comment-on-alert: true
+
+  smoke-uvx:
+    runs-on: ubuntu-latest
+    needs: test-cli
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v8.1.0
+      - run: uvx --from ./cli plugadvpl version
+      - run: uvx --from ./cli plugadvpl --help

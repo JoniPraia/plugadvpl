@@ -1,0 +1,218 @@
+[
+  {
+    "regra_id": "BP-001",
+    "titulo": "RecLock without corresponding MsUnlock",
+    "severidade": "critical",
+    "categoria": "best-practice",
+    "descricao": "Every `RecLock` call must have a corresponding `MsUnlock` call. Forgetting to unlock a record keeps it locked, blocking other users and threads from accessing it, potentially causing deadlocks and data access failures.",
+    "fix_guidance": "A `RecLock` call that is not followed by `MsUnlock` within the same logical block. Check that all code paths (including error branches) release the lock.",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "BP-002",
+    "titulo": "Local variables declared outside the function header",
+    "severidade": "error",
+    "categoria": "best-practice",
+    "descricao": "In ADVPL/TLPP, ALL `Local` variable declarations MUST appear at the top of the function, immediately after the function signature and before any executable code. Declaring `Local` inside `If`, `While`, `For` blocks, or after any executable statement is a violation that can cause compilation errors or unpredictable behavior.",
+    "fix_guidance": "`Local` keyword appearing after any executable statement (DbSelectArea, If, While, RecLock, assignments, function calls, etc.).",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "BP-002b",
+    "titulo": "Variables declared as Private or Public instead of Local",
+    "severidade": "warning",
+    "categoria": "best-practice",
+    "descricao": "Variables should be declared as `Local` unless there is a specific need for broader scope. `Private` and `Public` variables pollute the call stack and can be accidentally overwritten by called functions.",
+    "fix_guidance": "`Private` or `Public` variable declarations where `Local` would suffice. Legitimate uses of `Private` include passing variables to MVC models or legacy framework functions that expect them.",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "BP-003",
+    "titulo": "Missing GetArea/RestArea in functions that use DbSelectArea/DbSetOrder/DbSeek",
+    "severidade": "warning",
+    "categoria": "best-practice",
+    "descricao": "Functions that change the current WorkArea (via `DbSelectArea`, `DbSetOrder`, `DbSeek`, etc.) must save and restore the caller's WorkArea state using `GetArea()` and `RestArea()`. Otherwise, the calling function's WorkArea context is silently altered.",
+    "fix_guidance": "Any function that calls `DbSelectArea`, `DbSetOrder`, `DbSeek`, or `DbGoTo` without first calling `GetArea()` on the affected alias and calling `RestArea()` before returning.",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "BP-004",
+    "titulo": "#Include \"Protheus.ch\" instead of #Include \"TOTVS.CH\"",
+    "severidade": "warning",
+    "categoria": "best-practice",
+    "descricao": "The include `Protheus.ch` is obsolete. All `.prw` files should use `#Include \"TOTVS.CH\"` which is the current standard and includes all necessary definitions.",
+    "fix_guidance": "Any line containing `#Include \"Protheus.ch\"` (case-insensitive).",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "BP-005",
+    "titulo": "Missing Begin Sequence/Recover/End Sequence around critical operations",
+    "severidade": "warning",
+    "categoria": "best-practice",
+    "descricao": "Critical operations such as `RecLock`, database writes, external API calls, and file operations should be wrapped in `Begin Sequence`/`Recover`/`End Sequence` blocks to handle errors gracefully instead of crashing.",
+    "fix_guidance": "`RecLock`, `MsExecAuto`, `HttpGet`, `HttpPost`, `FT_FUse`, or web service calls that are not inside a `Begin Sequence` block.",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "BP-006",
+    "titulo": "Variable names not following Hungarian notation",
+    "severidade": "info",
+    "categoria": "best-practice",
+    "descricao": "ADVPL convention uses Hungarian notation with a type prefix followed by PascalCase: `c` for character, `n` for numeric, `l` for logical, `d` for date, `a` for array, `o` for object, `b` for code block, `x` for variant/indefinite.",
+    "fix_guidance": "Variable declarations where the name does not start with a recognized type prefix (`c`, `n`, `l`, `d`, `a`, `o`, `b`, `x`) or does not follow PascalCase after the prefix.",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "BP-007",
+    "titulo": "Functions missing Protheus.doc documentation header",
+    "severidade": "info",
+    "categoria": "best-practice",
+    "descricao": "Every `User Function`, `Static Function`, and `Main Function` should have a `Protheus.doc` documentation header describing the function's purpose, author, date, parameters, and return value.",
+    "fix_guidance": "Function definitions without a preceding `Protheus.doc` comment block.",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "BP-008",
+    "titulo": "Using reserved system variables as Local/Static variable names",
+    "severidade": "critical",
+    "categoria": "best-practice",
+    "descricao": "The Protheus framework maintains several `Private` variables to track the current company, branch, and environment context. Declaring a `Local` variable with the same name shadows the system variable, causing loss of context, incorrect data filtering, and hard-to-reproduce bugs in multi-branch/multi-company environments.",
+    "fix_guidance": "",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "SEC-001",
+    "titulo": "SQL built by string concatenation without %exp: macro (SQL injection risk)",
+    "severidade": "critical",
+    "categoria": "security",
+    "descricao": "Building SQL queries by concatenating user-supplied or external variables directly into the query string allows SQL injection attacks. Attackers can manipulate input to execute arbitrary SQL commands, potentially reading, modifying, or deleting data.",
+    "fix_guidance": "`TCQuery` or string-based SQL construction where variables are concatenated with `+` instead of using BeginSQL with `%exp:variable%` macro substitution.",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "SEC-002",
+    "titulo": "REST endpoint using SELF:GetContent() without input validation",
+    "severidade": "critical",
+    "categoria": "security",
+    "descricao": "REST API endpoints that read request body content via `SELF:GetContent()` (or `oRest:GetBody()`) and use the data directly without validation expose the system to injection attacks, type errors, and business logic bypass.",
+    "fix_guidance": "`SELF:GetContent()`, `oRest:GetBody()`, or similar request body reading methods where the returned content is used directly in SQL queries, database operations, or business logic without validation or sanitization.",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "SEC-003",
+    "titulo": "Sensitive data in ConOut/FWLogMsg output",
+    "severidade": "warning",
+    "categoria": "security",
+    "descricao": "Logging sensitive information such as passwords, API tokens, CPF/CNPJ numbers, credit card numbers, or personal data in `ConOut` or `FWLogMsg` exposes it to anyone with access to the AppServer console or log files.",
+    "fix_guidance": "`ConOut` or `FWLogMsg` calls that output variables containing passwords, tokens, credentials, CPF, CNPJ, or any personally identifiable information (PII).",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "SEC-004",
+    "titulo": "Hardcoded credentials in source code",
+    "severidade": "warning",
+    "categoria": "security",
+    "descricao": "Passwords, API keys, database connection strings, and other credentials must never be hardcoded in source code. Source code is stored in version control, compiled into RPO, and accessible to all developers, making hardcoded secrets a significant security risk.",
+    "fix_guidance": "String literals that appear to be passwords, API keys, bearer tokens, connection strings, or authentication secrets assigned to variables or used directly in function calls.",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "SEC-005",
+    "titulo": "Usage of TOTVS restricted/internal functions, classes, or variables",
+    "severidade": "critical",
+    "categoria": "security",
+    "descricao": "TOTVS maintains a list of functions, classes, and variables that are internal property. These resources are NOT documented, NOT supported, and may be altered or removed without notice. Some have their compilation blocked since release 12.1.33. Using them in custom code causes compilation failures, runtime errors, or unpredictable behavior after updates.",
+    "fix_guidance": "Any call to functions or classes listed in the TOTVS restricted resources list. See `restricted-functions.md` in the protheus-reference skill for the complete list.",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "PERF-001",
+    "titulo": "SELECT * in Embedded SQL",
+    "severidade": "critical",
+    "categoria": "performance",
+    "descricao": "Using `SELECT *` in Embedded SQL or TCQuery fetches all columns from the table, including large memo fields and unused columns. This wastes memory, increases network traffic, and slows down query execution.",
+    "fix_guidance": "`SELECT *` or `SELECT ALIAS.*` inside `BeginSQL`/`EndSQL` blocks or in `TCQuery` strings.",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "PERF-002",
+    "titulo": "DbSeek inside loop when a single query could replace it",
+    "severidade": "warning",
+    "categoria": "performance",
+    "descricao": "Performing `DbSeek` inside a loop (While, For) to look up data for each iteration causes N individual index lookups. A single SQL query with a JOIN or IN clause is significantly faster.",
+    "fix_guidance": "`DbSeek` calls inside `While`/`EndDo`, `For`/`Next`, or similar loop constructs, especially when looking up supplementary data for records being processed.",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "PERF-003",
+    "titulo": "Missing TCSetField for column typing after query execution",
+    "severidade": "warning",
+    "categoria": "performance",
+    "descricao": "After executing a query via `TCQuery` or `BeginSQL`, date and numeric columns are returned as character strings by default. Without `TCSetField` to define column types, every comparison or arithmetic operation requires manual type conversion, which is slower and error-prone.",
+    "fix_guidance": "`TCQuery` or `BeginSQL` usage without subsequent `TCSetField` calls for date or numeric columns that are used in comparisons or calculations.",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "PERF-004",
+    "titulo": "String concatenation inside loop",
+    "severidade": "warning",
+    "categoria": "performance",
+    "descricao": "Concatenating strings with `+` or `+=` inside a loop creates a new string object on every iteration. For large loops, this causes excessive memory allocation and garbage collection, severely degrading performance.",
+    "fix_guidance": "String concatenation using `+` or `+=` inside `While`/`EndDo`, `For`/`Next` loops, especially when building large texts, CSV content, or log output.",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "PERF-005",
+    "titulo": "RecCount() to check if records exist",
+    "severidade": "warning",
+    "categoria": "performance",
+    "descricao": "Using `RecCount()` to check whether a query returned results forces a full table/result scan to count all records. To check for existence, use `!Eof()` after a seek or query, which returns immediately.",
+    "fix_guidance": "`RecCount()` used in conditions like `If RecCount() > 0`, `If RecCount() == 0`, or similar existence checks.",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "PERF-006",
+    "titulo": "Query without proper index hint or ORDER BY matching existing index",
+    "severidade": "info",
+    "categoria": "performance",
+    "descricao": "SQL queries that filter or sort by columns not covered by an existing index force full table scans. ORDER BY clauses should match the column order of an existing index for optimal performance.",
+    "fix_guidance": "`WHERE` clauses filtering on columns that are not part of any index, or `ORDER BY` with column order that does not match any available index. Cross-reference with the SIX (index) table definition.",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "MOD-001",
+    "titulo": ".prw file using class structures that could be migrated to .tlpp",
+    "severidade": "info",
+    "categoria": "modernization",
+    "descricao": "Classes defined in `.prw` files using `CLASS ... ENDCLASS` or `CLASS ... FROM` syntax are candidates for migration to `.tlpp`, which offers native OOP support with proper namespaces, annotations, and stronger encapsulation.",
+    "fix_guidance": "`.prw` files containing `CLASS`, `DATA`, `METHOD`, `ENDCLASS` keywords defining object-oriented structures.",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "MOD-002",
+    "titulo": "using namespace directive instead of .th includes in TLPP files",
+    "severidade": "info",
+    "categoria": "modernization",
+    "descricao": "TLPP files should use `.th` include files (`tlpp-core.th`, `tlpp-rest.th`, `tlpp-object.th`, `tlpp-probat.th`) instead of `using namespace` directives. The `.th` includes are the officially supported mechanism and provide all necessary definitions.",
+    "fix_guidance": "`using namespace tlpp.core`, `using namespace tlpp.rest`, `using namespace tlpp.log`, `using namespace tlpp.data`, or any `using namespace tlpp.*` directive in `.tlpp` files.",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "MOD-003",
+    "titulo": "Procedural functions with object-like patterns that should be class methods",
+    "severidade": "info",
+    "categoria": "modernization",
+    "descricao": "Groups of related functions that share a common prefix and pass context via parameters or private variables are candidates for refactoring into a class. This improves encapsulation, reusability, and testability.",
+    "fix_guidance": "Multiple `User Function` or `Static Function` definitions with a common naming prefix (e.g., `Ped_Create`, `Ped_Validate`, `Ped_Save`, `Ped_Delete`) that operate on the same data set, often passing the same variables between them.",
+    "detection_kind": "regex"
+  },
+  {
+    "regra_id": "MOD-004",
+    "titulo": "Legacy UI patterns that could use FWFormBrowse or MVC",
+    "severidade": "info",
+    "categoria": "modernization",
+    "descricao": "Legacy UI functions like `AxCadastro`, `Modelo 2` (`Ax2Model`), and `Modelo 3` (`Ax3Model`) are outdated patterns for building CRUD screens. Modern Protheus development uses `FWFormBrowse` or the MVC framework (`FWMVCModel`, `FWFormView`) for maintainable and standardized interfaces.",
+    "fix_guidance": "Calls to `AxCadastro()`, `AxPesqui()`, `MBrowse()`, `Modelo2()`, `Modelo3()`, or manual `DEFINE MSDIALOG` / `ACTIVATE MSDIALOG` patterns for CRUD operations.",
+    "detection_kind": "regex"
+  }
+]

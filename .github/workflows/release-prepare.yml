@@ -1,0 +1,28 @@
+name: Release Prepare
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.1.0)'
+        required: true
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Bump versions
+        run: python scripts/bump_marketplace_version.py ${{ github.event.inputs.version }}
+      - uses: peter-evans/create-pull-request@v6
+        with:
+          title: "Release v${{ github.event.inputs.version }}"
+          branch: "release/v${{ github.event.inputs.version }}"
+          commit-message: "release: v${{ github.event.inputs.version }}"
+          body: "Bump plugin.json/marketplace.json to ${{ github.event.inputs.version }}. After merging, create tag `v${{ github.event.inputs.version }}` to trigger release.yml."

@@ -1,0 +1,17 @@
+#include "tlpp-core.th"
+#include "tlpp-rest.th"
+
+Namespace api.clientes
+
+@Get("/clientes")
+User Function ListarClientes()
+    Local oResp := JsonObject():New()
+    oResp["status"] := "ok"
+Return oResp
+
+@Post("/clientes")
+User Function GravarCliente()
+    Local oReq := oRest:GetJsonRequest()
+    Local oResp := JsonObject():New()
+    oResp["id"] := oReq["id"]
+Return oResp

@@ -1,0 +1,1410 @@
+# serializer version: 1
+# name: test_parse_source_snapshot[classic_browse.prw]
+  dict({
+    'arquivo': 'classic_browse.prw',
+    'campos_ref': list([
+    ]),
+    'capabilities': list([
+      'BROWSE',
+    ]),
+    'chamadas': list([
+      dict({
+        'contexto': '''
+          e := FWFormBrowse():New()
+              oBrowse:SetAlias(     )
+              oBrowse:SetDescript
+        ''',
+        'destino': 'oBrowse:SetAlias',
+        'linha_origem': 5,
+        'tipo': 'method',
+      }),
+      dict({
+        'contexto': '''
+            oBrowse:SetAlias(     )
+              oBrowse:SetDescription(                              
+        ''',
+        'destino': 'oBrowse:SetDescription',
+        'linha_origem': 6,
+        'tipo': 'method',
+      }),
+      dict({
+        'contexto': '''
+                                  )
+              oBrowse:DisableDetails()
+              oBrowse:Activate()
+          Retur
+        ''',
+        'destino': 'oBrowse:DisableDetails',
+        'linha_origem': 7,
+        'tipo': 'method',
+      }),
+      dict({
+        'contexto': '''
+           oBrowse:DisableDetails()
+              oBrowse:Activate()
+          Return Nil
+          
+          Static Function 
+        ''',
+        'destino': 'oBrowse:Activate',
+        'linha_origem': 8,
+        'tipo': 'method',
+      }),
+    ]),
+    'defines': list([
+    ]),
+    'encoding': 'cp1252',
+    'env_openers': list([
+    ]),
+    'funcoes': list([
+      dict({
+        'classe': '',
+        'kind': 'user_function',
+        'linha_fim': 10,
+        'linha_inicio': 3,
+        'nome': 'ZBROWSE',
+      }),
+      dict({
+        'classe': '',
+        'kind': 'static_function',
+        'linha_fim': 15,
+        'linha_inicio': 11,
+        'nome': 'MenuDef',
+      }),
+    ]),
+    'hash': '7169673e5e5879cf8198618969ee193a9d3fcb0d',
+    'http_calls': list([
+    ]),
+    'includes': list([
+      'protheus.ch',
+    ]),
+    'lines_of_code': 15,
+    'log_calls': list([
+    ]),
+    'namespace': '',
+    'parametros_uso': list([
+    ]),
+    'perguntas_uso': list([
+    ]),
+    'rest_endpoints': list([
+    ]),
+    'source_type': 'user_function',
+    'sql_embedado': list([
+    ]),
+    'tabelas_ref': dict({
+      'read': list([
+      ]),
+      'reclock': list([
+      ]),
+      'write': list([
+      ]),
+    }),
+    'ws_structures': dict({
+      'ws_methods': list([
+      ]),
+      'ws_services': list([
+      ]),
+      'ws_structs': list([
+      ]),
+    }),
+  })
+# ---
+# name: test_parse_source_snapshot[exec_auto.prw]
+  dict({
+    'arquivo': 'exec_auto.prw',
+    'campos_ref': list([
+    ]),
+    'capabilities': list([
+      'EXEC_AUTO_CALLER',
+    ]),
+    'chamadas': list([
+      dict({
+        'contexto': '''
+                  ,        , Nil}})
+              MsExecAuto({|x,y,z| MATA103(x, y, z)}, aCabec, aItens, 3)
+  
+        ''',
+        'destino': 'MATA103',
+        'linha_origem': 10,
+        'tipo': 'execauto',
+      }),
+    ]),
+    'defines': list([
+    ]),
+    'encoding': 'cp1252',
+    'env_openers': list([
+    ]),
+    'funcoes': list([
+      dict({
+        'classe': '',
+        'kind': 'user_function',
+        'linha_fim': 12,
+        'linha_inicio': 4,
+        'nome': 'ZEXAUTO',
+      }),
+    ]),
+    'hash': '8c57c751f736eeefc20e6540b6a1b52095c64cae',
+    'http_calls': list([
+    ]),
+    'includes': list([
+      'protheus.ch',
+    ]),
+    'lines_of_code': 12,
+    'log_calls': list([
+    ]),
+    'namespace': '',
+    'parametros_uso': list([
+    ]),
+    'perguntas_uso': list([
+    ]),
+    'rest_endpoints': list([
+    ]),
+    'source_type': 'user_function',
+    'sql_embedado': list([
+    ]),
+    'tabelas_ref': dict({
+      'read': list([
+      ]),
+      'reclock': list([
+      ]),
+      'write': list([
+      ]),
+    }),
+    'ws_structures': dict({
+      'ws_methods': list([
+      ]),
+      'ws_services': list([
+      ]),
+      'ws_structs': list([
+      ]),
+    }),
+  })
+# ---
+# name: test_parse_source_snapshot[http_outbound.prw]
+  dict({
+    'arquivo': 'http_outbound.prw',
+    'campos_ref': list([
+    ]),
+    'capabilities': list([
+      'REST_CLIENT',
+    ]),
+    'chamadas': list([
+    ]),
+    'defines': list([
+    ]),
+    'encoding': 'cp1252',
+    'env_openers': list([
+    ]),
+    'funcoes': list([
+      dict({
+        'classe': '',
+        'kind': 'user_function',
+        'linha_fim': 10,
+        'linha_inicio': 4,
+        'nome': 'ZHTTPCLI',
+      }),
+    ]),
+    'hash': '0fb29fd70d35aa0bbbda9d77d1861d91f833e497',
+    'http_calls': list([
+      dict({
+        'funcao': '',
+        'linha': 7,
+        'metodo': 'HttpPost',
+        'url_literal': 'https://api.cliente.com.br/v1/clientes',
+      }),
+      dict({
+        'funcao': '',
+        'linha': 8,
+        'metodo': 'HttpGet',
+        'url_literal': 'https://api.cliente.com.br/v1/clientes/1',
+      }),
+      dict({
+        'funcao': '',
+        'linha': 9,
+        'metodo': 'MsAGetUrl',
+        'url_literal': 'https://api.cliente.com.br/v1/health',
+      }),
+    ]),
+    'includes': list([
+      'protheus.ch',
+    ]),
+    'lines_of_code': 10,
+    'log_calls': list([
+    ]),
+    'namespace': '',
+    'parametros_uso': list([
+    ]),
+    'perguntas_uso': list([
+    ]),
+    'rest_endpoints': list([
+    ]),
+    'source_type': 'user_function',
+    'sql_embedado': list([
+    ]),
+    'tabelas_ref': dict({
+      'read': list([
+      ]),
+      'reclock': list([
+      ]),
+      'write': list([
+      ]),
+    }),
+    'ws_structures': dict({
+      'ws_methods': list([
+      ]),
+      'ws_services': list([
+      ]),
+      'ws_structs': list([
+      ]),
+    }),
+  })
+# ---
+# name: test_parse_source_snapshot[job_rpc.prw]
+  dict({
+    'arquivo': 'job_rpc.prw',
+    'campos_ref': list([
+    ]),
+    'capabilities': list([
+      'ENV_OPENER',
+      'JOB',
+      'RPC',
+    ]),
+    'chamadas': list([
+      dict({
+        'contexto': '''
+                )
+              MsRunInThread({|| U_ZTASK01() })
+              MsRunInThread({|| U_Z
+        ''',
+        'destino': 'ZTASK01',
+        'linha_origem': 8,
+        'tipo': 'user_func',
+      }),
+      dict({
+        'contexto': '''
+          01() })
+              MsRunInThread({|| U_ZTASK02() })
+              RpcClearEnv()
+          Return 
+        ''',
+        'destino': 'ZTASK02',
+        'linha_origem': 9,
+        'tipo': 'user_func',
+      }),
+    ]),
+    'defines': list([
+    ]),
+    'encoding': 'cp1252',
+    'env_openers': list([
+      dict({
+        'empresa': '',
+        'environment': 'FAT',
+        'filial': '',
+        'funcao': '',
+        'linha': 7,
+        'modulo': 'ZJOBSYNC',
+      }),
+    ]),
+    'funcoes': list([
+      dict({
+        'classe': '',
+        'kind': 'main_function',
+        'linha_fim': 12,
+        'linha_inicio': 4,
+        'nome': 'ZJOBSYNC',
+      }),
+      dict({
+        'classe': '',
+        'kind': 'user_function',
+        'linha_fim': 16,
+        'linha_inicio': 13,
+        'nome': 'ZTASK01',
+      }),
+      dict({
+        'classe': '',
+        'kind': 'user_function',
+        'linha_fim': 19,
+        'linha_inicio': 17,
+        'nome': 'ZTASK02',
+      }),
+    ]),
+    'hash': '9df1b7ff33e3360edd957af4b1a72d471377d0b1',
+    'http_calls': list([
+    ]),
+    'includes': list([
+      'protheus.ch',
+    ]),
+    'lines_of_code': 19,
+    'log_calls': list([
+      dict({
+        'categoria': '',
+        'funcao': '',
+        'linha': 14,
+        'nivel': 'conout',
+      }),
+      dict({
+        'categoria': '',
+        'funcao': '',
+        'linha': 18,
+        'nivel': 'conout',
+      }),
+    ]),
+    'namespace': '',
+    'parametros_uso': list([
+    ]),
+    'perguntas_uso': list([
+    ]),
+    'rest_endpoints': list([
+    ]),
+    'source_type': 'main_function',
+    'sql_embedado': list([
+    ]),
+    'tabelas_ref': dict({
+      'read': list([
+      ]),
+      'reclock': list([
+      ]),
+      'write': list([
+      ]),
+    }),
+    'ws_structures': dict({
+      'ws_methods': list([
+      ]),
+      'ws_services': list([
+      ]),
+      'ws_structs': list([
+      ]),
+    }),
+  })
+# ---
+# name: test_parse_source_snapshot[multi_filial.prw]
+  dict({
+    'arquivo': 'multi_filial.prw',
+    'campos_ref': list([
+      'A1_NOME',
+      'B1_DESC',
+    ]),
+    'capabilities': list([
+      'MULTI_FILIAL',
+    ]),
+    'chamadas': list([
+    ]),
+    'defines': list([
+    ]),
+    'encoding': 'cp1252',
+    'env_openers': list([
+    ]),
+    'funcoes': list([
+      dict({
+        'classe': '',
+        'kind': 'user_function',
+        'linha_fim': 16,
+        'linha_inicio': 4,
+        'nome': 'ZMULTFIL',
+      }),
+    ]),
+    'hash': '88cc6d6f3b2ea41a47ea37d6154680e28416386b',
+    'http_calls': list([
+    ]),
+    'includes': list([
+      'protheus.ch',
+    ]),
+    'lines_of_code': 16,
+    'log_calls': list([
+      dict({
+        'categoria': '',
+        'funcao': '',
+        'linha': 9,
+        'nivel': 'conout',
+      }),
+      dict({
+        'categoria': '',
+        'funcao': '',
+        'linha': 13,
+        'nivel': 'conout',
+      }),
+    ]),
+    'namespace': '',
+    'parametros_uso': list([
+    ]),
+    'perguntas_uso': list([
+    ]),
+    'rest_endpoints': list([
+    ]),
+    'source_type': 'user_function',
+    'sql_embedado': list([
+    ]),
+    'tabelas_ref': dict({
+      'read': list([
+        'SA1',
+        'SB1',
+      ]),
+      'reclock': list([
+      ]),
+      'write': list([
+      ]),
+    }),
+    'ws_structures': dict({
+      'ws_methods': list([
+      ]),
+      'ws_services': list([
+      ]),
+      'ws_structs': list([
+      ]),
+    }),
+  })
+# ---
+# name: test_parse_source_snapshot[mvc_complete.prw]
+  dict({
+    'arquivo': 'mvc_complete.prw',
+    'campos_ref': list([
+    ]),
+    'capabilities': list([
+      'MVC',
+    ]),
+    'chamadas': list([
+      dict({
+        'contexto': '''
+          ViewDef()
+              Local oModel := FWLoadModel("ZACADEMP")
+              Local oStruct := FWFormS
+        ''',
+        'destino': 'ZACADEMP',
+        'linha_origem': 31,
+        'tipo': 'fwloadmodel',
+      }),
+      dict({
+        'contexto': '''
+          owse := FWmBrowse():New()
+              oBrowse:SetAlias(     )
+              oBrowse:SetMenuDef(
+        ''',
+        'destino': 'oBrowse:SetAlias',
+        'linha_origem': 6,
+        'tipo': 'method',
+      }),
+      dict({
+        'contexto': '''
+            oBrowse:SetAlias(     )
+              oBrowse:SetMenuDef(          )
+              oBrowse:Activa
+        ''',
+        'destino': 'oBrowse:SetMenuDef',
+        'linha_origem': 7,
+        'tipo': 'method',
+      }),
+      dict({
+        'contexto': '''
+          se:SetMenuDef(          )
+              oBrowse:Activate()
+          Return Nil
+          
+          Static Function 
+        ''',
+        'destino': 'oBrowse:Activate',
+        'linha_origem': 8,
+        'tipo': 'method',
+      }),
+      dict({
+        'contexto': '''
+          al bTudoOk  := {|oM| .T.}
+              oModel:AddFields(           , , oStruct)
+              oM
+        ''',
+        'destino': 'oModel:AddFields',
+        'linha_origem': 25,
+        'tipo': 'method',
+      }),
+      dict({
+        'contexto': '''
+          s(           , , oStruct)
+              oModel:SetCommitWhenActive(.T.)
+              oModel:SetVldActivate
+        ''',
+        'destino': 'oModel:SetCommitWhenActive',
+        'linha_origem': 26,
+        'tipo': 'method',
+      }),
+      dict({
+        'contexto': '''
+          :SetCommitWhenActive(.T.)
+              oModel:SetVldActivate({|oM| .T.})
+          Return oModel
+          
+          Sta
+        ''',
+        'destino': 'oModel:SetVldActivate',
+        'linha_origem': 27,
+        'tipo': 'method',
+      }),
+      dict({
+        'contexto': '''
+          w   := FWFormView():New()
+              oView:SetModel(oModel)
+              oView:AddField(   
+        ''',
+        'destino': 'oView:SetModel',
+        'linha_origem': 34,
+        'tipo': 'method',
+      }),
+      dict({
+        'contexto': '''
+             oView:SetModel(oModel)
+              oView:AddField(           , oStruct)
+          Return o
+        ''',
+        'destino': 'oView:AddField',
+        'linha_origem': 35,
+        'tipo': 'method',
+      }),
+      dict({
+        'contexto': '''
+          ormStruct(1,      )
+              Local bCommit  := {|oM| .T.}
+              Local bTudoOk  
+        ''',
+        'destino': 'bCommit',
+        'linha_origem': 23,
+        'tipo': 'mvc_hook',
+      }),
+      dict({
+        'contexto': '''
+          mmit  := {|oM| .T.}
+              Local bTudoOk  := {|oM| .T.}
+              oModel:AddField
+        ''',
+        'destino': 'bTudoOk',
+        'linha_origem': 24,
+        'tipo': 'mvc_hook',
+      }),
+    ]),
+    'defines': list([
+    ]),
+    'encoding': 'cp1252',
+    'env_openers': list([
+    ]),
+    'funcoes': list([
+      dict({
+        'classe': '',
+        'kind': 'user_function',
+        'linha_fim': 10,
+        'linha_inicio': 4,
+        'nome': 'ZACADEMP',
+      }),
+      dict({
+        'classe': '',
+        'kind': 'static_function',
+        'linha_fim': 19,
+        'linha_inicio': 11,
+        'nome': 'MenuDef',
+      }),
+      dict({
+        'classe': '',
+        'kind': 'static_function',
+        'linha_fim': 29,
+        'linha_inicio': 20,
+        'nome': 'ModelDef',
+      }),
+      dict({
+        'classe': '',
+        'kind': 'static_function',
+        'linha_fim': 36,
+        'linha_inicio': 30,
+        'nome': 'ViewDef',
+      }),
+    ]),
+    'hash': 'd941642196edf2b8e703e396fd3ca67c00799f7a',
+    'http_calls': list([
+    ]),
+    'includes': list([
+      'fwmvcdef.ch',
+      'protheus.ch',
+    ]),
+    'lines_of_code': 36,
+    'log_calls': list([
+    ]),
+    'namespace': '',
+    'parametros_uso': list([
+    ]),
+    'perguntas_uso': list([
+    ]),
+    'rest_endpoints': list([
+    ]),
+    'source_type': 'mvc',
+    'sql_embedado': list([
+    ]),
+    'tabelas_ref': dict({
+      'read': list([
+      ]),
+      'reclock': list([
+      ]),
+      'write': list([
+      ]),
+    }),
+    'ws_structures': dict({
+      'ws_methods': list([
+      ]),
+      'ws_services': list([
+      ]),
+      'ws_structs': list([
+      ]),
+    }),
+  })
+# ---
+# name: test_parse_source_snapshot[mvc_hooks.prw]
+  dict({
+    'arquivo': 'mvc_hooks.prw',
+    'campos_ref': list([
+    ]),
+    'capabilities': list([
+      'MVC',
+    ]),
+    'chamadas': list([
+      dict({
+        'contexto': '''
+          cal bLineOk := {|oM| .T.}
+              oModel:AddFields(           , , oStruct)
+              oM
+        ''',
+        'destino': 'oModel:AddFields',
+        'linha_origem': 10,
+        'tipo': 'method',
+      }),
+      dict({
+        'contexto': '''
+          s(           , , oStruct)
+              oModel:SetCommit(bCommit)
+              oModel:SetVldActi
+        ''',
+        'destino': 'oModel:SetCommit',
+        'linha_origem': 11,
+        'tipo': 'method',
+      }),
+      dict({
+        'contexto': '''
+          oModel:SetCommit(bCommit)
+              oModel:SetVldActivate(bTudoOk)
+          Return oModel
+          
+          Static
+        ''',
+        'destino': 'oModel:SetVldActivate',
+        'linha_origem': 12,
+        'tipo': 'method',
+      }),
+      dict({
+        'contexto': '''
+          ormStruct(1,      )
+              Local bCommit := {|oM| ZGravar(oM)}
+              Local b
+        ''',
+        'destino': 'bCommit',
+        'linha_origem': 7,
+        'tipo': 'mvc_hook',
+      }),
+      dict({
+        'contexto': '''
+           {|oM| ZGravar(oM)}
+              Local bTudoOk := {|oM| ZValidar(oM)}
+              Local 
+        ''',
+        'destino': 'bTudoOk',
+        'linha_origem': 8,
+        'tipo': 'mvc_hook',
+      }),
+      dict({
+        'contexto': '''
+          {|oM| ZValidar(oM)}
+              Local bLineOk := {|oM| .T.}
+              oModel:AddField
+        ''',
+        'destino': 'bLineOk',
+        'linha_origem': 9,
+        'tipo': 'mvc_hook',
+      }),
+    ]),
+    'defines': list([
+    ]),
+    'encoding': 'cp1252',
+    'env_openers': list([
+    ]),
+    'funcoes': list([
+      dict({
+        'classe': '',
+        'kind': 'static_function',
+        'linha_fim': 14,
+        'linha_inicio': 4,
+        'nome': 'ModelDef',
+      }),
+      dict({
+        'classe': '',
+        'kind': 'static_function',
+        'linha_fim': 17,
+        'linha_inicio': 15,
+        'nome': 'ZGravar',
+      }),
+      dict({
+        'classe': '',
+        'kind': 'static_function',
+        'linha_fim': 19,
+        'linha_inicio': 18,
+        'nome': 'ZValidar',
+      }),
+    ]),
+    'hash': '23ae3452a02b69d0693df22fb4e9cd0fd7a3ed41',
+    'http_calls': list([
+    ]),
+    'includes': list([
+      'fwmvcdef.ch',
+      'protheus.ch',
+    ]),
+    'lines_of_code': 19,
+    'log_calls': list([
+    ]),
+    'namespace': '',
+    'parametros_uso': list([
+    ]),
+    'perguntas_uso': list([
+    ]),
+    'rest_endpoints': list([
+    ]),
+    'source_type': 'mvc',
+    'sql_embedado': list([
+    ]),
+    'tabelas_ref': dict({
+      'read': list([
+      ]),
+      'reclock': list([
+      ]),
+      'write': list([
+      ]),
+    }),
+    'ws_structures': dict({
+      'ws_methods': list([
+      ]),
+      'ws_services': list([
+      ]),
+      'ws_structs': list([
+      ]),
+    }),
+  })
+# ---
+# name: test_parse_source_snapshot[pe_simple.prw]
+  dict({
+    'arquivo': 'pe_simple.prw',
+    'campos_ref': list([
+      'F1_TIPO',
+    ]),
+    'capabilities': list([
+      'PE',
+    ]),
+    'chamadas': list([
+    ]),
+    'defines': list([
+    ]),
+    'encoding': 'cp1252',
+    'env_openers': list([
+    ]),
+    'funcoes': list([
+      dict({
+        'classe': '',
+        'kind': 'user_function',
+        'linha_fim': 11,
+        'linha_inicio': 4,
+        'nome': 'MT100LOK',
+      }),
+    ]),
+    'hash': '97fbd6012e0badeedffb84fdfd98904696df8d81',
+    'http_calls': list([
+    ]),
+    'includes': list([
+      'protheus.ch',
+    ]),
+    'lines_of_code': 11,
+    'log_calls': list([
+    ]),
+    'namespace': '',
+    'parametros_uso': list([
+    ]),
+    'perguntas_uso': list([
+    ]),
+    'rest_endpoints': list([
+    ]),
+    'source_type': 'pe',
+    'sql_embedado': list([
+    ]),
+    'tabelas_ref': dict({
+      'read': list([
+        'SF1',
+      ]),
+      'reclock': list([
+      ]),
+      'write': list([
+      ]),
+    }),
+    'ws_structures': dict({
+      'ws_methods': list([
+      ]),
+      'ws_services': list([
+      ]),
+      'ws_structs': list([
+      ]),
+    }),
+  })
+# ---
+# name: test_parse_source_snapshot[pubvars.prw]
+  dict({
+    'arquivo': 'pubvars.prw',
+    'campos_ref': list([
+    ]),
+    'capabilities': list([
+    ]),
+    'chamadas': list([
+    ]),
+    'defines': list([
+    ]),
+    'encoding': 'cp1252',
+    'env_openers': list([
+    ]),
+    'funcoes': list([
+      dict({
+        'classe': '',
+        'kind': 'user_function',
+        'linha_fim': 8,
+        'linha_inicio': 4,
+        'nome': 'ZPUBVAR',
+      }),
+    ]),
+    'hash': '78f90248cae47a98ee03b585961788c36bacb1f9',
+    'http_calls': list([
+    ]),
+    'includes': list([
+      'protheus.ch',
+    ]),
+    'lines_of_code': 8,
+    'log_calls': list([
+      dict({
+        'categoria': '',
+        'funcao': '',
+        'linha': 7,
+        'nivel': 'conout',
+      }),
+    ]),
+    'namespace': '',
+    'parametros_uso': list([
+    ]),
+    'perguntas_uso': list([
+    ]),
+    'rest_endpoints': list([
+    ]),
+    'source_type': 'user_function',
+    'sql_embedado': list([
+    ]),
+    'tabelas_ref': dict({
+      'read': list([
+      ]),
+      'reclock': list([
+      ]),
+      'write': list([
+      ]),
+    }),
+    'ws_structures': dict({
+      'ws_methods': list([
+      ]),
+      'ws_services': list([
+      ]),
+      'ws_structs': list([
+      ]),
+    }),
+  })
+# ---
+# name: test_parse_source_snapshot[reclock_pattern.prw]
+  dict({
+    'arquivo': 'reclock_pattern.prw',
+    'campos_ref': list([
+      'A1_NOME',
+      'A1_NREDUZ',
+    ]),
+    'capabilities': list([
+      'MULTI_FILIAL',
+    ]),
+    'chamadas': list([
+    ]),
+    'defines': list([
+    ]),
+    'encoding': 'cp1252',
+    'env_openers': list([
+    ]),
+    'funcoes': list([
+      dict({
+        'classe': '',
+        'kind': 'user_function',
+        'linha_fim': 14,
+        'linha_inicio': 3,
+        'nome': 'ZRECOK',
+      }),
+    ]),
+    'hash': '7242bfbb324d86f919f584d5a9114720d3ab2f5b',
+    'http_calls': list([
+    ]),
+    'includes': list([
+      'protheus.ch',
+    ]),
+    'lines_of_code': 14,
+    'log_calls': list([
+    ]),
+    'namespace': '',
+    'parametros_uso': list([
+    ]),
+    'perguntas_uso': list([
+    ]),
+    'rest_endpoints': list([
+    ]),
+    'source_type': 'user_function',
+    'sql_embedado': list([
+    ]),
+    'tabelas_ref': dict({
+      'read': list([
+        'SA1',
+      ]),
+      'reclock': list([
+        'SA1',
+      ]),
+      'write': list([
+        'SA1',
+      ]),
+    }),
+    'ws_structures': dict({
+      'ws_methods': list([
+      ]),
+      'ws_services': list([
+      ]),
+      'ws_structs': list([
+      ]),
+    }),
+  })
+# ---
+# name: test_parse_source_snapshot[reclock_unbalanced.prw]
+  dict({
+    'arquivo': 'reclock_unbalanced.prw',
+    'campos_ref': list([
+      'A1_NOME',
+    ]),
+    'capabilities': list([
+      'MULTI_FILIAL',
+    ]),
+    'chamadas': list([
+    ]),
+    'defines': list([
+    ]),
+    'encoding': 'cp1252',
+    'env_openers': list([
+    ]),
+    'funcoes': list([
+      dict({
+        'classe': '',
+        'kind': 'user_function',
+        'linha_fim': 13,
+        'linha_inicio': 4,
+        'nome': 'ZRECBAD',
+      }),
+    ]),
+    'hash': '879486aaf98bddce0d2a67df5d1776fc958eac5c',
+    'http_calls': list([
+    ]),
+    'includes': list([
+      'protheus.ch',
+    ]),
+    'lines_of_code': 13,
+    'log_calls': list([
+    ]),
+    'namespace': '',
+    'parametros_uso': list([
+    ]),
+    'perguntas_uso': list([
+    ]),
+    'rest_endpoints': list([
+    ]),
+    'source_type': 'user_function',
+    'sql_embedado': list([
+    ]),
+    'tabelas_ref': dict({
+      'read': list([
+        'SA1',
+      ]),
+      'reclock': list([
+        'SA1',
+      ]),
+      'write': list([
+        'SA1',
+      ]),
+    }),
+    'ws_structures': dict({
+      'ws_methods': list([
+      ]),
+      'ws_services': list([
+      ]),
+      'ws_structs': list([
+      ]),
+    }),
+  })
+# ---
+# name: test_parse_source_snapshot[sql_embedded.prw]
+  dict({
+    'arquivo': 'sql_embedded.prw',
+    'campos_ref': list([
+    ]),
+    'capabilities': list([
+      'MULTI_FILIAL',
+    ]),
+    'chamadas': list([
+    ]),
+    'defines': list([
+    ]),
+    'encoding': 'cp1252',
+    'env_openers': list([
+    ]),
+    'funcoes': list([
+      dict({
+        'classe': '',
+        'kind': 'user_function',
+        'linha_fim': 34,
+        'linha_inicio': 4,
+        'nome': 'ZSQLMIX',
+      }),
+    ]),
+    'hash': '96bf82e820d14c3542c9e6eef214bf2aa12d4aeb',
+    'http_calls': list([
+    ]),
+    'includes': list([
+      'protheus.ch',
+    ]),
+    'lines_of_code': 34,
+    'log_calls': list([
+    ]),
+    'namespace': '',
+    'parametros_uso': list([
+    ]),
+    'perguntas_uso': list([
+    ]),
+    'rest_endpoints': list([
+    ]),
+    'source_type': 'user_function',
+    'sql_embedado': list([
+      dict({
+        'funcao': '',
+        'linha': 10,
+        'operacao': 'select',
+        'snippet': '''
+          SELECT A1_COD, A1_NOME
+                    FROM %table:SA1% SA1
+                   WHERE SA1.A1_FILIAL = %xFilial:SA1%
+                     AND %notDel%
+        ''',
+        'tabelas': list([
+        ]),
+      }),
+      dict({
+        'funcao': '',
+        'linha': 19,
+        'operacao': 'select',
+        'snippet': '''
+          SELECT *
+                    FROM %table:SA1% SA1
+                   WHERE SA1.A1_FILIAL = %xFilial:SA1%
+                     AND %notDel%
+        ''',
+        'tabelas': list([
+        ]),
+      }),
+      dict({
+        'funcao': '',
+        'linha': 28,
+        'operacao': 'select',
+        'snippet': '''
+          SELECT B1_COD, B1_DESC
+                    FROM %table:SB1% SB1
+                   WHERE SB1.B1_FILIAL = %xFilial:SB1%
+        ''',
+        'tabelas': list([
+        ]),
+      }),
+    ]),
+    'tabelas_ref': dict({
+      'read': list([
+      ]),
+      'reclock': list([
+      ]),
+      'write': list([
+      ]),
+    }),
+    'ws_structures': dict({
+      'ws_methods': list([
+      ]),
+      'ws_services': list([
+      ]),
+      'ws_structs': list([
+      ]),
+    }),
+  })
+# ---
+# name: test_parse_source_snapshot[tlpp_namespace.tlpp]
+  dict({
+    'arquivo': 'tlpp_namespace.tlpp',
+    'campos_ref': list([
+    ]),
+    'capabilities': list([
+    ]),
+    'chamadas': list([
+    ]),
+    'defines': list([
+    ]),
+    'encoding': 'cp1252',
+    'env_openers': list([
+    ]),
+    'funcoes': list([
+      dict({
+        'classe': '',
+        'kind': 'user_function',
+        'linha_fim': 8,
+        'linha_inicio': 5,
+        'nome': 'ZNAMESP',
+      }),
+    ]),
+    'hash': '09ca0e02f9fcfec063579c3b51c94648f1fdd1e6',
+    'http_calls': list([
+    ]),
+    'includes': list([
+      'tlpp-core.th',
+    ]),
+    'lines_of_code': 8,
+    'log_calls': list([
+      dict({
+        'categoria': '',
+        'funcao': '',
+        'linha': 7,
+        'nivel': 'conout',
+      }),
+    ]),
+    'namespace': 'com.client.module',
+    'parametros_uso': list([
+    ]),
+    'perguntas_uso': list([
+    ]),
+    'rest_endpoints': list([
+    ]),
+    'source_type': 'user_function',
+    'sql_embedado': list([
+    ]),
+    'tabelas_ref': dict({
+      'read': list([
+      ]),
+      'reclock': list([
+      ]),
+      'write': list([
+      ]),
+    }),
+    'ws_structures': dict({
+      'ws_methods': list([
+      ]),
+      'ws_services': list([
+      ]),
+      'ws_structs': list([
+      ]),
+    }),
+  })
+# ---
+# name: test_parse_source_snapshot[ws_rest.tlpp]
+  dict({
+    'arquivo': 'ws_rest.tlpp',
+    'campos_ref': list([
+    ]),
+    'capabilities': list([
+      'JSON_AWARE',
+      'WS-REST',
+    ]),
+    'chamadas': list([
+      dict({
+        'contexto': '''
+          arCliente()
+              Local oReq := oRest:GetJsonRequest()
+              Local oResp := JsonObjec
+        ''',
+        'destino': 'oRest:GetJsonRequest',
+        'linha_origem': 14,
+        'tipo': 'method',
+      }),
+    ]),
+    'defines': list([
+    ]),
+    'encoding': 'cp1252',
+    'env_openers': list([
+    ]),
+    'funcoes': list([
+      dict({
+        'classe': '',
+        'kind': 'user_function',
+        'linha_fim': 12,
+        'linha_inicio': 7,
+        'nome': 'ListarClientes',
+      }),
+      dict({
+        'classe': '',
+        'kind': 'user_function',
+        'linha_fim': 17,
+        'linha_inicio': 13,
+        'nome': 'GravarCliente',
+      }),
+    ]),
+    'hash': '6877de9e74906ff95510a3019385bc0eea3cc4d7',
+    'http_calls': list([
+    ]),
+    'includes': list([
+      'tlpp-core.th',
+      'tlpp-rest.th',
+    ]),
+    'lines_of_code': 17,
+    'log_calls': list([
+    ]),
+    'namespace': 'api.clientes',
+    'parametros_uso': list([
+    ]),
+    'perguntas_uso': list([
+    ]),
+    'rest_endpoints': list([
+      dict({
+        'annotation_style': '@verb_tlpp',
+        'classe': '',
+        'funcao': '',
+        'linha': 6,
+        'path': '/clientes',
+        'verbo': 'GET',
+      }),
+      dict({
+        'annotation_style': '@verb_tlpp',
+        'classe': '',
+        'funcao': '',
+        'linha': 12,
+        'path': '/clientes',
+        'verbo': 'POST',
+      }),
+    ]),
+    'source_type': 'webservice',
+    'sql_embedado': list([
+    ]),
+    'tabelas_ref': dict({
+      'read': list([
+      ]),
+      'reclock': list([
+      ]),
+      'write': list([
+      ]),
+    }),
+    'ws_structures': dict({
+      'ws_methods': list([
+      ]),
+      'ws_services': list([
+      ]),
+      'ws_structs': list([
+      ]),
+    }),
+  })
+# ---
+# name: test_parse_source_snapshot[ws_soap.prw]
+  dict({
+    'arquivo': 'ws_soap.prw',
+    'campos_ref': list([
+    ]),
+    'capabilities': list([
+      'WS-SOAP',
+    ]),
+    'chamadas': list([
+    ]),
+    'defines': list([
+    ]),
+    'encoding': 'cp1252',
+    'env_openers': list([
+    ]),
+    'funcoes': list([
+      dict({
+        'classe': '',
+        'kind': 'ws_method',
+        'linha_fim': 14,
+        'linha_inicio': 11,
+        'nome': 'Listar',
+      }),
+      dict({
+        'classe': '',
+        'kind': 'ws_method',
+        'linha_fim': 17,
+        'linha_inicio': 15,
+        'nome': 'Gravar',
+      }),
+    ]),
+    'hash': '3bd780efc0b9314861f4c80bd24bfbb9719cc095',
+    'http_calls': list([
+    ]),
+    'includes': list([
+      'apwebsrv.ch',
+      'protheus.ch',
+    ]),
+    'lines_of_code': 17,
+    'log_calls': list([
+    ]),
+    'namespace': '',
+    'parametros_uso': list([
+    ]),
+    'perguntas_uso': list([
+    ]),
+    'rest_endpoints': list([
+    ]),
+    'source_type': 'webservice',
+    'sql_embedado': list([
+    ]),
+    'tabelas_ref': dict({
+      'read': list([
+      ]),
+      'reclock': list([
+      ]),
+      'write': list([
+      ]),
+    }),
+    'ws_structures': dict({
+      'ws_methods': list([
+        dict({
+          'nome': 'Listar',
+          'receive': 'cCodigo',
+          'send': 'cNome',
+          'service': 'WSVendas',
+        }),
+        dict({
+          'nome': 'Gravar',
+          'receive': 'cCodigo',
+          'send': 'cNome',
+          'service': 'WSVendas',
+        }),
+      ]),
+      'ws_services': list([
+        dict({
+          'dados': list([
+            dict({
+              'nome': 'cCodigo',
+              'tipo': 'String',
+            }),
+            dict({
+              'nome': 'cNome',
+              'tipo': 'String',
+            }),
+          ]),
+          'metodos': list([
+            'Listar',
+            'Gravar',
+          ]),
+          'nome': 'WSVendas',
+        }),
+      ]),
+      'ws_structs': list([
+      ]),
+    }),
+  })
+# ---

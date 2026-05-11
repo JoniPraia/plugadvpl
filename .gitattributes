@@ -1,0 +1,26 @@
+# Ensure consistent line endings across platforms
+# ADVPL fixtures are content-hash-tested; CRLF conversion breaks tests on Windows
+*.prw            text eol=lf
+*.tlpp           text eol=lf
+*.prx            text eol=lf
+*.apw            text eol=lf
+*.ch             text eol=lf
+
+# SQL files
+*.sql            text eol=lf
+
+# JSON/YAML configs
+*.json           text eol=lf
+*.yml            text eol=lf
+*.yaml           text eol=lf
+*.toml           text eol=lf
+
+# Python
+*.py             text eol=lf
+
+# Markdown
+*.md             text eol=lf
+
+# Binary
+*.db             binary
+*.bak            binary

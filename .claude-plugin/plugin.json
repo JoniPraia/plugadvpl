@@ -1,0 +1,10 @@
+{
+  "name": "plugadvpl",
+  "version": "0.1.0",
+  "description": "Indexa fontes ADVPL/TLPP em SQLite + FTS5 para Claude consultar metadados antes de ler .prw cru (economiza 10-15x tokens)",
+  "author": { "name": "JoniPraia" },
+  "license": "MIT",
+  "homepage": "https://github.com/JoniPraia/plugadvpl",
+  "repository": "https://github.com/JoniPraia/plugadvpl",
+  "keywords": ["advpl", "tlpp", "protheus", "totvs", "erp", "sqlite", "fts5", "claude-code-plugin"]
+}

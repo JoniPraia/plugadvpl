@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+.venv/
+.uv/
+
+# Plugadvpl index (per-projeto-cliente — não versionar)
+.plugadvpl/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+coverage.xml
+cli/coverage.xml
+
+# Claude Code local artifacts
+.claude/
+
+# hatch-vcs auto-generated version file
+cli/plugadvpl/_version.py

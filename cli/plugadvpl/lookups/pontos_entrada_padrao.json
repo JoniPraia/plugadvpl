@@ -1,0 +1,122 @@
+[
+  {
+    "nome": "MT120LOK",
+    "descricao": "Validacao de Inclusao do Pedido de Compra",
+    "modulo": "COM",
+    "paramixb_count": 1,
+    "retorno_tipo": "L",
+    "link_tdn": ""
+  },
+  {
+    "nome": "MT120CAN",
+    "descricao": "Cancelamento de Pedido de Compra",
+    "modulo": "COM",
+    "paramixb_count": 1,
+    "retorno_tipo": "",
+    "link_tdn": ""
+  },
+  {
+    "nome": "A120GRVC",
+    "descricao": "Gravacao do Pedido de Compra",
+    "modulo": "COM",
+    "paramixb_count": 2,
+    "retorno_tipo": "",
+    "link_tdn": ""
+  },
+  {
+    "nome": "MT100LOK",
+    "descricao": "Validacao de Nota Fiscal",
+    "modulo": "FAT",
+    "paramixb_count": 2,
+    "retorno_tipo": "L",
+    "link_tdn": ""
+  },
+  {
+    "nome": "SF2100I",
+    "descricao": "Pos-inclusao de Nota Fiscal de Saida",
+    "modulo": "FAT",
+    "paramixb_count": 4,
+    "retorno_tipo": "",
+    "link_tdn": ""
+  },
+  {
+    "nome": "A103MENU",
+    "descricao": "Menu Adicional no Faturamento",
+    "modulo": "FAT",
+    "paramixb_count": 0,
+    "retorno_tipo": "",
+    "link_tdn": ""
+  },
+  {
+    "nome": "MA410BUT",
+    "descricao": "Botoes Adicionais no Pedido de Venda",
+    "modulo": "FAT",
+    "paramixb_count": 0,
+    "retorno_tipo": "",
+    "link_tdn": ""
+  },
+  {
+    "nome": "MA410LOK",
+    "descricao": "Validacao do Pedido de Venda",
+    "modulo": "FAT",
+    "paramixb_count": 0,
+    "retorno_tipo": "L",
+    "link_tdn": ""
+  },
+  {
+    "nome": "FA080BUT",
+    "descricao": "Botoes Adicionais no Contas a Pagar",
+    "modulo": "FIN",
+    "paramixb_count": 0,
+    "retorno_tipo": "",
+    "link_tdn": ""
+  },
+  {
+    "nome": "FA080INC",
+    "descricao": "Pos-inclusao no Contas a Pagar",
+    "modulo": "FIN",
+    "paramixb_count": 4,
+    "retorno_tipo": "",
+    "link_tdn": ""
+  },
+  {
+    "nome": "FA050BUT",
+    "descricao": "Botoes Adicionais no Contas a Receber",
+    "modulo": "FIN",
+    "paramixb_count": 0,
+    "retorno_tipo": "",
+    "link_tdn": ""
+  },
+  {
+    "nome": "MT250LOK",
+    "descricao": "Validacao de Movimentacao de Estoque",
+    "modulo": "EST",
+    "paramixb_count": 2,
+    "retorno_tipo": "L",
+    "link_tdn": ""
+  },
+  {
+    "nome": "A650GRVS",
+    "descricao": "Gravacao de Solicitacao de Compra",
+    "modulo": "EST",
+    "paramixb_count": 2,
+    "retorno_tipo": "",
+    "link_tdn": ""
+  },
+  {
+    "nome": "SPEDCONTRIB",
+    "descricao": "Contribuicoes SPED",
+    "modulo": "FIS",
+    "paramixb_count": 3,
+    "retorno_tipo": "",
+    "link_tdn": ""
+  },
+  {
+    "nome": "MT930LOK",
+    "descricao": "Validacao do Livro Fiscal",
+    "modulo": "FIS",
+    "paramixb_count": 3,
+    "retorno_tipo": "L",
+    "link_tdn": ""
+  }
+]

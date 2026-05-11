@@ -1,0 +1,44 @@
+[
+  {
+    "macro": "%table:TABLE%",
+    "descricao": "Resolve nome físico da tabela (com prefixo de empresa, ex: SA1010).",
+    "exemplo": "FROM %table:SA1% SA1",
+    "output_type": "string",
+    "safe_for_injection": 1
+  },
+  {
+    "macro": "%xfilial:TABLE%",
+    "descricao": "Valor atual da filial para a tabela (string quoted automaticamente).",
+    "exemplo": "AND SA1.A1_FILIAL = %xfilial:SA1%",
+    "output_type": "string",
+    "safe_for_injection": 1
+  },
+  {
+    "macro": "%notDel%",
+    "descricao": "Filtra registros não-deletados logicamente (D_E_L_E_T_ <> '*').",
+    "exemplo": "WHERE SA1.%notDel%",
+    "output_type": "boolean",
+    "safe_for_injection": 1
+  },
+  {
+    "macro": "%exp:EXPRESSION%",
+    "descricao": "Vincula variável/expressão ADVPL com quoting automático (anti-SQL-injection).",
+    "exemplo": "AND SA1.A1_COD = %exp:cCodCli%",
+    "output_type": "any",
+    "safe_for_injection": 1
+  },
+  {
+    "macro": "%Order:TABLE%",
+    "descricao": "Resolve ordering primário (chave) da tabela.",
+    "exemplo": "ORDER BY %Order:SE2%",
+    "output_type": "string",
+    "safe_for_injection": 1
+  },
+  {
+    "macro": "concat_string",
+    "descricao": "RESTRIÇÃO: concatenar variáveis em SQL via '+' sem %exp: é SQL-injection risk (regra SEC-001).",
+    "exemplo": "BAD: cSql += \"AND A1_COD = '\" + cCod + \"'\"",
+    "output_type": "string",
+    "safe_for_injection": 0
+  }
+]
