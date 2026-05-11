@@ -1,15 +1,30 @@
 ---
 name: Feature request
-about: Suggest an idea
+about: Sugerir nova funcionalidade ou melhoria
+title: '[feat] '
 labels: enhancement
+assignees: ''
 ---
 
-**Problem this would solve:**
-<!-- What ADVPL/Protheus analysis use case is currently painful? -->
+## Problema que resolve
 
-**Proposed solution:**
-<!-- Concrete suggestion -->
+<Que dor do dia-a-dia ADVPL/Protheus essa feature alivia? Seja específico.>
 
-**Alternatives considered:**
+## Solução proposta
 
-**Additional context:**
+<Como você imagina a feature funcionando? Comando, output esperado, exemplo de uso.>
+
+## Alternativas consideradas
+
+<Workarounds atuais ou outras formas de resolver o mesmo problema.>
+
+## Encaixa em qual milestone?
+
+- [ ] v0.3.0 — Dicionário SX
+- [ ] v0.4.0 — Rastreabilidade unificada
+- [ ] Backlog
+- [ ] Não sei
+
+## Contexto adicional
+
+<Screenshots, links, exemplos de outras ferramentas que fazem isso, etc.>
