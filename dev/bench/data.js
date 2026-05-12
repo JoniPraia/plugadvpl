@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778608213627,
+  "lastUpdate": 1778616695396,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -709,6 +709,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0003811123334432423",
             "extra": "mean: 13.76986838459533 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "325bf856ce2e7ce6e16a2da14b68439ae31c4ce0",
+          "message": "docs(skill): advpl-mvc — replace deprecated bCommit pattern with FWModelEvent, fix FWMVCRotAuto, add FWMVCMenu\n\nMajor content update — bCommit/bTudoOk in MPFormModel constructor are\nDESCONTINUADOS in modern Protheus. TOTVS officially recommends\nFWModelEvent + InstallEvent() with three lifecycle moments:\nBeforeTTS, InTTS, AfterTTS. Old skill taught the deprecated pattern\nas primary, even with an internal contradiction (anti-padrão warns\nagainst RecLock in bCommit but the example MyCommit did exactly that).\n\nSkill now leads with the FWModelEvent pattern, shows the canonical\nclass structure (zEventXYZ From FWModelEvent with three methods),\nthe lifecycle order (SetVldActivate → PreValidation → PosValidation\n→ BEGIN TRANSACTION → InTTS → END TRANSACTION → AfterTTS →\nSetDeactivate), and notes the v12.1.17+ minimum.\n\nOther corrections grounded in TDN/community sources:\n\n- FWMVCRotina renamed to canonical FWMVCRotAuto. Old name doesn't\n  exist as official function.\n- MPFormModel():New() has 5 params, not 4: cIDModel, bPreValidacao,\n  bPosValidacao, bCommit, bCancel. Table shows current TOTVS\n  recommendation (pass only cIDModel, register rest via InstallEvent).\n- FWMVCMenu(\"XYZCAD\") helper added — auto-generates aRotina with\n  Pesquisar/Visualizar/Incluir/Alterar/Excluir/Imprimir/Copiar.\n  Skill shows both manual and compact forms, plus how to extend\n  the default with extra options.\n- aRotina format clarified: 6 elements canonical (some legacy uses 7).\n  Each element documented with role and example.\n- FWExecView (interactive screen) vs FWMVCRotAuto (headless batch/PE/WS)\n  decision tree, with full code examples for both including grid data\n  format {{\"MASTER\", aCab}, {\"DETAIL\", aItens}}.\n- Grid methods documented: SetUniqueLine, SetOptional, SetNoInsertLine,\n  SetNoDeleteLine, SetMaxLine/SetMinLine, SetActivate.\n- GetValue vs SetValue vs LoadValue — semantic differences (trigger\n  vs skip-trigger), use cases (user flow vs PE/import).\n- mvc_hooks table claim removed (table doesn't exist in schema —\n  verified from migration 001/002).\n- MyCommit example rewritten to use InTTS pattern (no longer\n  contradicts the anti-pattern warning).\n\nAI usability:\n\n- Frontmatter description lists specific triggers (criar cadastro,\n  adicionar validação, refatorar AxCadastro legado, trabalhar com\n  sub-models).\n- Cross-refs via [[name]] to 8 related skills (mvc-avancado,\n  fundamentals, pontos-entrada, dicionario-sx, dicionario-sx-validacoes,\n  code-review, embedded-sql, plugadvpl-index-usage).\n- Sources section with 10 canonical references (TDN FWModelEvent,\n  terminaldeinformacao FWMVCRotAuto/FWExecView/FWModelEvent migration,\n  dan-atilio AdvPL GitHub examples, MVC Central Protheus PDF).\n\nWord count: 1087 -> 2097 (+93%).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T17:11:02-03:00",
+          "tree_id": "9e563c2b78bc4bf4612660e172975abf2e739b0a",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/325bf856ce2e7ce6e16a2da14b68439ae31c4ce0"
+        },
+        "date": 1778616695100,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 23.030831401093206,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00023889536654867548",
+            "extra": "mean: 43.420056470585465 msec\nrounds: 17"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 72.31881846806064,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00035084252497457713",
+            "extra": "mean: 13.827659538459503 msec\nrounds: 13"
           }
         ]
       }
