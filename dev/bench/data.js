@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778617640037,
+  "lastUpdate": 1778617752002,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -961,6 +961,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0008932750470788658",
             "extra": "mean: 14.204842999997314 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "cc32f39de2ebbc131ddbd695950a7b30b231cf54",
+          "message": "docs(skill): advpl-jobs-rpc — add FwSchedExec, FwSendMail modern, fix lint refs, cross-link REST distinction\n\nImprovements based on TOTVS canonical sources:\n\n- FwSchedExec section — modern programmatic scheduler creation (vs\n  appserver.ini scheduler). Useful for jobs criados dynamically.\n- FwSendMail():New() with TLS/SSL config — replaces legacy MailAuto+\n  SendMail+DisconnectMail (still documented for compat).\n- GetEnvServer() explained — was used in StartJob example but not\n  documented. Returns ENVIRONMENT= from [GENERAL] section.\n- MsgRun added to forbidden functions (modal progress dialog).\n- New anti-pattern: license consumption mistake (RpcSetType(1)\n  in mass JOBs causes LicenseOk() exhaustion for real users).\n- Sleep() recommendation in tight polling loops (avoid 100% CPU).\n- StartJob(.., lWait=.T.) anti-pattern in web request context.\n\nLint references fixed (matching the audit from advpl-code-review skill):\n\n- SEC-004 noted as \"catalogado mas não detectado pelo lint hoje\"\n  (impl SEC-002 is \"User Function sem prefixo\", not hardcoded creds).\n- BP-005 reference removed where it said \"sem Begin Sequence\" (impl\n  BP-005 is \"função com >6 parâmetros\"; the actual rule for missing\n  Begin Sequence is BP-005 in catalog only).\n- MOD-001 (ConOut → FwLogMsg) cited correctly to drive choice toward\n  FwLogMsg over ConOut in JOB logging.\n\nCross-pollination:\n\n- Cross-link to advpl-webservice clarifying RpcSetEnv prohibition in\n  REST (SEC-001 impl) but mandatory in JOB.\n- Cross-link to advpl-web showing RpcSetEnv is OK in Webex (different\n  threading model than REST 2.0).\n\nAI usability:\n\n- Frontmatter description names key functions (RpcSetType(3),\n  RpcSetEnv, FwLogMsg) and forbidden ones (MsgInfo, Pergunte) so\n  Claude routes correctly.\n- Cross-refs via [[name]] to 9 related skills.\n- Sources section with 6 canonical references.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T17:28:41-03:00",
+          "tree_id": "1d9506f58287be60ef64fb4bb33531de3f3d048c",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/cc32f39de2ebbc131ddbd695950a7b30b231cf54"
+        },
+        "date": 1778617751615,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 23.272316636558518,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000657973746061537",
+            "extra": "mean: 42.96950817646999 msec\nrounds: 17"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 73.88735042478335,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0003184025710501259",
+            "extra": "mean: 13.534116384617025 msec\nrounds: 13"
           }
         ]
       }
