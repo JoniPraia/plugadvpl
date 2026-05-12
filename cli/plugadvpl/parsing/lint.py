@@ -899,36 +899,39 @@ def _check_sx004_pergunta_unused_in_fontes(conn: sqlite3.Connection) -> list[dic
 
 
 def _check_sx005_campo_usado_zero_refs(conn: sqlite3.Connection) -> list[dict[str, Any]]:
-    """SX-005 (info): campo SX3 com ``X3_USADO`` mas zero referências em fontes/SX/SX7."""
+    """SX-005 (info): campo SX3 com ``X3_USADO`` mas zero referências em fontes/SX/SX7.
+
+    Anterior fazia 1+N*2 queries com ``LIKE '%campo%'`` (full-table scan a cada campo).
+    Agora: 3 queries totais — pré-agrega o corpo onde um campo pode aparecer
+    (fonte_chunks.content + campos.validacao + gatilhos.regra) em strings na memória
+    e checa substring em Python. Heurística idêntica, ~100-1000× mais rápida em DBs
+    grandes (typical Protheus: ~2k fontes × dezenas de KB cada).
+    """
     findings: list[dict[str, Any]] = []
-    # Heurística simplificada: campos custom que não aparecem em fonte_chunks.content.
-    # Limitamos a custom (não vamos lintar 80k campos padrão).
-    rows = conn.execute(
-        """
-        SELECT tabela, campo
-        FROM campos
-        WHERE custom = 1
-        LIMIT 500
-        """
+    custom_rows = conn.execute(
+        "SELECT tabela, campo FROM campos WHERE custom = 1 LIMIT 500"
     ).fetchall()
-    for tabela, campo in rows:
-        used = conn.execute(
-            "SELECT 1 FROM fonte_chunks WHERE upper(content) LIKE '%' || ? || '%' LIMIT 1",
-            (campo.upper(),),
-        ).fetchone()
-        if used is not None:
+    if not custom_rows:
+        return findings
+
+    fonte_corpus = "\n".join(
+        (r[0] or "").upper()
+        for r in conn.execute("SELECT content FROM fonte_chunks")
+    )
+    sx_validacoes = "\n".join(
+        (r[0] or "").upper()
+        for r in conn.execute("SELECT validacao FROM campos WHERE validacao != ''")
+    )
+    sx_gatilhos = "\n".join(
+        (r[0] or "").upper()
+        for r in conn.execute("SELECT regra FROM gatilhos WHERE regra != ''")
+    )
+
+    for tabela, campo in custom_rows:
+        c = (campo or "").upper()
+        if not c:
             continue
-        # Verifica também se está em alguma validacao SX3 ou regra SX7.
-        in_sx = conn.execute(
-            """
-            SELECT 1 FROM campos WHERE upper(validacao) LIKE '%' || ? || '%' LIMIT 1
-            UNION ALL
-            SELECT 1 FROM gatilhos WHERE upper(regra) LIKE '%' || ? || '%' LIMIT 1
-            LIMIT 1
-            """,
-            (campo.upper(), campo.upper()),
-        ).fetchone()
-        if in_sx is not None:
+        if c in fonte_corpus or c in sx_validacoes or c in sx_gatilhos:
             continue
         findings.append(
             {

@@ -271,6 +271,39 @@ class TestLintCrossFile:
         assert "SX-006" in regras
         assert "SX-010" in regras
 
+    def test_sx005_detects_unused_custom_field(
+        self, indexed_with_sx: Path, runner: CliRunner
+    ) -> None:
+        """SX-005: campo custom sem referência em fonte/validacao/regra deve disparar.
+
+        Fixture tem A1_XCUSTOM, A1_XOBRIG, C5_XCONS como custom (X3_PROPRI='U').
+        Nenhum aparece no MGFTEST.prw (que só usa A1_COD, A1_NREDUZ, MV_*, MGFREL01),
+        nem como substring em outras .validacao ou gatilhos.regra.
+
+        Regressão pro refactor do N+1 — protege o comportamento atual.
+        """
+        result = runner.invoke(
+            app,
+            [
+                "--root", str(indexed_with_sx),
+                "--format", "json",
+                "lint", "--cross-file", "--regra", "SX-005",
+            ],
+        )
+        assert result.exit_code == 0, result.stderr
+        payload = json.loads(result.stdout)
+        sx005 = [r for r in payload["rows"] if r["regra_id"] == "SX-005"]
+        assert len(sx005) >= 1, "SX-005 deveria disparar para custom fields sem refs"
+        # Todos os findings devem vir de campos custom da fixture, prefixados por SX:<tabela>.
+        for row in sx005:
+            assert row["arquivo"].startswith("SX:")
+            assert row["severidade"] == "warning"
+        funcoes = {r["funcao"] for r in sx005}
+        # Pelo menos um dos custom fields esperados precisa estar lá.
+        assert funcoes & {"A1_XCUSTOM", "A1_XOBRIG", "C5_XCONS"}, (
+            f"Esperava algum custom field sem refs, encontrou: {funcoes}"
+        )
+
     def test_lint_cross_file_idempotent(
         self, indexed_with_sx: Path, runner: CliRunner
     ) -> None:
