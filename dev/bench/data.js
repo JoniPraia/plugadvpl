@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778594379359,
+  "lastUpdate": 1778594608612,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -565,6 +565,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0006897417933105636",
             "extra": "mean: 15.031007769229413 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "5b04b6d3e9d1bde64b9a8e82fd8a3e34d725dd1a",
+          "message": "release: v0.3.1\n\nPolish release fechando os gaps descobertos pós-v0.3.0.\n\nFixed:\n- install.ps1 — compat real com Windows PowerShell 5.1 (TLS 1.2,\n  encoding UTF-8 BOM + glifos ASCII, sem 2>&1 em exe nativo).\n- lint SX-005 — silenciosamente quebrado desde v0.3.0 (LIMIT em\n  cada perna de UNION ALL era erro de sintaxe SQLite, swallowed\n  por except OperationalError em lint_cross_file). De brinde,\n  N+1 query (1+N*2 LIKE scans) virou 3 queries agregadas com\n  substring em memória.\n\nAdded:\n- 4 slash commands faltantes do v0.3.0 expostos como skills\n  (ingest-sx, impacto, gatilho, sx-status). Os comandos CLI já\n  existiam, mas o plugin não publicava wrappers — só funcionavam\n  via CLI direta. README anunciava como /plugadvpl:* desde\n  v0.3.0.\n\nChanged:\n- Bump uvx plugadvpl@0.1.0 → @0.3.0 em todos os 14 skills antigos,\n  4 agents e hook session-start.mjs. Como migration 002 introduziu\n  schema v2, qualquer slash command pinado em v0.1.0 contra índice\n  atual falharia.\n- README + CHANGELOG sincronizados com estado real do plugin\n  (35 skills, 16 knowledge + 18 CLI wrappers + 1 setup helper).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T11:02:49-03:00",
+          "tree_id": "f72e3b6c204f832c9e66d15a7467e285e8eb5b47",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/5b04b6d3e9d1bde64b9a8e82fd8a3e34d725dd1a"
+        },
+        "date": 1778594607903,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 22.967707843212974,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000731052048215124",
+            "extra": "mean: 43.53939047058642 msec\nrounds: 17"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 66.90792428944104,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00048700846562242016",
+            "extra": "mean: 14.945912769226547 msec\nrounds: 13"
           }
         ]
       }
