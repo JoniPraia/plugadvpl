@@ -4,6 +4,21 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+### Fixed
+- **`install.ps1`** — compatibilidade real com Windows PowerShell 5.1.
+  Três problemas atacados de uma vez: TLS default (1.0/1.1) que quebrava
+  `irm https://astral.sh/uv/install.ps1`, glifos UTF-8 (`✓`/`✗`/`⚠`) que
+  o parser PS 5.1 lia como cp1252 e travavam com `unexpected token`, e
+  `2>&1` em executáveis nativos que disparavam `NativeCommandError` com
+  `$ErrorActionPreference='Stop'`. PS 7+ continua funcionando sem mudança.
+- **Lint cross-file `SX-005`** — estava silenciosamente quebrado desde
+  v0.3.0. O segundo probe usava `LIMIT 1` dentro de cada perna de um
+  `UNION ALL` (sintaxe inválida em SQLite), e o erro era engolido pelo
+  `try/except sqlite3.OperationalError` em `lint_cross_file`. Nenhum
+  finding SX-005 foi emitido em produção até este fix. De brinde, o
+  N+1 query (1+N*2 LIKE scans) virou 3 queries agregadas com substring
+  em memória — ~37 ms para 500 campos × 2.000 fontes em bench sintético.
+
 ## [0.3.0] - 2026-05-11
 
 ### Added — Universo 2: Dicionário SX

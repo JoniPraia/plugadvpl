@@ -176,7 +176,7 @@ Reference completa: [docs/cli-reference.md](docs/cli-reference.md).
 
 ## Skills incluídas
 
-Além dos 14 command wrappers, o plugin traz **10 knowledge skills** carregadas pelo Claude conforme contexto:
+Além dos 14 command wrappers (mais o helper `setup`), o plugin traz **16 knowledge skills** carregadas pelo Claude conforme contexto:
 
 | Skill | Quando carrega |
 |---|---|
@@ -184,12 +184,18 @@ Além dos 14 command wrappers, o plugin traz **10 knowledge skills** carregadas 
 | `advpl-fundamentals` | Notação húngara, naming, prefixos de módulo, 195 funções restritas |
 | `advpl-encoding` | cp1252 (.prw) vs utf-8 (.tlpp) — preserve-by-default |
 | `advpl-mvc` | MenuDef/ModelDef/ViewDef, hooks bCommit/bTudoOk, FWFormStruct |
+| `advpl-mvc-avancado` | Eventos MVC, validações cruzadas, FWMVCRotAuto |
+| `advpl-tlpp` | TLPP moderno — OO, namespaces, annotations |
 | `advpl-embedded-sql` | BeginSql/EndSql, TCQuery, `%xfilial%`, `%notDel%`, `%table%` |
 | `advpl-pontos-entrada` | User Function NOME(PARAMIXB), retorno via PARAMIXB[última] |
 | `advpl-webservice` | REST (`WSRESTFUL`, `@Get/@Post`) e SOAP (`WSSERVICE`/`WSMETHOD`) |
+| `advpl-web` | Interfaces web — Webex / HTML / WebExpress |
 | `advpl-jobs-rpc` | `RpcSetEnv`, `StartJob`, `MsRunInThread`, funções proibidas em job |
 | `advpl-matxfis` | Família fiscal (NF-e, SPED, ECF, REINF, integração SF2/SD2/SF3) |
-| `advpl-code-review` | 24 regras BP/SEC/PERF/MOD (13 detectadas em v0.1 single-file) |
+| `advpl-advanced` | Threads, IPC, debug, OO em profundidade |
+| `advpl-dicionario-sx` | Estrutura SX1/SX2/SX3/SX5/SX6/SX7/SIX/SXA/SXB (v0.2.0) |
+| `advpl-dicionario-sx-validacoes` | Expressões ADVPL embutidas em X3_VALID/INIT/WHEN/VLDUSER, X7_REGRA, X1_VALID, X6_VALID/INIT — guia pra análise de impacto (v0.3.0) |
+| `advpl-code-review` | 24 regras BP/SEC/PERF/MOD — 13 single-file (v0.1) + 11 cross-file `SX-001..SX-011` (v0.3.0) |
 
 Também incluídos: **4 agents** especializados (`advpl-analyzer`, `advpl-impact-analyzer`, `advpl-code-generator`, `advpl-reviewer-bot`) e **1 SessionStart hook** Node.js que faz onboarding cross-platform do `.plugadvpl/`.
 
@@ -232,10 +238,12 @@ Quando você pergunta algo ao Claude sobre o projeto, o slash command roda uma q
 
 **Roadmap.**
 
-- **v0.2** — Universo 2 (Dicionário SX): SX1/SX2/SX3/SX5/SX6/SX7 ingestos do RPO, queries de campos, integridade referencial
-- **v0.3** — Universo 3 (Rastreabilidade): relação PE × ponto de origem, MVC × tabela × campo, cross-cliente diff
+- **v0.1** *(shipped)* — Universo 1: parser de fontes, FTS5, 13 regras lint single-file, 14 subcomandos CLI.
+- **v0.2** *(shipped)* — 21k linhas de referência ADVPL/TLPP embutidas em 5 skills novas + 6 reforçadas.
+- **v0.3** *(shipped)* — Universo 2 (Dicionário SX): ingest SX1..SXG, comandos `impacto`/`gatilho`/`sx-status`, 11 regras cross-file SX-001..SX-011.
+- **v0.4** *(próximo)* — Universo 3 (Rastreabilidade): grafo PE × ponto de origem, MVC × tabela × campo, detecção de código morto, cross-cliente diff.
 
-Detalhes em `docs/superpowers/specs/2026-05-11-plugadvpl-design.md` (§15 — Roadmap).
+Detalhes em [docs/ROADMAP.md](docs/ROADMAP.md) e no spec `docs/superpowers/specs/2026-05-11-plugadvpl-design.md` (§15).
 
 ---
 
