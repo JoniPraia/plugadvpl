@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778617882008,
+  "lastUpdate": 1778617955109,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -1033,6 +1033,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0003219702106978718",
             "extra": "mean: 14.546770769230696 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "435de2e4fc8d280a6cd9c73481a8c933dd7e9308",
+          "message": "docs(skill): advpl-dicionario-sx-validacoes — add cross-refs and consolidated anti-patterns section\n\nSkill was already excellent (created with v0.3.0). Targeted additions:\n\n- \"Anti-padrões consolidados (cross-cutting)\" section — single list\n  collapsing the anti-patterns that were scattered across X3_VALID,\n  X7_REGRA, X3_INIT subsections. Each labeled with the SX-XXX lint\n  rule that detects it. Also adds ciclo de gatilhos and cliente\n  altering padrão TOTVS (use VLDUSER separate).\n\n- \"Quando usar\" extended with lint cross-file trigger.\n\n- Cross-refs via [[name]] to 9 related skills (advpl-dicionario-sx\n  irmã, code-review, fundamentals, embedded-sql, mvc, mvc-avancado,\n  pontos-entrada, debugging, plugadvpl-index-usage).\n\n- Sources section with 5 canonical references (TDN dicionário,\n  TOTVS Central X3_VALID, siga0984 SX7, Terminal de Informação\n  SX1/Validações).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T17:32:04-03:00",
+          "tree_id": "155f03ca8eafe716fe8fa68cc0bd08e2efbee115",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/435de2e4fc8d280a6cd9c73481a8c933dd7e9308"
+        },
+        "date": 1778617954437,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 9.658293969963557,
+            "unit": "iter/sec",
+            "range": "stddev: 0.14802960301130322",
+            "extra": "mean: 103.53795433333379 msec\nrounds: 21"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 74.58044138763233,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00042967202175318067",
+            "extra": "mean: 13.408341133334053 msec\nrounds: 15"
           }
         ]
       }
