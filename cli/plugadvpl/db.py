@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pathlib import Path
 
-SCHEMA_VERSION = "2"
+SCHEMA_VERSION = "3"
 
 
 # Mapeamento {filename JSON -> (tabela, colunas em ordem)}.
@@ -34,7 +34,7 @@ _LOOKUP_FILES: dict[str, tuple[str, list[str]]] = {
         "lint_rules",
         [
             "regra_id", "titulo", "severidade", "categoria", "descricao",
-            "fix_guidance", "detection_kind",
+            "fix_guidance", "detection_kind", "status", "impl_function",
         ],
     ),
     "sql_macros.json": (

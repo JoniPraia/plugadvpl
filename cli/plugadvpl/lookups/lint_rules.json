@@ -1,317 +1,376 @@
 [
   {
     "regra_id": "BP-001",
-    "titulo": "RecLock without corresponding MsUnlock",
+    "titulo": "RecLock sem MsUnlock pareado no mesmo escopo de função",
     "severidade": "critical",
     "categoria": "best-practice",
-    "descricao": "Every `RecLock` call must have a corresponding `MsUnlock` call. Forgetting to unlock a record keeps it locked, blocking other users and threads from accessing it, potentially causing deadlocks and data access failures.",
-    "fix_guidance": "A `RecLock` call that is not followed by `MsUnlock` within the same logical block. Check that all code paths (including error branches) release the lock.",
-    "detection_kind": "regex"
+    "descricao": "Toda chamada `RecLock` deve ter um `MsUnlock` correspondente no mesmo escopo lógico. Esquecer o unlock mantém o registro travado até a sessão morrer, bloqueando outros usuários e gerando deadlocks. A regra detecta `RecLock` cuja contrapartida `MsUnlock` não aparece no mesmo bloco/função (incluindo branches de erro).",
+    "fix_guidance": "Pareie `RecLock` com `MsUnlock` em todos os caminhos (sucesso e erro). Em fluxos com risco, use `Begin Transaction`/`End Transaction` (rollback automático faz unlock).",
+    "detection_kind": "regex",
+    "status": "active",
+    "impl_function": "_check_bp001_reclock_unbalanced"
   },
   {
     "regra_id": "BP-002",
-    "titulo": "Local variables declared outside the function header",
-    "severidade": "error",
+    "titulo": "BEGIN TRANSACTION sem END TRANSACTION pareado dentro do mesmo escopo",
+    "severidade": "critical",
     "categoria": "best-practice",
-    "descricao": "In ADVPL/TLPP, ALL `Local` variable declarations MUST appear at the top of the function, immediately after the function signature and before any executable code. Declaring `Local` inside `If`, `While`, `For` blocks, or after any executable statement is a violation that can cause compilation errors or unpredictable behavior.",
-    "fix_guidance": "`Local` keyword appearing after any executable statement (DbSelectArea, If, While, RecLock, assignments, function calls, etc.).",
-    "detection_kind": "regex"
+    "descricao": "Conta opens vs closes de `BEGIN TRANSACTION` por função; se opens > closes, reporta os opens extras. Sem `End Transaction`, em caso de exceção fica estado inconsistente (master sem detail, etc.); atomicidade quebrada.",
+    "fix_guidance": "Pareie `Begin Transaction` com `End Transaction`. Use `DisarmTransaction()` antes do `Break` em `Recover`. NUNCA misture funções de manutenção AdvPL básicas com Framework dentro do mesmo bloco.",
+    "detection_kind": "regex",
+    "status": "active",
+    "impl_function": "_check_bp002_transaction_unbalanced"
   },
   {
     "regra_id": "BP-002b",
-    "titulo": "Variables declared as Private or Public instead of Local",
+    "titulo": "Variáveis declaradas como Private ou Public em vez de Local",
     "severidade": "warning",
     "categoria": "best-practice",
-    "descricao": "Variables should be declared as `Local` unless there is a specific need for broader scope. `Private` and `Public` variables pollute the call stack and can be accidentally overwritten by called functions.",
-    "fix_guidance": "`Private` or `Public` variable declarations where `Local` would suffice. Legitimate uses of `Private` include passing variables to MVC models or legacy framework functions that expect them.",
-    "detection_kind": "regex"
+    "descricao": "Variáveis devem ser declaradas como `Local` exceto quando há necessidade explícita de escopo mais amplo. `Private` e `Public` poluem a call stack e podem ser sobrescritas acidentalmente por funções chamadas.",
+    "fix_guidance": "Substitua `Private`/`Public` por `Local` quando possível. Usos legítimos de `Private`: passar variáveis para models MVC ou frameworks legados que esperam por elas (`MV_PAR*`).",
+    "detection_kind": "regex",
+    "status": "planned"
   },
   {
     "regra_id": "BP-003",
-    "titulo": "Missing GetArea/RestArea in functions that use DbSelectArea/DbSetOrder/DbSeek",
-    "severidade": "warning",
+    "titulo": "MsExecAuto sem checar lMsErroAuto nas linhas seguintes",
+    "severidade": "error",
     "categoria": "best-practice",
-    "descricao": "Functions that change the current WorkArea (via `DbSelectArea`, `DbSetOrder`, `DbSeek`, etc.) must save and restore the caller's WorkArea state using `GetArea()` and `RestArea()`. Otherwise, the calling function's WorkArea context is silently altered.",
-    "fix_guidance": "Any function that calls `DbSelectArea`, `DbSetOrder`, `DbSeek`, or `DbGoTo` without first calling `GetArea()` on the affected alias and calling `RestArea()` before returning.",
-    "detection_kind": "regex"
+    "descricao": "Após chamar `MsExecAuto`, é obrigatório checar `lMsErroAuto` nas próximas N linhas. Sem isso, erro silencioso: rotina executou com falha, fluxo segue como se OK. Bug em massa em ETLs e jobs de inclusão automática.",
+    "fix_guidance": "Declare `Private lMsErroAuto := .F.` antes da chamada. Logo após `MsExecAuto(...)`, faça `If lMsErroAuto; MostraErro() ...; Return .F.; EndIf` ou capture via `GetAutoGRLog()`.",
+    "detection_kind": "regex",
+    "status": "active",
+    "impl_function": "_check_bp003_msexecauto_no_check"
   },
   {
     "regra_id": "BP-004",
-    "titulo": "#Include \"Protheus.ch\" instead of #Include \"TOTVS.CH\"",
+    "titulo": "Pergunte(...) sem uso subsequente de MV_PAR*",
     "severidade": "warning",
     "categoria": "best-practice",
-    "descricao": "The include `Protheus.ch` is obsolete. All `.prw` files should use `#Include \"TOTVS.CH\"` which is the current standard and includes all necessary definitions.",
-    "fix_guidance": "Any line containing `#Include \"Protheus.ch\"` (case-insensitive).",
-    "detection_kind": "regex"
+    "descricao": "Detecta `Pergunte(\"GRUPO\", .F./.T.)` sem nenhum uso de `MV_PAR01..MV_PARxx` nas linhas seguintes. Sintoma: chamou Pergunte mas não usou as respostas, ou usou as antigas em memória. Frequentemente é cópia-cola esquecida.",
+    "fix_guidance": "Use `MV_PAR01..MV_PARxx` após o `Pergunte`, OU remova a chamada se não for necessária. Para fluxos novos, prefira `ParamBox()` (Code Analysis aprova; SX1 está deprecated). Em Pergunte aninhado, salve/restaure o estado das MV_PAR.",
+    "detection_kind": "regex",
+    "status": "active",
+    "impl_function": "_check_bp004_pergunte_no_check"
   },
   {
     "regra_id": "BP-005",
-    "titulo": "Missing Begin Sequence/Recover/End Sequence around critical operations",
+    "titulo": "Função declarada com mais de 6 parâmetros",
     "severidade": "warning",
     "categoria": "best-practice",
-    "descricao": "Critical operations such as `RecLock`, database writes, external API calls, and file operations should be wrapped in `Begin Sequence`/`Recover`/`End Sequence` blocks to handle errors gracefully instead of crashing.",
-    "fix_guidance": "`RecLock`, `MsExecAuto`, `HttpGet`, `HttpPost`, `FT_FUse`, or web service calls that are not inside a `Begin Sequence` block.",
-    "detection_kind": "regex"
+    "descricao": "Code smell universal: funções com mais de 6 parâmetros indicam acoplamento excessivo, dificultam testes e são propensas a bug por ordem de args trocada.",
+    "fix_guidance": "Refatore: agrupe params relacionados em objeto/array, divida em funções menores com responsabilidades específicas, ou use named params via JSON.",
+    "detection_kind": "regex",
+    "status": "active",
+    "impl_function": "_check_bp005_too_many_params"
   },
   {
     "regra_id": "BP-006",
-    "titulo": "Variable names not following Hungarian notation",
-    "severidade": "info",
+    "titulo": "Mistura RecLock + dbAppend()/DbRLock raw na mesma função",
+    "severidade": "error",
     "categoria": "best-practice",
-    "descricao": "ADVPL convention uses Hungarian notation with a type prefix followed by PascalCase: `c` for character, `n` for numeric, `l` for logical, `d` for date, `a` for array, `o` for object, `b` for code block, `x` for variant/indefinite.",
-    "fix_guidance": "Variable declarations where the name does not start with a recognized type prefix (`c`, `n`, `l`, `d`, `a`, `o`, `b`, `x`) or does not follow PascalCase after the prefix.",
-    "detection_kind": "regex"
+    "descricao": "TOTVS proíbe: APIs básicas de manutenção (`dbAppend`, `dbDelete`, `dbRecall`) NÃO podem ser misturadas com Framework (`RecLock`, `MsUnlock`) — semântica de lock conflita, integridade transacional quebra.",
+    "fix_guidance": "Use APENAS Framework (RecLock+MsUnlock) dentro de fluxo ERP Protheus. APIs raw (dbAppend etc.) só fora de ambiente Protheus (utilitários offline, scripts de migração).",
+    "detection_kind": "regex",
+    "status": "active",
+    "impl_function": "_check_bp006_mixed_reclock_rawapi"
   },
   {
     "regra_id": "BP-007",
-    "titulo": "Functions missing Protheus.doc documentation header",
+    "titulo": "Função sem header Protheus.doc",
     "severidade": "info",
     "categoria": "best-practice",
-    "descricao": "Every `User Function`, `Static Function`, and `Main Function` should have a `Protheus.doc` documentation header describing the function's purpose, author, date, parameters, and return value.",
-    "fix_guidance": "Function definitions without a preceding `Protheus.doc` comment block.",
-    "detection_kind": "regex"
+    "descricao": "Funções (User Function, Static Function, Method) deveriam ter header Protheus.doc com `@type`, `@author`, `@since`, `@param`, `@return`. Falta de doc dificulta manutenção e impede geração automática de documentação.",
+    "fix_guidance": "Adicione bloco `/*/{Protheus.doc} <NOME>` ... `/*/` antes da função, com pelo menos `@type function`, `@author`, `@since`.",
+    "detection_kind": "regex",
+    "status": "planned"
   },
   {
     "regra_id": "BP-008",
-    "titulo": "Using reserved system variables as Local/Static variable names",
+    "titulo": "Shadowing de variável reservada (cFilAnt, cEmpAnt, PARAMIXB, etc.)",
     "severidade": "critical",
     "categoria": "best-practice",
-    "descricao": "The Protheus framework maintains several `Private` variables to track the current company, branch, and environment context. Declaring a `Local` variable with the same name shadows the system variable, causing loss of context, incorrect data filtering, and hard-to-reproduce bugs in multi-branch/multi-company environments.",
-    "fix_guidance": "",
-    "detection_kind": "regex"
+    "descricao": "Declarar variável Local/Static/Private com nome de Public reservada do framework (`cFilAnt`, `cEmpAnt`, `cUserName`, `PARAMIXB`, `aRotina`, `lMsErroAuto`, `__cInternet`, `nUsado`, etc.) faz shadowing — sua função enxerga `\"\"`/`Nil` em vez do valor real do framework.",
+    "fix_guidance": "Renomeie a variável local pra algo distinto (prefixo cliente). NUNCA crie Local/Private/Public com o mesmo nome de uma reservada framework.",
+    "detection_kind": "regex",
+    "status": "planned"
   },
   {
     "regra_id": "SEC-001",
-    "titulo": "SQL built by string concatenation without %exp: macro (SQL injection risk)",
+    "titulo": "RpcSetEnv dentro de classe que herda de WSRESTFUL",
     "severidade": "critical",
     "categoria": "security",
-    "descricao": "Building SQL queries by concatenating user-supplied or external variables directly into the query string allows SQL injection attacks. Attackers can manipulate input to execute arbitrary SQL commands, potentially reading, modifying, or deleting data.",
-    "fix_guidance": "`TCQuery` or string-based SQL construction where variables are concatenated with `+` instead of using BeginSQL with `%exp:variable%` macro substitution.",
-    "detection_kind": "regex"
+    "descricao": "Em REST, o framework já entrega o ambiente Protheus via autenticação HTTP + `PrepareIn` configurado no AppServer.ini. `RpcSetEnv` em endpoint REST bypassa o controle de empresa/filial via TenantId, vaza credenciais hardcoded e mata auditoria — não há rastro de quem realmente fez a operação.",
+    "fix_guidance": "Remova `RpcSetEnv`/`RpcClearEnv` do endpoint REST. Configure `PrepareIn=99,01` + `Security=1` no `[HTTPURI]` do appserver.ini. Cliente passa empresa/filial no header `TenantId`. Veja `[[advpl-webservice]]`.",
+    "detection_kind": "regex",
+    "status": "active",
+    "impl_function": "_check_sec001_rpcsetenv_in_restful"
   },
   {
     "regra_id": "SEC-002",
-    "titulo": "REST endpoint using SELF:GetContent() without input validation",
-    "severidade": "critical",
+    "titulo": "User Function sem prefixo cliente (2-3 letras) ou padrão PE oficial",
+    "severidade": "warning",
     "categoria": "security",
-    "descricao": "REST API endpoints that read request body content via `SELF:GetContent()` (or `oRest:GetBody()`) and use the data directly without validation expose the system to injection attacks, type errors, and business logic bypass.",
-    "fix_guidance": "`SELF:GetContent()`, `oRest:GetBody()`, or similar request body reading methods where the returned content is used directly in SQL queries, database operations, or business logic without validation or sanitization.",
-    "detection_kind": "regex"
+    "descricao": "User Functions devem começar com prefixo institucional (ex: `XYZNomeFn`) para evitar colisão com customizações de outros parceiros instaladas no mesmo RPO. Exceção: nomes de PE oficiais TOTVS (`MT100LOK`, `MA440PGN`, etc.) seguem padrão fixado pela TOTVS.",
+    "fix_guidance": "Adicione prefixo de 2-3 letras do cliente (`XYZ`, `MGF`, etc.) ao nome. Para PEs, mantenha o nome fixo TOTVS — exceção justificada.",
+    "detection_kind": "regex",
+    "status": "active",
+    "impl_function": "_check_sec002_user_function_no_prefix"
   },
   {
     "regra_id": "SEC-003",
-    "titulo": "Sensitive data in ConOut/FWLogMsg output",
+    "titulo": "Dados sensíveis (PII/credenciais) em ConOut ou FwLogMsg",
     "severidade": "warning",
     "categoria": "security",
-    "descricao": "Logging sensitive information such as passwords, API tokens, CPF/CNPJ numbers, credit card numbers, or personal data in `ConOut` or `FWLogMsg` exposes it to anyone with access to the AppServer console or log files.",
-    "fix_guidance": "`ConOut` or `FWLogMsg` calls that output variables containing passwords, tokens, credentials, CPF, CNPJ, or any personally identifiable information (PII).",
-    "detection_kind": "regex"
+    "descricao": "Logs com CPF/CNPJ/senha/token vão pro `console.log` do AppServer e ficam visíveis a qualquer um com acesso ao servidor. Vazamento de PII viola LGPD.",
+    "fix_guidance": "Mascarar dados sensíveis antes de logar (`***.***.***-XX` para CPF). NUNCA logue senha, token, ou body REST cru com PII. Use `FwLogMsg` com category específica que possa ser desabilitada em produção.",
+    "detection_kind": "regex",
+    "status": "planned"
   },
   {
     "regra_id": "SEC-004",
-    "titulo": "Hardcoded credentials in source code",
+    "titulo": "Credenciais hardcoded em código fonte",
     "severidade": "warning",
     "categoria": "security",
-    "descricao": "Passwords, API keys, database connection strings, and other credentials must never be hardcoded in source code. Source code is stored in version control, compiled into RPO, and accessible to all developers, making hardcoded secrets a significant security risk.",
-    "fix_guidance": "String literals that appear to be passwords, API keys, bearer tokens, connection strings, or authentication secrets assigned to variables or used directly in function calls.",
-    "detection_kind": "regex"
+    "descricao": "Senhas, tokens, connection strings hardcoded no .prw são vazadas ao versionamento git, expostas a qualquer dev com acesso ao repo. Particularmente crítico em Jobs (`RpcSetEnv(\"01\", \"0101\", \"admin\", \"totvs\")`).",
+    "fix_guidance": "Mova credenciais para `MV_*` em SX6 (encrypted via `EncryptPwd`), variável de ambiente, ou cofre dedicado. Em JOB, leia via `SuperGetMV(\"MV_XYZUSR\")` em runtime.",
+    "detection_kind": "regex",
+    "status": "planned"
   },
   {
     "regra_id": "SEC-005",
-    "titulo": "Usage of TOTVS restricted/internal functions, classes, or variables",
+    "titulo": "Uso de função TOTVS restrita/interna (lookup funcoes_restritas)",
     "severidade": "critical",
     "categoria": "security",
-    "descricao": "TOTVS maintains a list of functions, classes, and variables that are internal property. These resources are NOT documented, NOT supported, and may be altered or removed without notice. Some have their compilation blocked since release 12.1.33. Using them in custom code causes compilation failures, runtime errors, or unpredictable behavior after updates.",
-    "fix_guidance": "Any call to functions or classes listed in the TOTVS restricted resources list. See `restricted-functions.md` in the protheus-reference skill for the complete list.",
-    "detection_kind": "regex"
+    "descricao": "TOTVS mantém ~195 funções/classes/variáveis internas que NÃO devem ser usadas em customização: não documentadas, não suportadas, podem ser removidas/alteradas sem aviso. Algumas têm compilação bloqueada desde 12.1.33.",
+    "fix_guidance": "Substitua por equivalente público documentado em TDN. Consulte tabela `funcoes_restritas` (cataloga as 195 conhecidas). Use `/plugadvpl:find function <nome>` para checar se uma função é restrita.",
+    "detection_kind": "lookup",
+    "status": "planned"
   },
   {
     "regra_id": "PERF-001",
-    "titulo": "SELECT * in Embedded SQL",
-    "severidade": "critical",
+    "titulo": "SELECT * em BeginSql ou TCQuery",
+    "severidade": "warning",
     "categoria": "performance",
-    "descricao": "Using `SELECT *` in Embedded SQL or TCQuery fetches all columns from the table, including large memo fields and unused columns. This wastes memory, increases network traffic, and slows down query execution.",
-    "fix_guidance": "`SELECT *` or `SELECT ALIAS.*` inside `BeginSQL`/`EndSQL` blocks or in `TCQuery` strings.",
-    "detection_kind": "regex"
+    "descricao": "`SELECT *` traz todas as colunas mesmo quando você precisa de 3 — desperdiça banda BD↔AppServer, força full row scan em alguns planos do otimizador. Bug colateral: em `BeginSql`, `*` como primeiro caractere de linha é interpretado como comentário pelo pré-processador.",
+    "fix_guidance": "Liste explicitamente as colunas necessárias: `SELECT F2_DOC, F2_SERIE, F2_EMISSAO FROM ...`. Combine com `TCSetField` para tipagem pós-query.",
+    "detection_kind": "regex",
+    "status": "active",
+    "impl_function": "_check_perf001_select_star"
   },
   {
     "regra_id": "PERF-002",
-    "titulo": "DbSeek inside loop when a single query could replace it",
-    "severidade": "warning",
+    "titulo": "SQL contra tabela Protheus sem %notDel% (registros deletados aparecem)",
+    "severidade": "error",
     "categoria": "performance",
-    "descricao": "Performing `DbSeek` inside a loop (While, For) to look up data for each iteration causes N individual index lookups. A single SQL query with a JOIN or IN clause is significantly faster.",
-    "fix_guidance": "`DbSeek` calls inside `While`/`EndDo`, `For`/`Next`, or similar loop constructs, especially when looking up supplementary data for records being processed.",
-    "detection_kind": "regex"
+    "descricao": "Protheus usa soft-delete via coluna `D_E_L_E_T_`. Query sem filtro `%notDel%` traz registros logicamente apagados, gerando bug em totais, contagens e listagens. Em `BeginSql`, a macro expande para `<alias>.D_E_L_E_T_ = ' '` em runtime.",
+    "fix_guidance": "Adicione `<alias>.%notDel%` no `WHERE` para CADA tabela ADVPL no `FROM`/`JOIN`. Ex: `AND SA1.%notDel%` + `AND SD1.%notDel%`.",
+    "detection_kind": "regex",
+    "status": "active",
+    "impl_function": "_check_perf002_no_notdel"
   },
   {
     "regra_id": "PERF-003",
-    "titulo": "Missing TCSetField for column typing after query execution",
-    "severidade": "warning",
+    "titulo": "SQL contra tabela Protheus sem %xfilial% (cross-filial data leak)",
+    "severidade": "error",
     "categoria": "performance",
-    "descricao": "After executing a query via `TCQuery` or `BeginSQL`, date and numeric columns are returned as character strings by default. Without `TCSetField` to define column types, every comparison or arithmetic operation requires manual type conversion, which is slower and error-prone.",
-    "fix_guidance": "`TCQuery` or `BeginSQL` usage without subsequent `TCSetField` calls for date or numeric columns that are used in comparisons or calculations.",
-    "detection_kind": "regex"
+    "descricao": "Cross-filial leak: usuário da filial 01 enxerga dados da filial 02 quando query não filtra por filial. Bug grave em ambientes compartilhados (afeta segurança + performance).",
+    "fix_guidance": "Adicione `WHERE <alias>.<TBL>_FILIAL = %xfilial:<TBL>%` para cada tabela filializada. Ex: `WHERE SA1.A1_FILIAL = %xfilial:SA1%`. Tabelas com `X2_MODO='C'` (compartilhada) não precisam — `xFilial` retorna vazio nesses casos.",
+    "detection_kind": "regex",
+    "status": "active",
+    "impl_function": "_check_perf003_no_xfilial"
   },
   {
     "regra_id": "PERF-004",
-    "titulo": "String concatenation inside loop",
+    "titulo": "Concatenação de string com + ou += em loop",
     "severidade": "warning",
     "categoria": "performance",
-    "descricao": "Concatenating strings with `+` or `+=` inside a loop creates a new string object on every iteration. For large loops, this causes excessive memory allocation and garbage collection, severely degrading performance.",
-    "fix_guidance": "String concatenation using `+` or `+=` inside `While`/`EndDo`, `For`/`Next` loops, especially when building large texts, CSV content, or log output.",
-    "detection_kind": "regex"
+    "descricao": "Em ADVPL, string é imutável. Cada `cVar += \"x\"` aloca string nova, copia conteúdo antigo + \"x\", descarta o anterior. 1.000 concatenações = 1.000 alocações, ~500.000 chars copiados. Comportamento O(n²).",
+    "fix_guidance": "Acumule em array e faça `FwArrayJoin()` (R26+) ou `Array2String()` (legacy) no final. Comportamento vira O(n).",
+    "detection_kind": "regex",
+    "status": "planned"
   },
   {
     "regra_id": "PERF-005",
-    "titulo": "RecCount() to check if records exist",
+    "titulo": "RecCount() > 0 para checar existência (use !Eof())",
     "severidade": "warning",
     "categoria": "performance",
-    "descricao": "Using `RecCount()` to check whether a query returned results forces a full table/result scan to count all records. To check for existence, use `!Eof()` after a seek or query, which returns immediately.",
-    "fix_guidance": "`RecCount()` used in conditions like `If RecCount() > 0`, `If RecCount() == 0`, or similar existence checks.",
-    "detection_kind": "regex"
+    "descricao": "`RecCount()` força full scan do alias para contar todos os registros. Para apenas verificar se existe pelo menos 1 registro, `!Eof()` após `DbSeek` ou `DbGoTop` é O(1).",
+    "fix_guidance": "Substitua `If RecCount() > 0` por `If !Eof()` ou `If !<alias>->(Eof())`. Em SQL, use `SELECT COUNT(*) FROM ... LIMIT 1` ou subquery EXISTS.",
+    "detection_kind": "regex",
+    "status": "planned"
   },
   {
     "regra_id": "PERF-006",
-    "titulo": "Query without proper index hint or ORDER BY matching existing index",
+    "titulo": "Query com WHERE/ORDER BY em coluna sem índice (cross-file SIX)",
     "severidade": "info",
     "categoria": "performance",
-    "descricao": "SQL queries that filter or sort by columns not covered by an existing index force full table scans. ORDER BY clauses should match the column order of an existing index for optimal performance.",
-    "fix_guidance": "`WHERE` clauses filtering on columns that are not part of any index, or `ORDER BY` with column order that does not match any available index. Cross-reference with the SIX (index) table definition.",
-    "detection_kind": "regex"
+    "descricao": "WHERE/ORDER BY em coluna fora dos índices SIX da tabela força full table scan. Particularmente caro em tabelas grandes (SF1, SD2, SE1, SF3).",
+    "fix_guidance": "Adicione índice custom no SIX (`INDICE >= 21`) ou refatore query para usar coluna indexada. Use `/plugadvpl:tables <T>` para ver índices existentes.",
+    "detection_kind": "cross-file",
+    "status": "planned"
   },
   {
     "regra_id": "MOD-001",
-    "titulo": ".prw file using class structures that could be migrated to .tlpp",
-    "severidade": "info",
+    "titulo": "ConOut(...) em vez de FwLogMsg(...) (Code Analysis acusa)",
+    "severidade": "warning",
     "categoria": "modernization",
-    "descricao": "Classes defined in `.prw` files using `CLASS ... ENDCLASS` or `CLASS ... FROM` syntax are candidates for migration to `.tlpp`, which offers native OOP support with proper namespaces, annotations, and stronger encapsulation.",
-    "fix_guidance": "`.prw` files containing `CLASS`, `DATA`, `METHOD`, `ENDCLASS` keywords defining object-oriented structures.",
-    "detection_kind": "regex"
+    "descricao": "`ConOut` é flagged no Code Analysis TOTVS — saída sem estrutura, dificulta análise de log centralizado. `FwLogMsg` é estruturado (syslog-style: severity/transactionId/group/category/step/msgId) e pode ir pro servidor de logs centralizado quando habilitado via `FWLOGMSG_DEBUG` no appserver.ini.",
+    "fix_guidance": "Substitua `ConOut(\"INFO: msg\")` por `FwLogMsg(\"INFO\", \"TX-001\", \"MGFFAT\", \"REL\", \"Step1\", \"OK\")`. Para debug rápido em desenvolvimento, ConOut ainda é OK.",
+    "detection_kind": "regex",
+    "status": "active",
+    "impl_function": "_check_mod001_conout_instead_fwlogmsg"
   },
   {
     "regra_id": "MOD-002",
-    "titulo": "using namespace directive instead of .th includes in TLPP files",
-    "severidade": "info",
+    "titulo": "Declaração Public (polui escopo global)",
+    "severidade": "warning",
     "categoria": "modernization",
-    "descricao": "TLPP files should use `.th` include files (`tlpp-core.th`, `tlpp-rest.th`, `tlpp-object.th`, `tlpp-probat.th`) instead of `using namespace` directives. The `.th` includes are the officially supported mechanism and provide all necessary definitions.",
-    "fix_guidance": "`using namespace tlpp.core`, `using namespace tlpp.rest`, `using namespace tlpp.log`, `using namespace tlpp.data`, or any `using namespace tlpp.*` directive in `.tlpp` files.",
-    "detection_kind": "regex"
+    "descricao": "Variáveis Public poluem o escopo global, dificultam debug (qualquer função pode mexer), causam vazamento de estado entre threads. NUNCA declare Public — só TOTVS framework cria (`cFilAnt`, `cEmpAnt`, etc.).",
+    "fix_guidance": "Use `Local` (95% dos casos) ou `Static` (constante por fonte). `Private` só para padrões legados específicos (`MV_PAR*` injetadas por `Pergunte`).",
+    "detection_kind": "regex",
+    "status": "active",
+    "impl_function": "_check_mod002_public_declaration"
   },
   {
     "regra_id": "MOD-003",
-    "titulo": "Procedural functions with object-like patterns that should be class methods",
+    "titulo": "Funções com prefixo comum candidatas a virar classe",
     "severidade": "info",
     "categoria": "modernization",
-    "descricao": "Groups of related functions that share a common prefix and pass context via parameters or private variables are candidates for refactoring into a class. This improves encapsulation, reusability, and testability.",
-    "fix_guidance": "Multiple `User Function` or `Static Function` definitions with a common naming prefix (e.g., `Ped_Create`, `Ped_Validate`, `Ped_Save`, `Ped_Delete`) that operate on the same data set, often passing the same variables between them.",
-    "detection_kind": "regex"
+    "descricao": "Conjuntos de Static Function com mesmo prefixo (`_AppCalc`, `_AppFmt`, `_AppGet`) e operando sobre os mesmos dados são candidatos a refatoração para `Class ... Method`. OOP melhora encapsulamento e testabilidade.",
+    "fix_guidance": "Identifique funções com prefixo comum + dados compartilhados. Refatore para `Class TApp` com `Data` (dados) + `Method` (operações). Em TLPP, use `class` com modificadores `public/private/protected`.",
+    "detection_kind": "cross-file",
+    "status": "planned"
   },
   {
     "regra_id": "MOD-004",
-    "titulo": "Legacy UI patterns that could use FWFormBrowse or MVC",
+    "titulo": "Uso de AxCadastro/Modelo2/Modelo3 em vez de MVC",
     "severidade": "info",
     "categoria": "modernization",
-    "descricao": "Legacy UI functions like `AxCadastro`, `Modelo 2` (`Ax2Model`), and `Modelo 3` (`Ax3Model`) are outdated patterns for building CRUD screens. Modern Protheus development uses `FWFormBrowse` or the MVC framework (`FWMVCModel`, `FWFormView`) for maintainable and standardized interfaces.",
-    "fix_guidance": "Calls to `AxCadastro()`, `AxPesqui()`, `MBrowse()`, `Modelo2()`, `Modelo3()`, or manual `DEFINE MSDIALOG` / `ACTIVATE MSDIALOG` patterns for CRUD operations.",
-    "detection_kind": "regex"
+    "descricao": "`AxCadastro`, `Modelo2`, `Modelo3` são wrappers procedurais legados (R10/R11) que não plugam no framework MVC moderno (eventos, validações cruzadas, FWMVCRotAuto pra testes automatizados). Customizações novas em R12+ devem ser MVC.",
+    "fix_guidance": "Refatore para padrão MVC: `MenuDef()` + `ModelDef()` + `ViewDef()` + `FWMBrowse`. Veja `[[advpl-mvc]]` e `[[advpl-refactoring]]` padrão 4.",
+    "detection_kind": "regex",
+    "status": "planned"
   },
   {
     "regra_id": "SX-001",
-    "titulo": "X3_VALID references unknown user function (U_xxx not indexed)",
+    "titulo": "X3_VALID chama User Function (U_xxx) que não existe nos fontes indexados",
     "severidade": "warning",
     "categoria": "best-practice",
-    "descricao": "Field validation X3_VALID calls a U_xxx function that is not present in any indexed source. Either the source is missing from the project tree or the function name is a typo.",
-    "fix_guidance": "Re-run `plugadvpl ingest` to index missing sources, or correct the typo in X3_VALID.",
-    "detection_kind": "cross_file"
+    "descricao": "Validação SX3 (`X3_VALID = \"U_XYZVALID()\"`) referencia User Function não encontrada nos fontes do projeto. Validação quebrada em runtime — campo aceita qualquer valor.",
+    "fix_guidance": "Crie a User Function referenciada nos fontes ou ajuste o `X3_VALID` para função existente. Requer `/plugadvpl:ingest` (fontes) + `/plugadvpl:ingest-sx` (dicionário) antes.",
+    "detection_kind": "cross-file",
+    "status": "active",
+    "impl_function": "_check_sx001_x3_valid_unknown_func"
   },
   {
     "regra_id": "SX-002",
-    "titulo": "SX7 trigger destination field does not exist in SX3",
+    "titulo": "SX7 X7_CDOMIN aponta pra campo que não existe em SX3 (campos)",
     "severidade": "error",
     "categoria": "best-practice",
-    "descricao": "X7_CDOMIN points to a field that has no entry in SX3. The trigger will silently fail at runtime.",
-    "fix_guidance": "Add the missing field via PutSx3 or correct X7_CDOMIN to an existing field.",
-    "detection_kind": "cross_file"
+    "descricao": "Gatilho SX7 com destino (`X7_CDOMIN`) referenciando campo que não existe na SX3. Em runtime, gatilho dispara erro ou silenciosamente falha sem atualizar nada.",
+    "fix_guidance": "Apague o gatilho ou crie o campo destino na SX3. Verifique também typos no `X7_CDOMIN`.",
+    "detection_kind": "cross-file",
+    "status": "active",
+    "impl_function": "_check_sx002_x7_destino_inexistente"
   },
   {
     "regra_id": "SX-003",
-    "titulo": "Custom MV_ parameter declared in SX6 but never read by any source",
+    "titulo": "Parâmetro SX6 (MV_*) declarado mas zero referências em fontes",
     "severidade": "warning",
     "categoria": "modernization",
-    "descricao": "A custom parameter exists in SX6 but no GetMV/SuperGetMV/PutMV call references it. Likely dead configuration.",
-    "fix_guidance": "Remove the unused parameter via PutMV with empty value or document why it must remain.",
-    "detection_kind": "cross_file"
+    "descricao": "Parâmetro custom `MV_*` cadastrado no SX6 mas nenhum fonte do projeto faz `GetMV`/`SuperGetMV` por ele. Parâmetro morto ocupa configurador, confunde admin.",
+    "fix_guidance": "Remova o parâmetro do SX6 (script com `PutMV` revertendo) ou use onde foi planejado. Se intencional para uso externo, documente em `X6_DESCRIC`.",
+    "detection_kind": "cross-file",
+    "status": "active",
+    "impl_function": "_check_sx003_mv_param_unused_in_fontes"
   },
   {
     "regra_id": "SX-004",
-    "titulo": "SX1 question group declared but never used by any source (Pergunte)",
+    "titulo": "Grupo SX1 sem Pergunte() correspondente em nenhum fonte",
     "severidade": "warning",
     "categoria": "modernization",
-    "descricao": "A group of questions exists in SX1 but no source calls Pergunte('grupo'). Likely dead group from removed feature.",
-    "fix_guidance": "Remove the unused SX1 group or restore the usage that referenced it.",
-    "detection_kind": "cross_file"
+    "descricao": "Grupo de pergunta (`X1_GRUPO`) cadastrado no SX1 mas nenhum fonte faz `Pergunte(\"GRUPO\", ...)`. Pergunta órfã, ocupa cadastro sem uso.",
+    "fix_guidance": "Remova o grupo do SX1 ou implemente o uso. Se intencional para uso futuro, marque com X1_DESCR explicativo.",
+    "detection_kind": "cross-file",
+    "status": "active",
+    "impl_function": "_check_sx004_pergunta_unused_in_fontes"
   },
   {
     "regra_id": "SX-005",
-    "titulo": "Custom SX3 field with no references in sources or SX dictionary",
-    "severidade": "warning",
+    "titulo": "Campo SX3 custom (X3_PROPRI='U') sem referências em fontes/SX/SX7",
+    "severidade": "info",
     "categoria": "modernization",
-    "descricao": "A custom (X3_PROPRI != S) field has zero references in any indexed source AND no other SX entry mentions it.",
-    "fix_guidance": "Confirm the field is truly unused before dropping; legacy fields may be referenced via virtual fields or external integrations.",
-    "detection_kind": "cross_file"
+    "descricao": "Campo custom (`X3_PROPRI = 'U'`) sem nenhuma referência em fontes, validações de outros campos, ou regras de gatilhos. Provável legado, ocupa espaço em cadastro e polui browse.",
+    "fix_guidance": "Considere remover do SX3 (script de delete) ou implementar uso pendente. Se intencional para futura customização, documente.",
+    "detection_kind": "cross-file",
+    "status": "active",
+    "impl_function": "_check_sx005_campo_usado_zero_refs"
   },
   {
     "regra_id": "SX-006",
-    "titulo": "X3_VALID executes embedded SQL (BeginSql/TCQuery) — anti-pattern",
+    "titulo": "X3_VALID faz BeginSql/TCQuery (anti-pattern de performance)",
     "severidade": "warning",
     "categoria": "performance",
-    "descricao": "Field validators that execute SQL run on every keystroke / record change. Use ExistCpo() or Posicione() with cache instead.",
-    "fix_guidance": "Replace TCQuery/BeginSql in X3_VALID with ExistCpo / Posicione / cached lookups.",
-    "detection_kind": "cross_file"
+    "descricao": "Validação X3_VALID com SQL embarcado executa query a CADA Loose Focus do campo. Em telas com muitos campos validados, custa segundos de UI per row.",
+    "fix_guidance": "Substitua por `ExistCpo(<alias>, <chave>, <ordem>)` ou `Posicione()` com cache. Se precisa de SQL complexo, mova para User Function que cacheia resultado em `Static`.",
+    "detection_kind": "cross-file",
+    "status": "active",
+    "impl_function": "_check_sx006_perf_sql_in_x3_valid"
   },
   {
     "regra_id": "SX-007",
-    "titulo": "X3_VALID calls a TOTVS-restricted function",
+    "titulo": "X3_VALID chama função listada em funcoes_restritas TOTVS",
     "severidade": "critical",
     "categoria": "security",
-    "descricao": "Validator references a function listed in funcoes_restritas (internal/undocumented TOTVS API). Risk of breaking on ERP upgrade.",
-    "fix_guidance": "Replace with a documented public alternative or move the logic to a U_xxx wrapper that handles compatibility.",
-    "detection_kind": "cross_file"
+    "descricao": "Validação SX3 chama função interna/restrita TOTVS (lookup `funcoes_restritas`). Quebra em release-bump da TOTVS, não suportada, pode ser removida sem aviso.",
+    "fix_guidance": "Substitua por equivalente público documentado em TDN. Veja `/plugadvpl:find function <nome>` para confirmar se é restrita.",
+    "detection_kind": "cross-file",
+    "status": "active",
+    "impl_function": "_check_sx007_restricted_func_in_x3_valid"
   },
   {
     "regra_id": "SX-008",
-    "titulo": "Shared table (X2_MODO=C) has X3_VALID using xFilial",
+    "titulo": "Tabela compartilhada (X2_MODO='C') usa xFilial em X3_VALID",
     "severidade": "warning",
     "categoria": "best-practice",
-    "descricao": "The table is shared across companies/branches but the validator references xFilial — inconsistency between data scope and validation scope.",
-    "fix_guidance": "Drop xFilial from validator OR change X2_MODO to E (exclusive) if the data should be branch-scoped.",
-    "detection_kind": "cross_file"
+    "descricao": "Tabela com `X2_MODO='C'` (compartilhada entre filiais) tem campo SX3 cuja `X3_VALID` usa `xFilial(...)`. Inconsistência: tabela compartilhada não filia, mas validação filtra. Resulta em comportamento imprevisível dependendo da filial ativa.",
+    "fix_guidance": "Remova `xFilial` do `X3_VALID` (tabela é compartilhada, valor de filial não importa) OU mude `X2_MODO` para `E` (Exclusiva) se a tabela realmente filia.",
+    "detection_kind": "cross-file",
+    "status": "active",
+    "impl_function": "_check_sx008_xfilial_in_modo_c"
   },
   {
     "regra_id": "SX-009",
-    "titulo": "Required field (X3_OBRIGAT) initialized with empty/zero",
+    "titulo": "Campo obrigatório (X3_OBRIGAT='X') com X3_INIT vazio/zero",
     "severidade": "warning",
     "categoria": "best-practice",
-    "descricao": "Field is marked required but X3_RELACAO returns empty string / Space() / zero / .F. — every user has to retype.",
-    "fix_guidance": "Provide a meaningful default in X3_RELACAO or set X3_OBRIGAT to optional.",
-    "detection_kind": "cross_file"
+    "descricao": "Campo marcado como obrigatório mas com inicializador (`X3_INIT`) que retorna vazio (`\"\"`, `Space(N)`, `0`, `Nil`, `.F.`). Usuário sempre vai precisar redigitar. UX ruim.",
+    "fix_guidance": "Inicialize com valor sensato (ex: `\"01\"` para campo de filial, `Date()` para data atual, `cFilAnt` para filial). Se realmente não há default, documente em `X3_DESCRIC`.",
+    "detection_kind": "cross-file",
+    "status": "active",
+    "impl_function": "_check_sx009_obrigat_with_empty_init"
   },
   {
     "regra_id": "SX-010",
-    "titulo": "SX7 trigger of type Pesquisar (P) without X7_SEEK=S",
+    "titulo": "Gatilho SX7 X7_TIPO='P' (Pesquisar) sem X7_SEEK='S' válido",
     "severidade": "error",
     "categoria": "best-practice",
-    "descricao": "X7_TIPO=P implies that the trigger does a DbSeek + return; X7_SEEK must be 'S'. Otherwise the seek is skipped and the trigger silently fails.",
-    "fix_guidance": "Set X7_SEEK='S' and verify X7_ALIAS/X7_ORDEM/X7_CHAVE are populated.",
-    "detection_kind": "cross_file"
+    "descricao": "Gatilho do tipo Pesquisar (P) requer `X7_SEEK='S'` para indicar que faz `DbSeek` no alias antes de avaliar a regra. Sem isso, runtime falha ou retorna valor errado silenciosamente.",
+    "fix_guidance": "Marque `X7_SEEK='S'` e configure `X7_ALIAS`/`X7_ORDEM`/`X7_CHAVE`. Ou troque `X7_TIPO` para `S` (Secundário) se não precisa de SEEK.",
+    "detection_kind": "cross-file",
+    "status": "active",
+    "impl_function": "_check_sx010_pesquisar_sem_seek"
   },
   {
     "regra_id": "SX-011",
-    "titulo": "X3_F3 references SXB consulta alias that does not exist",
+    "titulo": "X3_F3 aponta pra alias SXB (consulta) que não existe",
     "severidade": "error",
     "categoria": "best-practice",
-    "descricao": "X3_F3 points to a consulta alias that has no entry in SXB. F3 will not open anything for the user.",
-    "fix_guidance": "Create the SXB consulta or correct X3_F3 to an existing alias.",
-    "detection_kind": "cross_file"
+    "descricao": "Campo SX3 com `X3_F3 = \"SA1XYZ\"` referenciando consulta SXB inexistente. F3 (lupa) quebra em runtime quando usuário pressiona F3 no campo.",
+    "fix_guidance": "Crie a consulta na SXB (4 tipos de registro: 1/2/3/4) ou remova o `X3_F3`. Verifique typo no alias.",
+    "detection_kind": "cross-file",
+    "status": "active",
+    "impl_function": "_check_sx011_x3_f3_consulta_inexistente"
   }
 ]

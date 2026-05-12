@@ -4,9 +4,14 @@ description: 24 regras de code review ADVPL/TLPP implementadas (13 single-file v
 
 # advpl-code-review — As regras de code review do plugadvpl
 
-`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **24 são efetivamente detectadas hoje** (v0.3.3): **13 single-file** via regex/AST sobre o conteúdo do fonte, e **11 cross-file SX-***  que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes). As outras 11 ficam **catalogadas mas não detectadas** — guia mental, sem alerta automático.
+`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **24 são efetivamente detectadas** (v0.3.4+): **13 single-file** via regex/AST sobre o conteúdo do fonte, e **11 cross-file `SX-*`** que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes). As outras 11 ficam **catalogadas como `status='planned'`** — sem detecção automática hoje, mas servem como roadmap + checklist mental.
 
-> **Nota sobre o catálogo:** o arquivo `lookups/lint_rules.json` tem títulos parcialmente desalinhados com a implementação real (`cli/plugadvpl/parsing/lint.py`). **Este skill descreve o comportamento real do que dispara**, não o catálogo. Discrepância documentada como follow-up de v0.3.4.
+> **Catálogo alinhado com a impl** desde v0.3.4. Antes (v0.3.0..v0.3.3), o
+> `lookups/lint_rules.json` tinha 25 itens em drift com `parsing/lint.py`
+> (10 severidades + 15 títulos diferentes pro mesmo `regra_id`). [Issue #1](https://github.com/JoniPraia/plugadvpl/issues/1) corrigida em v0.3.4
+> + teste `test_lint_catalog_consistency.py` impede regressão futura.
+> O catálogo agora carrega 2 campos extras: `status` (`active`/`planned`) e
+> `impl_function` (nome da `_check_*` em `lint.py` que implementa a regra).
 
 ## Quando usar
 

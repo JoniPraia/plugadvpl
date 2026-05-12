@@ -4,6 +4,39 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-05-12
+
+### Fixed
+- **[Issue #1](https://github.com/JoniPraia/plugadvpl/issues/1) — `lookups/lint_rules.json`
+  alinhado com `parsing/lint.py`**. Antes (v0.3.0..v0.3.3), o catálogo descrevia
+  comportamentos diferentes da implementação real para o mesmo `regra_id`:
+  10 regras com severidade divergente, 15 com título/topic completamente outros
+  (ex: catálogo dizia `BP-002` = "Local fora do header"; impl emitia `BP-002` =
+  "BEGIN TRANSACTION sem END"). Resultado: usuário lia output do lint, buscava
+  no catálogo e via descrição errada. Catálogo agora reflete a impl 1:1.
+  Adicionados 2 campos novos: `status` (`active`/`planned`) e `impl_function`
+  (nome da `_check_*` em `lint.py`). Migration 003 adiciona as colunas em
+  `lint_rules` table.
+
+### Added
+- **Test de regressão** `tests/unit/test_lint_catalog_consistency.py` — 7 asserts
+  que impedem novo drift catalog × impl. Falha o build se severidade, título,
+  status, impl_function ou contagem de regras divergem.
+- **Migration 003** `cli/plugadvpl/migrations/003_lint_rules_status.sql` —
+  `ALTER TABLE lint_rules ADD COLUMN status, impl_function`. SCHEMA_VERSION
+  bumped 2 → 3.
+
+### Changed
+- **24 active vs 11 planned** explicitamente declarado no catálogo:
+  - **Active** (24): BP-001, BP-002, BP-003, BP-004, BP-005, BP-006,
+    SEC-001, SEC-002, PERF-001, PERF-002, PERF-003, MOD-001, MOD-002,
+    SX-001..SX-011.
+  - **Planned** (11): BP-002b, BP-007, BP-008, SEC-003, SEC-004, SEC-005,
+    PERF-004, PERF-005, PERF-006, MOD-003, MOD-004 — catalogadas como
+    roadmap/checklist mental, ainda sem `_check_*` em `lint.py`.
+- **Skill `advpl-code-review`** atualizada — drift footnote substituída por
+  nota explicando o realinhamento + referência ao test guard.
+
 ### Changed
 - **Skills overhaul completo** — todas as 16 knowledge skills (`plugadvpl-index-usage`,
   `advpl-fundamentals`, `advpl-code-review`, `advpl-mvc`, `advpl-mvc-avancado`,
