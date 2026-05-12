@@ -176,7 +176,7 @@ Reference completa: [docs/cli-reference.md](docs/cli-reference.md).
 
 ## Skills incluídas
 
-Além dos 14 command wrappers (mais o helper `setup`), o plugin traz **16 knowledge skills** carregadas pelo Claude conforme contexto:
+Além dos 18 command wrappers (1 por subcomando do CLI, mais o helper `setup`), o plugin traz **16 knowledge skills** carregadas pelo Claude conforme contexto:
 
 | Skill | Quando carrega |
 |---|---|
@@ -229,7 +229,7 @@ Quando você pergunta algo ao Claude sobre o projeto, o slash command roda uma q
 
 **v0.3.0 — Universo 2: Dicionário SX (killer feature `impacto`).**
 
-- 18 subcomandos, 31 skills, 4 agents, 1 hook
+- 18 subcomandos, 35 skills (16 knowledge + 18 CLI wrappers + 1 setup helper), 4 agents, 1 hook
 - 33 tabelas físicas (22 fontes + 11 SX) + 2 FTS5 + 6 lookups
 - 250+ testes (unit + integration + bench + e2e_local)
 - Bench em ~2.000 fontes: ingest <60s com `--workers 8`; ingest-sx
