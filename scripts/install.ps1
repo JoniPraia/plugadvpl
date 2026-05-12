@@ -1,8 +1,19 @@
-#!/usr/bin/env pwsh
+﻿#!/usr/bin/env pwsh
 # plugadvpl bootstrap installer for Windows
 # Usage: irm https://raw.githubusercontent.com/JoniPraia/plugadvpl/main/scripts/install.ps1 | iex
 
 $ErrorActionPreference = 'Stop'
+
+# PS 5.1 compat: força TLS 1.2 (default antigo do .NET Framework é TLS 1.0/1.1
+# e quebra contra hosts modernos como astral.sh) + UTF-8 no console pra glifos.
+try {
+    [Net.ServicePointManager]::SecurityProtocol =
+        [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    $OutputEncoding = [System.Text.Encoding]::UTF8
+} catch {
+    # PS 7+ já vem com TLS 1.2/1.3 e UTF-8 — ignora se algo daqui falhar.
+}
 
 Write-Host ""
 Write-Host "  plugadvpl bootstrap installer (Windows)" -ForegroundColor Cyan
@@ -17,7 +28,8 @@ if (-not $uvCmd) {
     # Try winget first
     $wingetAvailable = Get-Command winget -ErrorAction SilentlyContinue
     if ($wingetAvailable) {
-        winget install --id=astral-sh.uv --silent --accept-source-agreements --accept-package-agreements 2>&1 | Out-Null
+        # PS 5.1: 2>&1 em exe nativo embrulha stderr como NativeCommandError; usa *>$null.
+        winget install --id=astral-sh.uv --silent --accept-source-agreements --accept-package-agreements *> $null
         if ($LASTEXITCODE -ne 0) {
             Write-Host "  winget falhou, usando installer oficial..." -ForegroundColor Yellow
             iex (irm https://astral.sh/uv/install.ps1)
@@ -37,11 +49,12 @@ if (-not $uvCmd) {
     Write-Host "  [1/3] uv já instalado: $($uvCmd.Source)" -ForegroundColor Green
 }
 
-# Verify uv works now
-$uvVersion = & uv --version 2>$null
+# Verify uv works now (sem 2>$null pra evitar NativeCommandError em PS 5.1)
+$uvVersion = $null
+try { $uvVersion = & uv --version } catch { $uvVersion = $null }
 if (-not $uvVersion) {
     Write-Host ""
-    Write-Host "  ✗ uv ainda não está no PATH desta sessão." -ForegroundColor Red
+    Write-Host "  [X]uv ainda não está no PATH desta sessão." -ForegroundColor Red
     Write-Host ""
     Write-Host "  Solução:" -ForegroundColor Yellow
     Write-Host "    1. Feche este terminal"
@@ -50,14 +63,14 @@ if (-not $uvVersion) {
     Write-Host "       irm https://raw.githubusercontent.com/JoniPraia/plugadvpl/main/scripts/install.ps1 | iex"
     exit 1
 }
-Write-Host "  ✓ $uvVersion" -ForegroundColor Green
+Write-Host "  [OK]$uvVersion" -ForegroundColor Green
 
 # Step 2: Install plugadvpl globally via uv tool install
 Write-Host ""
 Write-Host "  [2/3] Instalando plugadvpl..." -ForegroundColor Yellow
-& uv tool install plugadvpl 2>&1 | Out-Host
+& uv tool install plugadvpl
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "  ✗ uv tool install falhou" -ForegroundColor Red
+    Write-Host "  [X]uv tool install falhou" -ForegroundColor Red
     exit 1
 }
 
@@ -65,15 +78,16 @@ if ($LASTEXITCODE -ne 0) {
 $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 
 # Verify plugadvpl works
-$plugVersion = & plugadvpl version 2>$null
+$plugVersion = $null
+try { $plugVersion = & plugadvpl version } catch { $plugVersion = $null }
 if (-not $plugVersion) {
     Write-Host ""
-    Write-Host "  ⚠ plugadvpl instalado mas não está no PATH desta sessão." -ForegroundColor Yellow
+    Write-Host "  [!]plugadvpl instalado mas não está no PATH desta sessão." -ForegroundColor Yellow
     Write-Host "    Feche este terminal e abra um novo." -ForegroundColor Yellow
     Write-Host "    Depois rode:  plugadvpl version"
     exit 0
 }
-Write-Host "  ✓ $plugVersion" -ForegroundColor Green
+Write-Host "  [OK]$plugVersion" -ForegroundColor Green
 
 # Step 3: Done
 Write-Host ""
