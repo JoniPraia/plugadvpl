@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778618200456,
+  "lastUpdate": 1778618335705,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -1141,6 +1141,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0011260700342191129",
             "extra": "mean: 14.711081538460636 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "0865c1d1d17b7373309f552e5835eab15805cdc8",
+          "message": "docs(skill): advpl-advanced — expand TReport, add threads/reflection/files, fix lint refs\n\nSubstantial expansion of the previously thin coverage:\n\n- TReport full example with all classes (TReport, TRSection, TRCell)\n  + DefineSecoes + ReportPrint callback pattern. Old skill had a\n  4-line stub. Now matches the canonical Terminal de Informação\n  Maratona AdvPL 505 + GitHub examples. Noted TReport vs TReports\n  (singular is canonical; plural is deprecated).\n- Begin Transaction example expanded with DisarmTransaction + Break\n  pattern for error handling. References BP-002 (impl).\n- FWTemporaryTable section with full SetFields/AddIndex/Create/\n  Delete lifecycle example (was minimal before).\n- File handling expanded into 3 families: F* (low-level binary),\n  FT_F* (buffered, GB-scale for SPED/EDI), MemoWrite/MemoRead\n  (quick string I/O, ≤10MB).\n- MsNewGetDados full example with aHeader 10-element format\n  documented per column (titulo, campo, picture, tam, dec, valid,\n  usado, tipo, F3, when) — was opaque before.\n- OOP clássico section with complete TCliente class example —\n  Constructor, public Methods, ::field access, instance use.\n  Note that ADVPL doesn't have real private/protected — TLPP does.\n- Threads section (MsRunInThread) — completely new. Critical\n  warning about GetArea/RestArea per thread + pool limits ~10-50.\n- Reflection section — Type/ValType/Eval/__ClassName/__ClassMethArr\n  patterns. Cross-link to TLPP FwReflection.\n\nLint references aligned to IMPL:\n\n- MOD-004 (AxCadastro→MVC) noted as catálogo-only (not detected by\n  current lint).\n- BP-002 cited correctly as transaction (impl), not \"Local fora do\n  header\" (catalog).\n- BP-005 cited as >6 params (impl), not \"Begin Sequence\" (catalog).\n- PERF-004 (concat em loop) catálogo-only flag.\n\nBest practices section expanded — FwArrayJoin (R26+) noted as modern\nreplacement for Array2String (legacy), FwTimeStamp() over Date()+Time(),\nAScan over manual loop, aSize for resize.\n\nAnti-patterns enriched from 5 to 9, adding:\n- Thread sem GetArea/RestArea\n- MemoRead em arquivo > 10MB\n- TReport sem :Finish()\n- OOP clássico assumindo encapsulamento\n\nAI usability:\n\n- Frontmatter description names the key topics with version notes.\n- Cross-refs via [[name]] to 10 related skills (tlpp, refactoring,\n  fundamentals, code-review, embedded-sql, mvc, jobs-rpc, encoding,\n  debugging, plugadvpl-index-usage).\n- Sources section with 8 canonical references (TDN, Terminal de\n  Informação Maratonas, blog AdvPL).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T17:38:27-03:00",
+          "tree_id": "1d9eb6589184f7cefdaec3c525e3670c56edfb19",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/0865c1d1d17b7373309f552e5835eab15805cdc8"
+        },
+        "date": 1778618335053,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 24.046528584361052,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00027828926128026655",
+            "extra": "mean: 41.58604417647053 msec\nrounds: 17"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 73.45199359493165,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0002975891751761373",
+            "extra": "mean: 13.61433435714129 msec\nrounds: 14"
           }
         ]
       }
