@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778617752002,
+  "lastUpdate": 1778617882008,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -997,6 +997,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0003184025710501259",
             "extra": "mean: 13.534116384617025 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "296e1331b2b9e070c90248c75a28c2440597c3f3",
+          "message": "docs(skill): advpl-dicionario-sx — fix dictionary_sx table claim, add v0.3.0 workflow, SX8 sequential, SXG groups\n\nBug fixes:\n\n- 'dictionary_sx' table claim removed (doesn't exist). Real tables\n  from v0.3.0 migration 002 enumerated in a new column of the SX\n  inventory: SX1=perguntas, SX2=tabelas, SX3=campos, SX5=tabelas_genericas,\n  SX6=parametros, SX7=gatilhos, SX9=relacionamentos, SXA=pastas,\n  SXB=consultas, SXG=grupos_campo, SIX=indices. (11 total, matching\n  schema migration 002.)\n\nContent added:\n\n- SX8 (numeração sequencial) section — GetSx8Num/ConfirmSx8/\n  RollBackSx8 pattern. Crítica para customização que cria registros\n  com C5_NUM/etc. The old skill mentioned SX8 in the map but had no\n  example.\n- SXG (grupos de campo) section — template-based field sizing for\n  alinhando valores monetários cross-ERP.\n- X3_PROPRI = U/S distinction (User custom vs System TOTVS) added\n  to the SX3 column list — drives SX-005 lint detection.\n- X3_VLDUSER added to SX3 column list (validação adicional user-level).\n- SuperGetMV preference over GetMV (caching + multi-filial — TOTVS\n  recommendation).\n- v0.3.0 plugadvpl workflow section — concrete commands to ingest CSV,\n  check sx-status, run impacto A1_COD with output sample, run cross-\n  file lint.\n- 5 anti-patterns added (RecLock without SX8 confirm, SX-007 restricted\n  function in VALID, SX-006 SQL in VALID, SX-008 xFilial in shared\n  table, hardcode field without FieldPos check).\n\nLint cross-references added throughout — each SX section now mentions\nwhich lint rule (SX-001..SX-011) applies and what triggers it.\n\nPutSx1 example expanded with named parameter comments (was opaque\npositional string with 25 args).\n\nAI usability:\n\n- Frontmatter description names all 11 SX tables, the v0.3.0\n  commands (impacto/gatilho/sx-status/ingest-sx), and the\n  cross-link to advpl-dicionario-sx-validacoes for embedded ADVPL.\n- Cross-refs via [[name]] to 8 related skills.\n- Sources section with 6 canonical references (TDN, TOTVS Central,\n  siga0984.wordpress.com).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T17:30:52-03:00",
+          "tree_id": "788d62cbd3b347a9ca3440a16e9de49e6f28b60a",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/296e1331b2b9e070c90248c75a28c2440597c3f3"
+        },
+        "date": 1778617881579,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 23.90829782789364,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00030101381610025637",
+            "extra": "mean: 41.826482470588395 msec\nrounds: 17"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 68.74377934896714,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0003219702106978718",
+            "extra": "mean: 14.546770769230696 msec\nrounds: 13"
           }
         ]
       }
