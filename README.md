@@ -71,6 +71,48 @@ plugadvpl status
 
 ---
 
+## Atualizando para uma versão nova
+
+A forma simples — funciona em qualquer plataforma — é **rodar o one-liner de
+instalação de novo**. Ele detecta `uv` ausente, instala se preciso, e
+reinstala `plugadvpl` apontando para a versão atual do PyPI.
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/JoniPraia/plugadvpl/main/scripts/install.ps1 | iex
+```
+
+**macOS / Linux:**
+```bash
+curl -sSL https://raw.githubusercontent.com/JoniPraia/plugadvpl/main/scripts/install.sh | sh
+```
+
+Se já tem `uv` e quer só forçar pull da versão nova (uv às vezes segura cache):
+
+```powershell
+uv cache clean plugadvpl
+uv tool install plugadvpl --reinstall --force
+plugadvpl version
+```
+
+### O plugin Claude Code é separado da CLI
+
+CLI (`plugadvpl`, Python) e plugin Claude Code (skills + agents + hook) são
+**duas coisas que se atualizam separadamente**. Atualizar uma não toca na outra.
+
+Pra atualizar o plugin:
+
+```
+/plugin marketplace update plugadvpl-marketplace
+```
+
+(no Claude Code CLI; na extensão VSCode use a UI `/plugin`).
+
+Se algo travar (`uv` sumiu, plugin atualiza mas slash command parece velho,
+cache de uvx segurando versão antiga), veja [Troubleshooting de atualização](docs/FAQ.md#troubleshooting-de-atualização) no FAQ.
+
+---
+
 ## Quick start
 
 ```bash

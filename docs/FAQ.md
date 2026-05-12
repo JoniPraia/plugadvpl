@@ -61,7 +61,7 @@ estiver lento ou der `SQLITE_CORRUPT`, mova o projeto para disco local.
 - **CLI Python (`plugadvpl`)**: o motor — parser, banco, queries. Funciona standalone
   no terminal.
 - **Plugin Claude Code**: camada fina sobre a CLI — slash commands `/plugadvpl:*`,
-  15 knowledge skills, 4 agents, hook SessionStart. Faz Claude usar a CLI
+  16 knowledge skills, 4 agents, hook SessionStart. Faz Claude usar a CLI
   proativamente em vez de Read direto no `.prw`.
 
 A CLI é o que faz o trabalho. O plugin é o que faz Claude saber usar.
@@ -82,3 +82,89 @@ Por enquanto, filtre por `--severity critical` para ver só o que importa muito.
 
 [JoniPraia](https://github.com/JoniPraia) — desenvolvedor com background em Protheus
 e ferramentas internas de análise. Open-source MIT, comunidade ADVPL é o público alvo.
+
+---
+
+## Troubleshooting de atualização
+
+### `uv` não é reconhecido / sumiu do PATH
+
+**Sintoma:** ao rodar `uv cache clean plugadvpl` ou `uv tool upgrade plugadvpl`
+você recebe `O termo 'uv' não é reconhecido como nome de cmdlet` (PowerShell)
+ou `bash: uv: command not found` (Linux/macOS).
+
+**Causa:** o `uv` foi instalado em sessão anterior e o PATH desta sessão
+não pegou; ou o `uv` foi removido. Comum depois de reinstalar o Windows,
+trocar de máquina, ou usar o Python da Microsoft Store (que isola o PATH).
+
+**Solução** — rodar o one-liner do plugadvpl de novo. Ele detecta `uv`
+ausente, instala via `winget` (Windows) ou o installer oficial da Astral
+(Linux/macOS) e refresca o PATH na sessão:
+
+```powershell
+# Windows
+irm https://raw.githubusercontent.com/JoniPraia/plugadvpl/main/scripts/install.ps1 | iex
+```
+
+```bash
+# macOS / Linux
+curl -sSL https://raw.githubusercontent.com/JoniPraia/plugadvpl/main/scripts/install.sh | sh
+```
+
+Se mesmo assim o `uv` não aparecer no PATH desta sessão, **feche o terminal**,
+abra outro novo, e rode o one-liner de novo. O Windows às vezes só propaga
+PATH novo pra processos novos.
+
+### `uv tool upgrade plugadvpl` diz "Nothing to do" mas PyPI tem versão nova
+
+**Sintoma:** `https://pypi.org/project/plugadvpl/` mostra (por exemplo) `0.3.1`,
+mas `uv tool upgrade plugadvpl` não faz nada — `plugadvpl version` continua
+mostrando a versão antiga.
+
+**Causa:** o `uv` tem cache agressivo de releases. `upgrade` não re-resolve
+contra PyPI quando o cache já tem uma versão satisfazendo o specifier.
+
+**Solução** — limpar cache da package + reinstalar forçado:
+
+```powershell
+uv cache clean plugadvpl
+uv tool install plugadvpl --reinstall --force
+plugadvpl version   # confere
+```
+
+### Atualizei o plugin mas slash command roda CLI antiga
+
+**Sintoma:** depois de `/plugin marketplace update plugadvpl-marketplace`
+o `plugin.json` mostra versão nova, mas algum bug que foi corrigido na CLI
+nova continua acontecendo via slash command (`/plugadvpl:lint`, etc.).
+
+**Causa:** cada SKILL.md do plugin invoca a CLI com versão pinada
+(`uvx plugadvpl@X.Y.Z`). Se houver dessincronia entre o `plugin.json` e
+o pin nos SKILL.md (release management), o plugin metadata avança mas o
+slash command continua puxando CLI antiga.
+
+**Solução imediata** — atualizar a CLI fora do uvx, instalando via
+`uv tool` (que cria binário direto, sem o pin do uvx):
+
+```powershell
+uv cache clean plugadvpl
+uv tool install plugadvpl --reinstall --force
+```
+
+Como o `plugadvpl.exe` no PATH é o que conta para usuários que rodam
+direto, isso garante que pelo menos a invocação direta pega a versão
+nova. Para corrigir o slash command também: aguardar a próxima release
+do plugin (que re-sincroniza os pins) ou reportar o issue.
+
+### `plugadvpl version` mostra `0.0.0+dev`
+
+**Sintoma:** depois de instalar via `pip install -e .` ou `uv pip install -e .`
+local, `plugadvpl version` retorna `0.0.0+dev`.
+
+**Causa:** o pacote usa `hatch-vcs` — a versão real vem da tag git. Em checkout
+sem tag aplicada (ex.: branch de feature, shallow clone), o fallback é `0.0.0+dev`.
+Não é bug; só não é uma instalação "release". Para versão real, instale do PyPI:
+
+```bash
+uv tool install plugadvpl --force
+```
