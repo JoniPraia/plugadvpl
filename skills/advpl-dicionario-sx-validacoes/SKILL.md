@@ -17,6 +17,7 @@ Esta skill foca nas **expressões ADVPL embarcadas no dicionário SX** — o pon
 - Vai **criar** validação custom (`X3_VALID`, `X3_VLDUSER`) e quer não cair em armadilha clássica.
 - Está **debugando** comportamento "fantasma" — campo não habilita, gatilho não dispara, pergunta retorna vazio.
 - Quer **auditar** que customizações mexem em validações vs. que poderiam ser puro UI.
+- Vai rodar `/plugadvpl:lint --cross-file` (regras SX-001..SX-011) e quer entender as regras com profundidade.
 
 ## Mapa: onde mora ADVPL dentro do SX
 
@@ -202,3 +203,37 @@ A query interna faz JOIN/LIKE em `campos.validacao`, `campos.vlduser`,
 3. Para cada `U_xxx` em VALID/INIT/REGRA, `plugadvpl find <U_xxx>` + `arch`.
 4. Para cada SX1/MV_, `plugadvpl param <MV_x>` / `plugadvpl find Pergunte`.
 5. **Depois** edita.
+
+## Anti-padrões consolidados (cross-cutting)
+
+- **SQL embarcado** em `X3_VALID` / `X3_VLDUSER` / `X3_WHEN` — executa a cada Loose Focus. Lint `SX-006` warning. Use `Posicione`/`ExistCpo`.
+- **Função restrita TOTVS** em `X3_VALID` — `SX-007` critical, quebra em update do ERP.
+- **`U_xxx` chamada em VALID/INIT/REGRA sem fonte indexado** — `SX-001` warning.
+- **Side effects em VALID/WHEN** (gravar log, enviar e-mail, mudar variável global) — função roda múltiplas vezes por digitação, torna comportamento imprevisível.
+- **Campo obrigatório com INIT vazio** — `SX-009` warning. Usuário sempre redigita.
+- **Gatilho com `X7_TIPO='P'` sem `X7_SEEK='S'`** — `SX-010` error.
+- **Gatilho com destino inexistente em SX3** — `SX-002` error.
+- **`X3_F3` apontando para SXB inexistente** — `SX-011` error.
+- **Tabela compartilhada (`X2_MODO='C'`) com `xFilial` em `X3_VALID`** — `SX-008` warning.
+- **Cliente altera `X3_VALID` padrão TOTVS** — conflita em update. Use `X3_VLDUSER` separado.
+- **Ciclo de gatilhos** — A→B, B→C, C→A. `/plugadvpl:gatilho A --depth 3` detecta.
+
+## Cross-references com outras skills
+
+- `[[advpl-dicionario-sx]]` — estrutura completa das tabelas SX (irmã desta skill).
+- `[[advpl-code-review]]` — regras lint SX-001..SX-011 cross-file.
+- `[[advpl-fundamentals]]` — `M->` notação (memo), `U_xxx` User Function, prefixo cliente.
+- `[[advpl-embedded-sql]]` — `BeginSql` em VALID é anti-pattern SX-006.
+- `[[advpl-mvc]]` — `FWFormStruct(1)` carrega X3_VALID/INIT/WHEN do dicionário.
+- `[[advpl-mvc-avancado]]` — `SetErrorMessage` em vez de Help dentro de VALID custom.
+- `[[advpl-pontos-entrada]]` — `<rotina>VLD` PE oferece validação fora do dicionário.
+- `[[advpl-debugging]]` — "campo não aparece" / "gatilho não dispara" workflow.
+- `[[plugadvpl-index-usage]]` — `/plugadvpl:impacto`, `/plugadvpl:gatilho`.
+
+## Sources
+
+- [Dicionário de Dados SX - TDN](https://tdn.totvs.com/display/public/framework/Dicionario+de+Dados+SX)
+- [X3_VALID Boas práticas - TOTVS Central](https://centraldeatendimento.totvs.com/hc/pt-br/articles/360018402211)
+- [Gatilhos SX7 - Tudo em AdvPL](https://siga0984.wordpress.com/tag/sx7/)
+- [SX1 Perguntas - Terminal de Informação](https://terminaldeinformacao.com/2017/10/10/funcao-para-criar-grupo-de-perguntas-sx1-protheus-12/)
+- [Validações MVC e VLDUSER - Maratona AdvPL 019](https://terminaldeinformacao.com/2016/09/08/vd-advpl-019/)
