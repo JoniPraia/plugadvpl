@@ -4,6 +4,34 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-05-12
+
+### Added
+- **Skill `advpl-refactoring`** — 6 padrões de refactor comuns em ADVPL/TLPP com
+  before/after side-by-side: DbSeek em loop → SQL embarcado (anti-N+1), Posicione
+  repetido → cache em variável, IFs hardcoded → SX5/SX6 ou User Function central,
+  AxCadastro/Modelo2/3 → MVC, string concat em loop → array + FwArrayJoin,
+  RecLock solto → Begin Transaction. Inclui "quando NÃO refatorar" pra cada padrão
+  + workflow plugadvpl integrado.
+- **Skill `advpl-debugging`** — top 30 erros comuns em produção Protheus com tabela
+  rápida sintoma → causa raiz → diagnóstico → fix. Cobre `Variable does not exist`,
+  `Type mismatch` pós-query, `RecLock failed`, `Index out of range`, browse vazio,
+  MV_PAR não inicializado, Job não roda, REST 500, encoding bagunçado, perf
+  subitamente péssima, gatilho SX7 não dispara, etc. Inclui métodos de debug manual
+  (ConOut, MemoWrite, FwLogMsg, varInfo, aClone+diff) pra quando não dá pra
+  anexar debugger gráfico.
+
+### Changed
+- **`install.ps1` detecta Python local existente** (via `py -3.12` / `py -3.11` que
+  consulta o registro Windows, não cai na MS Store stub). Quando encontra, passa
+  `--python <path>` pro `uv tool install`, evitando download de ~30MB de Python
+  managed na primeira instalação (que silenciava por minutos sem progresso). Script
+  agora tem 4 steps em vez de 3 (uv → Python → plugadvpl → done).
+- **`release.yml`** agora anexa `.whl` + `.tar.gz` ao GitHub Release. Antes o job
+  `github-release` só fazia `actions/checkout@v4` e tentava `files: cli/dist/*` que
+  não existia naquele job — resultado: Release ficava vazio desde v0.3.0. Fix:
+  `upload-artifact` no job `publish-pypi`, `download-artifact` no `github-release`.
+
 ## [0.3.2] - 2026-05-12
 
 ### Fixed

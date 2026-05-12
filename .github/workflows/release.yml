@@ -21,6 +21,12 @@ jobs:
       - uses: astral-sh/setup-uv@v8.1.0
       - name: Build wheel
         run: cd cli && uv build
+      - name: Upload wheel + sdist as artifact (for github-release job)
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: cli/dist/*
+          if-no-files-found: error
       - name: Publish to PyPI (Trusted Publisher OIDC)
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
@@ -31,7 +37,12 @@ jobs:
     needs: publish-pypi
     steps:
       - uses: actions/checkout@v4
+      - name: Download dist artifact from publish-pypi
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: cli/dist/*
+          files: dist/*

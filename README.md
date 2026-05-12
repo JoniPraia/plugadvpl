@@ -218,7 +218,7 @@ Reference completa: [docs/cli-reference.md](docs/cli-reference.md).
 
 ## Skills incluídas
 
-Além dos 18 command wrappers (1 por subcomando do CLI, mais o helper `setup`), o plugin traz **16 knowledge skills** carregadas pelo Claude conforme contexto:
+Além dos 18 command wrappers (1 por subcomando do CLI, mais o helper `setup`), o plugin traz **18 knowledge skills** carregadas pelo Claude conforme contexto:
 
 | Skill | Quando carrega |
 |---|---|
@@ -237,6 +237,8 @@ Além dos 18 command wrappers (1 por subcomando do CLI, mais o helper `setup`), 
 | `advpl-advanced` | Threads, IPC, debug, OO em profundidade |
 | `advpl-dicionario-sx` | Estrutura SX1/SX2/SX3/SX5/SX6/SX7/SIX/SXA/SXB (v0.2.0) |
 | `advpl-dicionario-sx-validacoes` | Expressões ADVPL embutidas em X3_VALID/INIT/WHEN/VLDUSER, X7_REGRA, X1_VALID, X6_VALID/INIT — guia pra análise de impacto (v0.3.0) |
+| `advpl-refactoring` | 6 padrões com before/after (DbSeek loop, Posicione repetido, IFs hardcoded, AxCadastro→MVC, string concat em loop, RecLock sem Begin Transaction) — usar quando o pedido for "melhorar"/"refatorar"/"está lento" (v0.3.3) |
+| `advpl-debugging` | Top 30 erros comuns em produção + métodos de debug (ConOut, MemoWrite, FwLogMsg, varInfo) — usar quando o usuário cola traceback do AppServer.log (v0.3.3) |
 | `advpl-code-review` | 24 regras BP/SEC/PERF/MOD — 13 single-file (v0.1) + 11 cross-file `SX-001..SX-011` (v0.3.0) |
 
 Também incluídos: **4 agents** especializados (`advpl-analyzer`, `advpl-impact-analyzer`, `advpl-code-generator`, `advpl-reviewer-bot`) e **1 SessionStart hook** Node.js que faz onboarding cross-platform do `.plugadvpl/`.
@@ -271,7 +273,7 @@ Quando você pergunta algo ao Claude sobre o projeto, o slash command roda uma q
 
 **v0.3.0 — Universo 2: Dicionário SX (killer feature `impacto`).**
 
-- 18 subcomandos, 35 skills (16 knowledge + 18 CLI wrappers + 1 setup helper), 4 agents, 1 hook
+- 18 subcomandos, 37 skills (18 knowledge + 18 CLI wrappers + 1 setup helper), 4 agents, 1 hook
 - 33 tabelas físicas (22 fontes + 11 SX) + 2 FTS5 + 6 lookups
 - 250+ testes (unit + integration + bench + e2e_local)
 - Bench em ~2.000 fontes: ingest <60s com `--workers 8`; ingest-sx
