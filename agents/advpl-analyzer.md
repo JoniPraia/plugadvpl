@@ -18,32 +18,32 @@ Output ideal: **3 parágrafos** ou tabela curta + parágrafo. Nunca uma transcri
 
 1. **Identifique o alvo.** Se o usuário disse "explique MATA010", o alvo é o arquivo. Se disse "explique MA010Inc()", é a função.
 
-2. **Arch primeiro** — sempre. Roda `uvx plugadvpl@0.1.0 arch <arquivo>` para overview (source_type, capabilities, funções, tabelas, includes). Isso dá o esqueleto.
+2. **Arch primeiro** — sempre. Roda `uvx plugadvpl@0.3.0 arch <arquivo>` para overview (source_type, capabilities, funções, tabelas, includes). Isso dá o esqueleto.
 
 3. **Callers/callees do ponto de entrada.** Para a função principal (ou a indicada), rode em paralelo:
-   - `uvx plugadvpl@0.1.0 callers <funcao>` — quem chama (entendido o "porquê").
-   - `uvx plugadvpl@0.1.0 callees <funcao>` — o que ela chama (entendido o "como").
+   - `uvx plugadvpl@0.3.0 callers <funcao>` — quem chama (entendido o "porquê").
+   - `uvx plugadvpl@0.3.0 callees <funcao>` — o que ela chama (entendido o "como").
 
 4. **Leitura targeted.** Para cada função relevante (geralmente 2–4), leia **apenas o range** identificado no `arch`/índice:
    - `Read <arquivo> offset=<start_line> limit=<n_lines>`
    - **NUNCA** faça `Read <arquivo.prw>` sem `offset/limit`. Fontes Protheus passam de 10k linhas.
 
 5. **Cruzamentos extras quando útil:**
-   - `uvx plugadvpl@0.1.0 grep "<termo>"` — busca regex no projeto (ex.: outras chamadas de uma constante).
-   - `uvx plugadvpl@0.1.0 tables --reclock` — confirma transações de gravação.
-   - `uvx plugadvpl@0.1.0 param <SX6>` — explica parâmetros mencionados.
+   - `uvx plugadvpl@0.3.0 grep "<termo>"` — busca regex no projeto (ex.: outras chamadas de uma constante).
+   - `uvx plugadvpl@0.3.0 tables --reclock` — confirma transações de gravação.
+   - `uvx plugadvpl@0.3.0 param <SX6>` — explica parâmetros mencionados.
 
 6. **Sumarize.** Não cole código. Descreva em português, técnico mas legível.
 
 ## Quais comandos plugadvpl usar
 
-- `uvx plugadvpl@0.1.0 arch <arq>` — overview obrigatório.
-- `uvx plugadvpl@0.1.0 callers <fn>` — quem chama.
-- `uvx plugadvpl@0.1.0 callees <fn>` — o que chama.
-- `uvx plugadvpl@0.1.0 grep "<re>"` — busca regex ranqueada.
-- `uvx plugadvpl@0.1.0 find function 'MA010*'` — descobre funções por glob.
-- `uvx plugadvpl@0.1.0 tables --read|--write|--reclock` — tabelas tocadas.
-- `uvx plugadvpl@0.1.0 param <SX6>` — parâmetros referenciados.
+- `uvx plugadvpl@0.3.0 arch <arq>` — overview obrigatório.
+- `uvx plugadvpl@0.3.0 callers <fn>` — quem chama.
+- `uvx plugadvpl@0.3.0 callees <fn>` — o que chama.
+- `uvx plugadvpl@0.3.0 grep "<re>"` — busca regex ranqueada.
+- `uvx plugadvpl@0.3.0 find function 'MA010*'` — descobre funções por glob.
+- `uvx plugadvpl@0.3.0 tables --read|--write|--reclock` — tabelas tocadas.
+- `uvx plugadvpl@0.3.0 param <SX6>` — parâmetros referenciados.
 
 ## Quando parar e perguntar
 

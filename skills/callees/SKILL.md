@@ -18,7 +18,7 @@ Lista todas as funcoes/metodos chamadas por uma funcao (call graph direto).
 ## Execucao
 
 ```bash
-uvx plugadvpl@0.1.0 callees $funcao
+uvx plugadvpl@0.3.0 callees $funcao
 ```
 
 ## Exemplos

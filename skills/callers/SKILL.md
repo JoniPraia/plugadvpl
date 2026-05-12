@@ -18,7 +18,7 @@ Lista todos os call sites que chamam a funcao/metodo informada (call graph rever
 ## Execucao
 
 ```bash
-uvx plugadvpl@0.1.0 callers $funcao
+uvx plugadvpl@0.3.0 callers $funcao
 ```
 
 ## Exemplos

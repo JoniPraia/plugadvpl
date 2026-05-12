@@ -30,12 +30,12 @@ Gerar **um arquivo `.prw`/`.tlpp`** correto, idiomático, seguindo:
 2. **Consulte o template mental** da skill temática carregada — a skill descreve a estrutura mínima.
 
 3. **Busque exemplos similares no projeto** para alinhar com o padrão local:
-   - `uvx plugadvpl@0.1.0 find file 'MAT*.prw'` — exemplos por glob.
-   - `uvx plugadvpl@0.1.0 find function 'U_*'` — User Functions existentes.
-   - `uvx plugadvpl@0.1.0 grep "WSRESTFUL"` — REST existentes.
+   - `uvx plugadvpl@0.3.0 find file 'MAT*.prw'` — exemplos por glob.
+   - `uvx plugadvpl@0.3.0 find function 'U_*'` — User Functions existentes.
+   - `uvx plugadvpl@0.3.0 grep "WSRESTFUL"` — REST existentes.
 
 4. **Estude o melhor exemplo** com leitura **targeted** (não inteira):
-   - `uvx plugadvpl@0.1.0 arch <melhor_exemplo>` — descobre ranges das funções.
+   - `uvx plugadvpl@0.3.0 arch <melhor_exemplo>` — descobre ranges das funções.
    - `Read <exemplo> offset=<start> limit=<n>` apenas das funções relevantes.
 
 5. **Gere o código** seguindo regras:
@@ -53,22 +53,22 @@ Gerar **um arquivo `.prw`/`.tlpp`** correto, idiomático, seguindo:
    - O `Write` salva em utf-8 por padrão; após escrever um `.prw`, converta com `iconv -f utf-8 -t cp1252` via Bash, ou escreva ASCII-only e use `\\xE7` etc. para acentos críticos.
 
 7. **Indexe o novo arquivo:**
-   - `uvx plugadvpl@0.1.0 reindex <novo_arquivo>` — adiciona ao índice.
+   - `uvx plugadvpl@0.3.0 reindex <novo_arquivo>` — adiciona ao índice.
 
 8. **Lint imediato:**
-   - `uvx plugadvpl@0.1.0 lint <novo_arquivo>` — confirma 0 findings críticos.
+   - `uvx plugadvpl@0.3.0 lint <novo_arquivo>` — confirma 0 findings críticos.
    - Se houver finding crítico/erro: corrige via `Edit` e roda lint de novo. Iterar até zerar críticos.
 
 9. **Output final:** caminho do arquivo, resumo do que foi gerado, lint summary, e sugestões de próximos passos (testar, criar SX3 se MVC novo, etc.).
 
 ## Quais comandos plugadvpl usar
 
-- `uvx plugadvpl@0.1.0 find file '<glob>'` — exemplos por nome.
-- `uvx plugadvpl@0.1.0 find function '<glob>'` — exemplos por nome de função.
-- `uvx plugadvpl@0.1.0 grep "<regex>"` — busca por padrão.
-- `uvx plugadvpl@0.1.0 arch <exemplo>` — estrutura do exemplo.
-- `uvx plugadvpl@0.1.0 reindex <novo>` — indexar arquivo gerado.
-- `uvx plugadvpl@0.1.0 lint <novo>` — validar imediatamente.
+- `uvx plugadvpl@0.3.0 find file '<glob>'` — exemplos por nome.
+- `uvx plugadvpl@0.3.0 find function '<glob>'` — exemplos por nome de função.
+- `uvx plugadvpl@0.3.0 grep "<regex>"` — busca por padrão.
+- `uvx plugadvpl@0.3.0 arch <exemplo>` — estrutura do exemplo.
+- `uvx plugadvpl@0.3.0 reindex <novo>` — indexar arquivo gerado.
+- `uvx plugadvpl@0.3.0 lint <novo>` — validar imediatamente.
 
 ## Quando parar e perguntar
 

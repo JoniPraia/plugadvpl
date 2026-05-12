@@ -35,7 +35,7 @@ Em vez de carregar 2000 linhas de fonte, voce recebe o "esqueleto":
 ## Execucao
 
 ```bash
-uvx plugadvpl@0.1.0 arch $arquivo
+uvx plugadvpl@0.3.0 arch $arquivo
 ```
 
 ## Exemplos
