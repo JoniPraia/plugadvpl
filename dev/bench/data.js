@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778617064997,
+  "lastUpdate": 1778617241209,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -817,6 +817,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0020057530855304433",
             "extra": "mean: 14.625152769230436 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "70f166313ad82ba4fb29f35f7aa4594b710486be",
+          "message": "docs(skill): advpl-pontos-entrada — add file naming convention, MVC PE caveat, RPO conflict, TLPP note\n\nSkill was already solid. Targeted additions based on TOTVS Central\nand community canonical sources:\n\n- File naming convention <rotina>_pe.prw (TOTVS-recommended) plus\n  XYZPe_<PE>.prw pattern. Specifically addresses the MVC caveat\n  where the .prw file name CANNOT match the ModelDef function name\n  (causes compilation conflict) — so e.g. for fonte CRMA980, you\n  use MyCRMA980.prw with User Function CRMA980() inside.\n\n- ExecBlock signature documented with 4 params (name, lShowError,\n  lShowMsg, uParam) — uParam is what becomes PARAMIXB.\n\n- Conflito de RPO section — order of search (custom → TOTVS),\n  the gotcha when same PE name exists in both RPOs, \"minha PE não\n  disparou\" diagnosis workflow.\n\n- TLPP PE pattern note — same User Function works; only difference\n  is .tlpp lifts 10-char identifier limit (but canonical TOTVS PE\n  names are <= 10 chars anyway).\n\n- Sufixos expandidos com classes MVC (STRU/MOD/COMMIT/MARK) que\n  estavam ausentes — cross-link pra [[advpl-mvc-avancado]].\n\n- \"minha PE não disparou\" diagnostic workflow — 6 steps from confirm\n  name → check RPO → add ConOut sentinel.\n\n- Anti-patterns enriched: renomeação que esquece de atualizar\n  _pe.prw, compilar em RPO errado, PE com side effect lento em job.\n\nAI usability:\n\n- Frontmatter description mentions concrete naming patterns\n  (MA440LOK/MT100GRV/A300STRU) and convention _pe.prw.\n- Cross-refs via [[name]] to 9 related skills.\n- Sources section with 9 canonical references (TDN, TOTVS Central,\n  Terminal de Informação, Código Expresso).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T17:20:06-03:00",
+          "tree_id": "3a6fca645d5af0e05cac5e11da467da39a3a971e",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/70f166313ad82ba4fb29f35f7aa4594b710486be"
+        },
+        "date": 1778617240507,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 27.57353556085293,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0004495651649784531",
+            "extra": "mean: 36.26665857895038 msec\nrounds: 19"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 73.53819633483873,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00040962908079630357",
+            "extra": "mean: 13.59837539999944 msec\nrounds: 15"
           }
         ]
       }
