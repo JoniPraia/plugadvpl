@@ -26,23 +26,23 @@ Dado um alvo (função, tabela, campo, parâmetro), responder:
    - Parâmetro (`MV_PARAM01`) → workflow parâmetro.
 
 2. **Workflow função:**
-   - `uvx plugadvpl@0.3.0 callers <fn>` — todos os pontos de chamada.
-   - `uvx plugadvpl@0.3.0 callees <fn>` — o que ela chama (entender efeito cascata).
+   - `uvx plugadvpl@0.3.1 callers <fn>` — todos os pontos de chamada.
+   - `uvx plugadvpl@0.3.1 callees <fn>` — o que ela chama (entender efeito cascata).
    - Para cada caller, registrar: arquivo, linha, contexto (loop? transação? PE?).
 
 3. **Workflow tabela:**
-   - `uvx plugadvpl@0.3.0 tables --read <ALIAS>` — quem lê.
-   - `uvx plugadvpl@0.3.0 tables --write <ALIAS>` — quem grava (DELETE/UPDATE).
-   - `uvx plugadvpl@0.3.0 tables --reclock <ALIAS>` — quem trava (RecLock).
+   - `uvx plugadvpl@0.3.1 tables --read <ALIAS>` — quem lê.
+   - `uvx plugadvpl@0.3.1 tables --write <ALIAS>` — quem grava (DELETE/UPDATE).
+   - `uvx plugadvpl@0.3.1 tables --reclock <ALIAS>` — quem trava (RecLock).
 
 4. **Workflow campo:**
    - `tables --read/--write/--reclock` no alias.
-   - `uvx plugadvpl@0.3.0 grep "<ALIAS>->\\?<CAMPO>"` para pegar uso explícito.
+   - `uvx plugadvpl@0.3.1 grep "<ALIAS>->\\?<CAMPO>"` para pegar uso explícito.
    - Cruze com `arch` dos arquivos resultantes para entender capabilities.
 
 5. **Workflow parâmetro:**
-   - `uvx plugadvpl@0.3.0 param <NOME>` — definição + descrições.
-   - `uvx plugadvpl@0.3.0 grep "GetMv\\(\\s*['\\\"]<NOME>"` — usos por GetMv/GetNewPar.
+   - `uvx plugadvpl@0.3.1 param <NOME>` — definição + descrições.
+   - `uvx plugadvpl@0.3.1 grep "GetMv\\(\\s*['\\\"]<NOME>"` — usos por GetMv/GetNewPar.
 
 6. **Classificação de risco** (regras-de-bolso):
    - **Alto:** uso em transação de escrita; uso dentro de PE crítico; >10 callers; tabela movimentação (SD1/SD2/SC5/SC6/SE1/SE2/SF1/SF2).
@@ -53,12 +53,12 @@ Dado um alvo (função, tabela, campo, parâmetro), responder:
 
 ## Quais comandos plugadvpl usar
 
-- `uvx plugadvpl@0.3.0 callers <fn>`
-- `uvx plugadvpl@0.3.0 callees <fn>`
-- `uvx plugadvpl@0.3.0 tables --read|--write|--reclock [ALIAS]`
-- `uvx plugadvpl@0.3.0 param <PARAM>`
-- `uvx plugadvpl@0.3.0 grep "<regex>"`
-- `uvx plugadvpl@0.3.0 arch <arq>` — para enriquecer contexto de cada caller.
+- `uvx plugadvpl@0.3.1 callers <fn>`
+- `uvx plugadvpl@0.3.1 callees <fn>`
+- `uvx plugadvpl@0.3.1 tables --read|--write|--reclock [ALIAS]`
+- `uvx plugadvpl@0.3.1 param <PARAM>`
+- `uvx plugadvpl@0.3.1 grep "<regex>"`
+- `uvx plugadvpl@0.3.1 arch <arq>` — para enriquecer contexto de cada caller.
 
 ## Quando parar e perguntar
 

@@ -561,7 +561,7 @@ def _impacto_sx7_chain(
                 out.append(
                     {
                         "tipo": "SX7",
-                        "local": f"{co}#{seq} → {cd or '(s/destino)'}",
+                        "local": f"{co}#{seq} -> {cd or '(s/destino)'}",
                         "contexto": _truncate(" | ".join(ctx_parts), 100),
                         "severidade": "critical",
                     }
@@ -614,7 +614,7 @@ def impacto_query(
     depth: int = 1,
     max_per_kind: int = 50,
 ) -> list[dict[str, Any]]:
-    """Cruza referências a ``campo`` em fontes ↔ SX3 ↔ SX7 ↔ SX1.
+    """Cruza referências a ``campo`` em fontes <-> SX3 <-> SX7 <-> SX1.
 
     Args:
         conn: conexão SQLite (RO ok).

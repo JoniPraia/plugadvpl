@@ -7,10 +7,10 @@ Claude Code de mesmo nome.
 
 ```bash
 # Executar uma vez (cache uvx):
-uvx plugadvpl@0.3.0 --help
+uvx plugadvpl@0.3.1 --help
 
 # Ou instalar global (PATH):
-uv tool install plugadvpl@0.3.0
+uv tool install plugadvpl@0.3.1
 plugadvpl --help
 ```
 

@@ -23,7 +23,7 @@ Roda lint plugadvpl em um arquivo ADVPL/TLPP, aplicando o catalogo de regras con
 ## Execucao
 
 ```bash
-uvx plugadvpl@0.3.0 lint $ARGUMENTS
+uvx plugadvpl@0.3.1 lint $ARGUMENTS
 ```
 
 ## Regras MVP (13)

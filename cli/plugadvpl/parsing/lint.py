@@ -823,7 +823,7 @@ def _check_sx002_x7_destino_inexistente(conn: sqlite3.Connection) -> list[dict[s
                     "linha": 0,
                     "regra_id": "SX-002",
                     "severidade": "error",
-                    "snippet": f"{orig} → {dest}",
+                    "snippet": f"{orig} -> {dest}",
                     "sugestao_fix": (
                         f"Gatilho {orig}#{seq} aponta para campo destino {dest} que não existe "
                         "em campos (SX3). Pode ser typo ou export incompleto."
@@ -1094,7 +1094,7 @@ def _check_sx010_pesquisar_sem_seek(conn: sqlite3.Connection) -> list[dict[str, 
                     "snippet": f"alias={alias} seek={seek}",
                     "sugestao_fix": (
                         f"Gatilho {orig}#{seq} é tipo Pesquisar (P) mas não tem X7_SEEK='S'. "
-                        "Marque seek ou troque para tipo Primário (P→S inválido sem SEEK)."
+                        "Marque seek ou troque para tipo Primário (P->S inválido sem SEEK)."
                     ),
                 }
             )

@@ -4,6 +4,42 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-05-12
+
+### Fixed
+- **CRITICAL: `plugadvpl --help` crashava no Windows desde v0.3.0**. Docstrings
+  dos comandos `impacto` e `gatilho` e o help de `ingest-sx` continham
+  setas Unicode (`↔`, `→`) que não existem em cp1252. O console default
+  do Windows (PS 5.1, cmd.exe) usa cp1252 e Python jogava
+  `UnicodeEncodeError: 'charmap' codec can't encode character '↔'`
+  no meio da renderização. Resultado: nenhum usuário Windows conseguia
+  rodar `plugadvpl --help`, `plugadvpl impacto --help`, etc. Fix em duas
+  camadas:
+  - **App layer**: setas Unicode trocadas por ASCII (`<->`, `->`) em todas
+    as strings user-facing (docstrings, help text, snippets de lint
+    SX-002/SX-010, output do `impacto`/`gatilho`).
+  - **I/O layer (defense)**: `main()` agora chama `sys.stdout/stderr.
+    reconfigure(encoding='utf-8', errors='replace')` no Windows. Mesmo
+    que algum char Unicode escape no futuro, vira `?` em vez de tombar.
+- **`install.ps1` rodando via `irm | iex`** tinha o shebang `#!/usr/bin/env
+  pwsh` interpretado como comando porque o arquivo estava UTF-8 BOM
+  (introduzido no v0.3.1 pra PS 5.1 compat); o BOM sobrevivia ao
+  Invoke-RestMethod e tornava o `#` da linha 1 invisível ao parser. Erro
+  cosmético — install continuava — mas confundia quem rodasse manualmente.
+  Fix: arquivo regravado UTF-8 **sem BOM**, mensagens ASCII-only
+  (`não` → `nao`, em-dash → traço normal). Glifos `[OK]`/`[X]`/`[!]`
+  preservados, formatação melhorada (`[OK] uv` em vez de `[OK]uv`).
+- **`install.ps1` step [2/3] parecia travado** em primeira instalação.
+  Adicionado aviso: "na primeira instalacao pode levar 1-3 min: uv baixa
+  Python managed + deps. Sem barra de progresso ate terminar".
+
+### Changed
+- **Bump `uvx plugadvpl@0.3.0` → `@0.3.1`** em todos os assets do plugin
+  (18 skills, 4 agents, hook `session-start.mjs`, `cli/README.md`). Sem
+  este bump, slash commands depois do `/plugin marketplace update`
+  continuavam invocando CLI v0.3.0 com o bug do `--help` e o SX-005
+  quebrado (corrigidos no v0.3.1).
+
 ## [0.3.1] - 2026-05-12
 
 ### Added

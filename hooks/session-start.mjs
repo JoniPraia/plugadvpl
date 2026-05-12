@@ -76,7 +76,7 @@ function checkStaleViaCli(root) {
   try {
     const out = execFileSync(
       'uvx',
-      ['plugadvpl@0.3.0', 'status', '--check-stale', '--quiet', '--format', 'json'],
+      ['plugadvpl@0.3.1', 'status', '--check-stale', '--quiet', '--format', 'json'],
       {
         cwd: root,
         encoding: 'utf-8',

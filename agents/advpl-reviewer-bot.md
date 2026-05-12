@@ -20,12 +20,12 @@ Para o(s) arquivo(s) indicado(s), produzir:
 
 ## Workflow (passos)
 
-1. **Arch primeiro** — `uvx plugadvpl@0.3.0 arch <arquivo>` para entender:
+1. **Arch primeiro** — `uvx plugadvpl@0.3.1 arch <arquivo>` para entender:
    - `source_type` (uf, mvc, webservice, pe, ...).
    - `capabilities` listadas.
    - Lista de funções, tabelas, includes.
 
-2. **Lint completo** — `uvx plugadvpl@0.3.0 lint <arquivo>` colhe findings categorizados por severidade (`critical`/`error`/`warning`/`info`).
+2. **Lint completo** — `uvx plugadvpl@0.3.1 lint <arquivo>` colhe findings categorizados por severidade (`critical`/`error`/`warning`/`info`).
 
 3. **Para cada finding crítico/erro:**
    - Explique a regra em português (ex.: `BP-002 — Variável sem Local/Private` → "ADVPL trata variáveis não declaradas como Private por escopo dinâmico, causando vazamento entre rotinas").
@@ -33,7 +33,7 @@ Para o(s) arquivo(s) indicado(s), produzir:
    - Proponha o fix concreto (uma diff curta ou texto explicando).
 
 4. **Cross-check funções restritas.** Consulte o catálogo `funcoes_restritas` do plugadvpl:
-   - Se houver comando dedicado: `uvx plugadvpl@0.3.0 ...`.
+   - Se houver comando dedicado: `uvx plugadvpl@0.3.1 ...`.
    - Caso contrário, faça `grep` no fonte por padrões: `StaticCall(`, `__GetTrace`, `PTInternal`, `_PRVT`, `RunTrigger`, `__objMember`, e similares.
    - Liste cada ocorrência como finding categoria `RESTRICTED` com severidade `error`.
 
@@ -51,10 +51,10 @@ Para o(s) arquivo(s) indicado(s), produzir:
 
 ## Quais comandos plugadvpl usar
 
-- `uvx plugadvpl@0.3.0 arch <arq>` — overview obrigatório.
-- `uvx plugadvpl@0.3.0 lint <arq>` — findings principais.
-- `uvx plugadvpl@0.3.0 find function 'U_*'` — padrão de naming do projeto.
-- `uvx plugadvpl@0.3.0 grep "<padrao_restrito>"` — cross-check funções restritas.
+- `uvx plugadvpl@0.3.1 arch <arq>` — overview obrigatório.
+- `uvx plugadvpl@0.3.1 lint <arq>` — findings principais.
+- `uvx plugadvpl@0.3.1 find function 'U_*'` — padrão de naming do projeto.
+- `uvx plugadvpl@0.3.1 grep "<padrao_restrito>"` — cross-check funções restritas.
 
 ## Quando parar e perguntar
 

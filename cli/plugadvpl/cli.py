@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
+import io
 import sys
 from enum import StrEnum
 from pathlib import Path
@@ -289,7 +290,7 @@ Sintetize o que encontrar nos passos 1–6 num parágrafo: o que faz + dependên
 ### Como rodar
 
 - **Sempre disponível** (CLI Python, basta `uv` instalado):
-  `Bash → plugadvpl <subcomando> ...` ou `uvx plugadvpl@<versão> <subcomando> ...`
+  `Bash -> plugadvpl <subcomando> ...` ou `uvx plugadvpl@<versão> <subcomando> ...`
 - **Se o plugin Claude Code estiver instalado** (recomendado para UX):
   use os slash commands `/plugadvpl:arch`, `/plugadvpl:find`, etc.
 
@@ -818,7 +819,7 @@ def ingest_sx_cmd(
     csv_dir: Annotated[
         Path,
         typer.Argument(
-            help="Pasta com CSVs SX (sx1.csv, sx2.csv, ..., sxg.csv) exportados via Configurador → Misc → Exportar Dicionário.",
+            help="Pasta com CSVs SX (sx1.csv, sx2.csv, ..., sxg.csv) exportados via Configurador -> Misc -> Exportar Dicionario.",
         ),
     ],
     workers: Annotated[
@@ -895,7 +896,7 @@ def impacto(
         ),
     ] = 1,
 ) -> None:
-    """Cruza referências a um campo: fontes ↔ SX3 (VALID/WHEN/INIT) ↔ SX7 ↔ SX1.
+    """Cruza referencias a um campo: fontes <-> SX3 (VALID/WHEN/INIT) <-> SX7 <-> SX1.
 
     Killer feature do v0.3.0. Em segundos: para um campo arbitrário, lista TODA
     a cadeia de impacto (fontes que mencionam, validações que dependem,
@@ -972,6 +973,16 @@ def sx_status_cmd(ctx: typer.Context) -> None:
 
 def main() -> None:
     """Entry point para console_script ``plugadvpl``."""
+    # Defense layer: força stdout/stderr para UTF-8 em Windows. Sem isto, qualquer
+    # caractere fora do cp1252 (default do console PS 5.1/cmd.exe) crasha com
+    # UnicodeEncodeError quando o Rich renderiza help ou output. errors='replace'
+    # garante que mesmo se algo escapar, vira '?' em vez de tombar.
+    if sys.platform == "win32":
+        for stream in (sys.stdout, sys.stderr):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (AttributeError, ValueError, io.UnsupportedOperation):
+                pass
     app()
 
 

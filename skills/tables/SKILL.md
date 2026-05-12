@@ -26,7 +26,7 @@ Sem flags: lista todos os usos (leitura + escrita + reclock + SQL).
 ## Execucao
 
 ```bash
-uvx plugadvpl@0.3.0 tables $ARGUMENTS
+uvx plugadvpl@0.3.1 tables $ARGUMENTS
 ```
 
 ## Exemplos
