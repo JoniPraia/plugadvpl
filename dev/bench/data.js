@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778618044510,
+  "lastUpdate": 1778618200456,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -1105,6 +1105,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.000447590183743734",
             "extra": "mean: 13.451914933333834 msec\nrounds: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "647d95640236ab92e88f7fd9bab8ba7faab7ae54",
+          "message": "docs(skill): advpl-tlpp — clarify default-PRIVATE vs ADVPL PUBLIC, 250-char limit, namespace rules\n\nKey clarification (per TOTVS Central + community docs):\n\n- Default modifier visibility table — TLPP defaults to PRIVATE,\n  ADVPL classic defaults to PUBLIC. This trip-up causes silent\n  \"method invisible from outside\" bugs when porting code.\n- 250-char identifier limit prominent (vs 10 in .prw) with cross-\n  boundary caveat: TLPP function consumed by .prw must keep name\n  ≤ 10 chars at the boundary.\n- Namespace rules: lowercase + dot-separated + no underscore,\n  custom.* required for customer, tlpp.* reserved/blocked at\n  compile time, since Protheus 17.3.0.0.\n\nContent expansion:\n\n- Side-by-side comparison table TLPP × ADVPL clássico (8 rows\n  covering limit, default-visibility, class syntax, namespaces,\n  annotations, try/catch, JSON, reflection, includes).\n- Modificadores de acesso section with full table (private/\n  protected/public/static) and concrete class example showing\n  all 4 — replaces vague mention.\n- Static methods note (always PUBLIC by default).\n- Herança e interfaces section — extends 'from', _Super: for\n  super-call, single inheritance + multi-interface, no multi\n  inheritance with from A, B.\n- Annotations padrão organized by category (REST/Auth/Test/Cache/\n  Sync) with examples per category.\n- Interoperability table (4 directions) with explicit syntax\n  example of ADVPL .prw consuming TLPP class via inline namespace.\n- StaticCall deprecation noted.\n\nAnti-patterns enriched from 5 to 10:\n- Multi inheritance attempt\n- StaticCall em código novo\n- Modificador default assumindo PUBLIC (silent bug class porting\n  from ADVPL)\n- Identifier > 10 chars na fronteira com .prw\n\nAI usability:\n\n- Frontmatter description names the key differentiators (250 chars,\n  default PRIVATE, OO completa, annotations) so Claude routes\n  correctly between this skill and advpl-fundamentals.\n- Cross-refs via [[name]] to 8 related skills (fundamentals,\n  webservice, encoding, mvc, mvc-avancado, advanced, debugging,\n  plugadvpl-index-usage).\n- Sources section with 10 canonical references (TOTVS Central,\n  TDN, DevForum, community sites).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T17:36:08-03:00",
+          "tree_id": "3a4c4f3ebe83631123307fc699f9ea73360a9b4a",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/647d95640236ab92e88f7fd9bab8ba7faab7ae54"
+        },
+        "date": 1778618200208,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 23.022519675343357,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00045293523725546523",
+            "extra": "mean: 43.43573223529392 msec\nrounds: 17"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 67.97596746273216,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0011260700342191129",
+            "extra": "mean: 14.711081538460636 msec\nrounds: 13"
           }
         ]
       }
