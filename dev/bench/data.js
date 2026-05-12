@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778617241209,
+  "lastUpdate": 1778617374552,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -853,6 +853,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00040962908079630357",
             "extra": "mean: 13.59837539999944 msec\nrounds: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "681f6b4db31786880867b49d1f9290fcb147e0f3",
+          "message": "docs(skill): advpl-encoding — fix sources->fontes, add EncodeUTF8/DecodeUTF8/STRICONV runtime conversion, BOM warnings\n\nBug fixes:\n\n- Wrong table name 'sources' replaced with 'fontes' (2 occurrences,\n  matches actual schema).\n- Detection algorithm corrected — old skill said .tlpp gets utf-8\n  fast-path; actual impl (parser.py) uses same flow for all\n  extensions: ASCII -> utf-8 strict -> cp1252 -> chardet[:4096] ->\n  latin-1. Skill now matches.\n\nContent expansion:\n\n- ADVPL runtime conversion functions section — EncodeUTF8 (cp1252 -> utf-8,\n  for outgoing REST/JSON), DecodeUTF8 (utf-8 -> cp1252, for incoming\n  body), STRICONV (cross-codepage). With full WSMETHOD POST example\n  showing REST body decode + JSON deserialize + cp1252 RecLock store.\n- EncodeUTF8 NIL-on-invalid-char quirk noted (logs warning in\n  console.log).\n- XML parser exception — ADVPL XML reads UTF-8 internally, returns\n  cp1252 chars in XmlElem:Text without manual conversion.\n- AppServer console codepage setup (chcp 1252 in .bat) for correct\n  ConOut/FwLogMsg display.\n- Mojibake table expanded with em-dash (`—` -> `â`), arrow\n  (`↔` -> UnicodeEncodeError) — references real plugadvpl install.ps1\n  v0.3.0/0.3.1 bug as case study.\n- Script files (.ps1/.sh/.bat) added to encoding table — ASCII-only\n  recommended for portability; UTF-8 BOM causes PS 5.1 parse errors\n  (the bug we fixed in v0.3.2).\n\nAI usability:\n\n- Frontmatter description names the conversion functions explicitly.\n- Cross-refs via [[name]] to 6 related skills (fundamentals, webservice,\n  web, debugging, code-review, plugadvpl-index-usage).\n- Sources section with 7 canonical references (TDN EncodeUTF8,\n  siga0984 codepage series, Terminal de Informação UTF-8 maratona).\n- Anti-pattern expanded from 5 to 8 with concrete examples.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T17:22:24-03:00",
+          "tree_id": "ac3ede819c06d0ac70de87aefa2a2fcfb3bff1ab",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/681f6b4db31786880867b49d1f9290fcb147e0f3"
+        },
+        "date": 1778617373835,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 22.936833326434215,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00025233939191364663",
+            "extra": "mean: 43.59799741176656 msec\nrounds: 17"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 71.1285570372156,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0005538730388461715",
+            "extra": "mean: 14.059050846157106 msec\nrounds: 13"
           }
         ]
       }
