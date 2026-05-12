@@ -4,6 +4,13 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+### Added
+- **4 slash commands faltantes do v0.3.0**: `/plugadvpl:ingest-sx`,
+  `/plugadvpl:impacto`, `/plugadvpl:gatilho`, `/plugadvpl:sx-status`. Os
+  comandos CLI já existiam desde v0.3.0, mas os wrappers de skill nunca
+  foram criados — o README anunciava como `/plugadvpl:*` mas só funcionavam
+  via CLI direta. Agora o plugin Claude Code expõe os 18 comandos completos.
+
 ### Fixed
 - **`install.ps1`** — compatibilidade real com Windows PowerShell 5.1.
   Três problemas atacados de uma vez: TLS default (1.0/1.1) que quebrava
