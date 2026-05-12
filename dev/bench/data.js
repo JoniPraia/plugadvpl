@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778599872976,
+  "lastUpdate": 1778607246523,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -637,6 +637,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0005016433367871155",
             "extra": "mean: 14.117797230768977 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "1d6d0231e4def699ea43fd62a5944e092367f033",
+          "message": "release: v0.3.2\n\nHotfix release fechando o bug critico que impedia `plugadvpl --help`\nde rodar no Windows (desde v0.3.0) + dois bugs cosmeticos no\ninstall.ps1 e o bump de pinning que ficou faltando em v0.3.1.\n\nCRITICAL fix (Windows):\n  `plugadvpl --help` crashava no Windows com:\n    UnicodeEncodeError: 'charmap' codec can't encode character '↔'\n\n  Setas Unicode (`<->`, `->`) nos docstrings de `impacto`/`gatilho` e\n  no help de `ingest-sx` nao mapeiam em cp1252, o codec default do\n  console no PS 5.1 / cmd.exe. Como typer/Rich usa stdout direto, o\n  --help inteiro tombava. Atingia 100% dos usuarios Windows desde\n  o release v0.3.0.\n\n  Two-layer fix:\n    1. App layer: Unicode arrows trocadas por ASCII em todas as\n       strings user-facing (3 hits em cli.py, 2 em lint.py, 2 em\n       query.py).\n    2. I/O layer (defense): main() agora chama\n       sys.stdout.reconfigure(encoding='utf-8', errors='replace')\n       no Windows. Mesmo que algum char Unicode escape no futuro,\n       vira '?' em vez de tombar.\n\n  Reproducao verificada via script standalone (tmp/repro_cp1252_crash.py):\n    antes: UnicodeEncodeError em position 1730\n    depois: --help renderiza 4721 bytes limpos\n\ninstall.ps1 fixes:\n  - Removido UTF-8 BOM (introduzido em v0.3.1) que sobrevivia ao\n    Invoke-RestMethod e tornava a shebang `#!/usr/bin/env pwsh`\n    irreconhecivel ao parser PS durante `irm ... | iex`. Erro\n    cosmetico mas confundia diagnostico.\n  - Mensagens ASCII-only (sem acentos, sem em-dash) — funciona\n    consistente em PS 5.1, PS 7+, qualquer console.\n  - Aviso adicionado antes do step [2/3] explicando que primeira\n    instalacao pode levar 1-3 min (uv baixa Python managed\n    silenciosamente, sem barra de progresso). Esse \"stuck at 2/3\"\n    foi a maior fonte de confusao no v0.3.1.\n\nPin bump:\n  - 67 substituicoes de `uvx plugadvpl@0.3.0` -> `@0.3.1` em 18\n    skills, 4 agents, hook session-start.mjs e cli/README.md. Sem\n    isto, slash commands depois de `/plugin marketplace update`\n    continuavam invocando CLI v0.3.0 — exatamente a versao com o\n    bug do `--help` e SX-005 quebrado.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T14:33:40-03:00",
+          "tree_id": "928e5ca922dda09bd127fa9b061bd45156347deb",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/1d6d0231e4def699ea43fd62a5944e092367f033"
+        },
+        "date": 1778607246130,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 23.47047185290427,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0006077167873383965",
+            "extra": "mean: 42.60672756249928 msec\nrounds: 16"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 69.04357593565882,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0005646364139210244",
+            "extra": "mean: 14.48360671428566 msec\nrounds: 14"
           }
         ]
       }
