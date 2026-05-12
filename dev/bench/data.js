@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778622417848,
+  "lastUpdate": 1778623453229,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -1213,6 +1213,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00047402827850755223",
             "extra": "mean: 13.915463384614887 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "e482f5dc9c5eaa869fb97e7eb1ff8933cc870bf7",
+          "message": "release: v0.3.4 — fix issue #1 (lint catalog × impl drift)\n\nFixes the long-standing drift between lookups/lint_rules.json and\nparsing/lint.py — the catalog described different rules than what\nlint.py actually fired for the same regra_id, misleading users who\nlooked up findings.\n\nWhat changed:\n\n- lookups/lint_rules.json fully regenerated. All 35 entries now match\n  the impl exactly:\n  - 24 status=\"active\" (BP-001/002/003/004/005/006, SEC-001/002,\n    PERF-001/002/003, MOD-001/002, SX-001..SX-011) — each with\n    impl_function pointing to the _check_* function in lint.py.\n  - 11 status=\"planned\" (BP-002b, BP-007, BP-008, SEC-003/004/005,\n    PERF-004/005/006, MOD-003/004) — kept as roadmap/checklist\n    mental sem detector ainda.\n  - Severities aligned (10 IDs were wrong — e.g. BP-002 was \"error\"\n    in catalog but impl emits \"critical\"; PERF-002/003 were \"warning\"\n    but impl emits \"error\"; SX-005 was \"warning\" but impl emits \"info\").\n  - Titles aligned (15 IDs had completely different topics — e.g.\n    BP-002 catalog=\"Local outside header\", impl=\"BEGIN TRANSACTION\n    sem END\"; SEC-001 catalog=\"SQL injection\", impl=\"RpcSetEnv em\n    REST\"; PERF-002 catalog=\"DbSeek loop\", impl=\"SQL sem %notDel%\").\n  - Descricao + fix_guidance reescritos in pt-BR pra refletir o que\n    a regra realmente detecta + como corrigir.\n\n- Schema migration 003 (003_lint_rules_status.sql) — adiciona colunas\n  status TEXT DEFAULT 'active' e impl_function TEXT DEFAULT '' em\n  lint_rules. SCHEMA_VERSION bumped 2 → 3.\n\n- db.py LOOKUP_SCHEMAS atualizado pra incluir os 2 campos novos no seed.\n\n- tests/unit/test_lint_catalog_consistency.py (NEW, 7 asserts):\n  - test_catalog_has_expected_total — 35 regras\n  - test_active_count_matches_impl — 24 active = 24 _check_* fns\n  - test_active_rules_have_impl_function — todo active tem impl_function\n    apontando pra fn real\n  - test_severity_matches_between_catalog_and_impl — bate 1:1\n  - test_planned_rules_have_no_impl — planned NÃO deve ter _check_*\n  - test_planned_rules_have_no_impl_function — planned não tem impl_function\n  - test_all_rules_have_required_fields — schema mínimo dos campos\n\n  Validado 7/7 PASS via standalone runner (pytest do venv local está\n  hung por env issue não relacionado, conforme reportado no commit\n  e06bc3e do v0.3.1).\n\n- Skill advpl-code-review atualizada — drift footnote substituída por\n  nota explicando o realinhamento + referência ao test guard.\n\nCloses #1.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T19:03:42-03:00",
+          "tree_id": "81d78097a8393eec63cbc9f765a053079a813d4d",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/e482f5dc9c5eaa869fb97e7eb1ff8933cc870bf7"
+        },
+        "date": 1778623452950,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 22.53292629819939,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0003730174263250695",
+            "extra": "mean: 44.379499882352626 msec\nrounds: 17"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 68.83868716426134,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00041700738542461117",
+            "extra": "mean: 14.526715153846883 msec\nrounds: 13"
           }
         ]
       }
