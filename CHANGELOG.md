@@ -4,6 +4,39 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-05-12
+
+### Added
+- **`BP-008` (critical) implementado** — detector de shadowing de variável
+  reservada framework. Antes catalogada como `planned` (#1 follow-up). Agora
+  detecta declarações `Local`/`Static`/`Private`/`Public` cujo nome bate
+  (case-insensitive) com uma das **13 reservadas** Public criadas pelo
+  framework Protheus: `cFilAnt`, `cEmpAnt`, `cUserName`, `cModulo`, `cTransac`,
+  `nProgAnt`, `oMainWnd`, `__cInternet`, `nUsado`, `PARAMIXB`, `aRotina`,
+  `lMsErroAuto`, `lMsHelpAuto`. Cobre declarações multi-var
+  (`Local cVar1, cFilAnt, cVar2`) e TLPP-typed (`Local cFilAnt as character`).
+  Bug protegido: programador declara `Local cFilAnt := ""` e depois usa
+  `cFilAnt` achando que tem o valor da filial real, mas vê "" — ICMS errado,
+  query cross-filial vazia, etc.
+- **`tests/unit/test_lint.py::TestBP008ShadowedReserved`** (11 asserts,
+  TDD red→green): 7 positives (cFilAnt simples, case-insensitive, multi-var,
+  TLPP-typed, Public PARAMIXB, Private lMsErroAuto, linha correta) + 4
+  negatives (similar-name `cFilAntiga`, reservada em string, reservada em
+  comentário, uso correto sem declarar). Validado 11/11 PASS.
+
+### Changed
+- **Catálogo `lint_rules.json`**: BP-008 promovido de `status="planned"`
+  para `status="active"` + `impl_function="_check_bp008_shadowed_reserved"`.
+  Total: 25 active + 10 planned = 35 (mantido).
+- **Test `test_lint_catalog_consistency`**: assert `n_active == 24`
+  trocado por dinâmico `n_active == len(impl)` — futuras promoções
+  planned→active não exigem update do test, só catálogo + impl.
+- **Skill `advpl-code-review`**: BP-008 movida da tabela "planned" pra
+  "active" (14 single-file agora). Adicionado exemplo de fix com 3 cenários
+  (errado, correto com rename, correto sem declarar).
+- **Skill `advpl-fundamentals`**: nota sobre BP-008 atualizada — agora
+  detecta via `/plugadvpl:lint`, cobre 13 reservadas case-insensitive.
+
 ## [0.3.4] - 2026-05-12
 
 ### Fixed

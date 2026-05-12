@@ -63,21 +63,29 @@ def impl() -> dict[str, dict[str, str]]:
     return out
 
 
-def test_catalog_has_expected_total(catalog: dict) -> None:
-    """Sanity check: número total de regras catalogadas (24 active + 11 planned = 35)."""
-    assert len(catalog) == 35, (
-        f"esperava 35 regras catalogadas, encontrou {len(catalog)}. "
-        "Se adicionou/removeu regra intencional, atualize este teste."
+def test_catalog_has_minimum_total(catalog: dict) -> None:
+    """Sanity check: catálogo deve ter pelo menos 35 regras (mais é OK, menos não)."""
+    assert len(catalog) >= 35, (
+        f"catálogo encolheu: encontrou {len(catalog)} regras, mínimo esperado 35. "
+        "Não remova regras planned sem ticket de discussão."
     )
 
 
 def test_active_count_matches_impl(catalog: dict, impl: dict) -> None:
-    """24 regras active no catálogo devem bater com 24 funções _check_* no impl."""
+    """Toda regra active no catálogo deve ter `_check_*` correspondente em lint.py.
+
+    Test dinâmico (não hardcoded): quantos active no JSON deve == quantos
+    `_check_*` em lint.py. Não precisa atualizar quando promove planned→active.
+    """
     n_active = sum(1 for r in catalog.values() if r.get("status") == "active")
-    assert n_active == 24, f"esperava 24 active, encontrou {n_active}"
-    assert len(impl) == 24, (
-        f"esperava 24 funções _check_* em lint.py, encontrou {len(impl)}. "
-        "Se adicionou/removeu detector, atualize este teste e o catálogo."
+    assert n_active == len(impl), (
+        f"catalog active={n_active}, impl _check_*={len(impl)} — "
+        f"toda regra active precisa ter _check_* correspondente, e vice-versa"
+    )
+    # Sanity floor: nunca deve cair abaixo do baseline conhecido (v0.3.4 = 24).
+    assert len(impl) >= 24, (
+        f"esperava pelo menos 24 funções _check_*, encontrou {len(impl)}. "
+        "Regrediu? Verifique se algum detector foi removido sem aviso."
     )
 
 

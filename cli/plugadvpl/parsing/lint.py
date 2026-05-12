@@ -673,11 +673,88 @@ def _check_mod002_public_declaration(
     return findings
 
 
+# --- BP-008: shadowing de variável reservada -------------------------------
+
+# Variáveis Public criadas pelo framework Protheus que NÃO devem ser declaradas
+# como Local/Static/Private/Public em fonte custom. Comparação é case-insensitive
+# (ADVPL trata identificadores assim).
+_BP008_RESERVED_VARS: frozenset[str] = frozenset(
+    name.upper()
+    for name in (
+        # Contexto de empresa/filial/usuario
+        "cFilAnt", "cEmpAnt", "cUserName", "cModulo", "cTransac", "nProgAnt",
+        # Janela principal e flags de execucao
+        "oMainWnd", "__cInternet", "nUsado",
+        # PE / MVC / ExecAuto
+        "PARAMIXB", "aRotina", "lMsErroAuto", "lMsHelpAuto",
+    )
+)
+
+# Detecta declaração: linha começa com (Local|Static|Private|Public) seguido de
+# pelo menos um identificador. Captura group 1 = keyword, group 2 = resto da linha.
+_BP008_DECL_RE = re.compile(
+    r"^[ \t]*(Local|Static|Private|Public)\b[ \t]+(.+)$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+# Em "cVar1, cFilAnt, cVar2 := 'x' as character", separadores são vírgula top-level.
+# Pra cada peça, o identificador é o primeiro token alfanumérico (antes de :=, as, espaço).
+_BP008_VAR_RE = re.compile(r"^[ \t]*([A-Za-z_][A-Za-z0-9_]*)")
+
+
+def _check_bp008_shadowed_reserved(
+    arquivo: str, parsed: dict[str, Any], content: str
+) -> list[dict[str, Any]]:
+    """BP-008 (critical): Local/Static/Private/Public com nome de variável reservada framework.
+
+    Declarar variável local com nome de Public reservada (cFilAnt, cEmpAnt, PARAMIXB, etc.)
+    faz shadowing — sua função enxerga "" / Nil em vez do valor real do framework.
+    Bug clássico: programador declara `Local cFilAnt := ""` no início e depois usa cFilAnt
+    achando que tem o valor da filial atual.
+    """
+    findings: list[dict[str, Any]] = []
+    stripped = strip_advpl(content, strip_strings=True)
+    funcoes = parsed.get("funcoes", []) or []
+
+    for m_decl in _BP008_DECL_RE.finditer(stripped):
+        keyword = m_decl.group(1)
+        rest = m_decl.group(2)
+        # Split por vírgula top-level (declarações ADVPL não têm vírgulas dentro de
+        # argumentos de função aqui, pois é só lado esquerdo de declaração).
+        for piece in rest.split(","):
+            m_var = _BP008_VAR_RE.match(piece)
+            if not m_var:
+                continue
+            var_name = m_var.group(1)
+            if var_name.upper() not in _BP008_RESERVED_VARS:
+                continue
+            # Match — calcula linha + funcao + snippet
+            offset = m_decl.start()
+            linha = _line_at(stripped, offset)
+            funcao = _funcao_at_line(funcoes, linha)
+            findings.append(
+                {
+                    "arquivo": arquivo,
+                    "funcao": funcao,
+                    "linha": linha,
+                    "regra_id": "BP-008",
+                    "severidade": "critical",
+                    "snippet": _snippet_at_line(content, linha),
+                    "sugestao_fix": (
+                        f"`{keyword} {var_name}` faz shadowing da variável reservada "
+                        f"`{var_name}` do framework Protheus. Renomeie para algo distinto "
+                        f"(ex: prefixo cliente). Toda função vê valor vazio em vez do real."
+                    ),
+                }
+            )
+    return findings
+
+
 # --- Orchestrator -------------------------------------------------------------
 
 
 def lint_source(parsed: dict[str, Any], content: str) -> list[dict[str, Any]]:
-    """Aplica as 13 regras single-file. Retorna list[Finding] ordenada por linha.
+    """Aplica as 14 regras single-file. Retorna list[Finding] ordenada por linha.
 
     Args:
         parsed: dict produzido por parse_source() (com funcoes, sql_embedado, etc.).
@@ -695,6 +772,7 @@ def lint_source(parsed: dict[str, Any], content: str) -> list[dict[str, Any]]:
     findings.extend(_check_bp004_pergunte_no_check(arquivo, parsed, content))
     findings.extend(_check_bp005_too_many_params(arquivo, parsed, content))
     findings.extend(_check_bp006_mixed_reclock_rawapi(arquivo, parsed, content))
+    findings.extend(_check_bp008_shadowed_reserved(arquivo, parsed, content))
     findings.extend(_check_sec001_rpcsetenv_in_restful(arquivo, parsed, content))
     findings.extend(_check_sec002_user_function_no_prefix(arquivo, parsed, content))
     findings.extend(_check_perf001_select_star(arquivo, parsed, content))

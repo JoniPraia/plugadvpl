@@ -94,7 +94,7 @@ São Public variables criadas pelo framework Protheus. Declarar como `Local`/`Pr
 | `__cInternet` | Indicador de execução web |
 | `nUsado` | Contador interno (framework) |
 
-Lint `BP-008` (critical) pega tentativa de redeclaração.
+Lint **`BP-008` (critical)** pega tentativa de redeclaração via `/plugadvpl:lint <arq>` (ativado em v0.3.5; cobre 13 reservadas case-insensitive).
 
 ## Prefixo de cliente em `User Function`
 

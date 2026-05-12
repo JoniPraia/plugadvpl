@@ -4,7 +4,7 @@ description: 24 regras de code review ADVPL/TLPP implementadas (13 single-file v
 
 # advpl-code-review — As regras de code review do plugadvpl
 
-`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **24 são efetivamente detectadas** (v0.3.4+): **13 single-file** via regex/AST sobre o conteúdo do fonte, e **11 cross-file `SX-*`** que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes). As outras 11 ficam **catalogadas como `status='planned'`** — sem detecção automática hoje, mas servem como roadmap + checklist mental.
+`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **25 são efetivamente detectadas** (v0.3.5+): **14 single-file** via regex/AST sobre o conteúdo do fonte, e **11 cross-file `SX-*`** que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes). As outras 10 ficam **catalogadas como `status='planned'`** — sem detecção automática hoje, mas servem como roadmap + checklist mental.
 
 > **Catálogo alinhado com a impl** desde v0.3.4. Antes (v0.3.0..v0.3.3), o
 > `lookups/lint_rules.json` tinha 25 itens em drift com `parsing/lint.py`
@@ -24,7 +24,7 @@ Rode `/plugadvpl:lint <arq>` para resultado de fato — esta skill é o **guia m
 
 ## As 24 regras detectadas — quick reference
 
-### Single-file (13) — `lint.py`, regex/AST sobre conteúdo
+### Single-file (14) — `lint.py`, regex/AST sobre conteúdo
 
 | ID         | Sev      | Comportamento real implementado                                                |
 |------------|----------|-------------------------------------------------------------------------------|
@@ -34,6 +34,7 @@ Rode `/plugadvpl:lint <arq>` para resultado de fato — esta skill é o **guia m
 | `BP-004`   | warning  | `Pergunte("GRUPO", .F.)` sem uso subsequente de `MV_PAR*`                      |
 | `BP-005`   | warning  | Função declarada com **mais de 6 parâmetros**                                  |
 | `BP-006`   | error    | Mistura `RecLock` + `dbAppend()`/`DbRLock` raw na mesma função                  |
+| `BP-008`   | critical | Shadowing de variável reservada framework (`cFilAnt`, `cEmpAnt`, `PARAMIXB`, `lMsErroAuto`, etc. — 13 reservadas cobertas) — **novo em v0.3.5** |
 | `SEC-001`  | critical | `RpcSetEnv` dentro de classe que herda de `WSRESTFUL`                          |
 | `SEC-002`  | warning  | `User Function` sem prefixo cliente (2-3 letras) ou nome de PE oficial         |
 | `PERF-001` | warning  | `SELECT *` em `BeginSql`/`TCQuery`                                             |
@@ -60,15 +61,14 @@ Disponíveis após `/plugadvpl:ingest-sx <pasta-csv>`. Acionadas com `--cross-fi
 | `SX-010`  | error    | Gatilho `X7_TIPO='P'` (Pesquisar) sem `X7_SEEK='S'` válido                      |
 | `SX-011`  | error    | `X3_F3` aponta pra alias SXB que não existe                                    |
 
-## As 11 regras catalogadas mas não detectadas (v0.3.3)
+## As 10 regras catalogadas mas não detectadas (v0.3.5)
 
-Aparecem em `lookups/lint_rules.json` mas o `lint.py` ainda não implementa detecção. Use como checklist mental.
+Aparecem em `lookups/lint_rules.json` com `status="planned"`. Use como checklist mental.
 
 | ID         | Sev      | Título do catálogo                                                            |
 |------------|----------|-------------------------------------------------------------------------------|
 | `BP-002b`  | warning  | Variável declarada como `Private`/`Public` em vez de `Local`                  |
 | `BP-007`   | info     | Função sem header Protheus.doc                                                |
-| `BP-008`   | critical | Shadowing de variável reservada (`cFilAnt`, `cEmpAnt`, etc.)                  |
 | `SEC-003`  | warning  | PII/credenciais em `ConOut`/`FwLogMsg`                                        |
 | `SEC-004`  | warning  | Credenciais hardcoded                                                         |
 | `SEC-005`  | critical | Uso de função TOTVS restrita/interna (lookup `funcoes_restritas`)             |
@@ -250,6 +250,33 @@ BeginSql Alias "QRY"
 EndSql
 ```
 
+### BP-008 — Shadowing de variável reservada framework
+
+```advpl
+// ERRADO — shadow da reservada cFilAnt (Public que TOTVS preenche com filial atual)
+User Function XYZBad()
+    Local cFilAnt := "01"           // shadow! agora cFilAnt vale "01" dentro desta funcao
+    DbSelectArea("SA1")
+    DbSeek(xFilial("SA1") + cFilAnt)   // cFilAnt aqui é "01", nao a filial real
+Return
+
+// CORRETO — usar nome distinto
+User Function XYZGood()
+    Local cMinhaFilial := "01"      // sem colisao
+    DbSelectArea("SA1")
+    DbSeek(xFilial("SA1") + cMinhaFilial)
+Return
+
+// CORRETO — quando voce REALMENTE quer a filial atual, NAO declare cFilAnt local
+User Function XYZGood2()
+    DbSelectArea("SA1")
+    DbSeek(xFilial("SA1") + cFilAnt)   // cFilAnt vem do framework (Public)
+Return
+```
+
+Reservadas cobertas pela detecção (case-insensitive, 13 nomes):
+`cFilAnt`, `cEmpAnt`, `cUserName`, `cModulo`, `cTransac`, `nProgAnt`, `oMainWnd`, `__cInternet`, `nUsado`, `PARAMIXB`, `aRotina`, `lMsErroAuto`, `lMsHelpAuto`.
+
 ### SX-005 — campo custom não-referenciado
 
 Detectado por `/plugadvpl:lint --cross-file --regra SX-005`:
@@ -270,6 +297,7 @@ Decisão: **remover** do SX3 + script de delete, OU implementar uso pendente.
 
 - [ ] Todo `RecLock` tem `MsUnlock` pareado, inclusive em branch de erro (`BP-001`).
 - [ ] Todo `Begin Transaction` tem `End Transaction` pareado (`BP-002`).
+- [ ] Nenhuma reservada (`cFilAnt`/`cEmpAnt`/`PARAMIXB`/`lMsErroAuto`/etc.) declarada como Local/Static/Private/Public (`BP-008`).
 - [ ] Nenhum REST API tem `RpcSetEnv` (`SEC-001`) — use `PrepareIn`/`TenantId`.
 
 ### Error

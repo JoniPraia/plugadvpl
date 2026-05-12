@@ -447,3 +447,129 @@ class TestLintSourceIntegration:
         )
         findings = lint_source(_parsed_for(src), src)
         assert findings == []
+
+
+# --- BP-008: shadowing de variável reservada framework ----------------------
+
+
+class TestBP008ShadowedReserved:
+    """BP-008 (critical): Local/Static/Private/Public com nome de reservada TOTVS."""
+
+    def test_positive_local_cFilAnt(self) -> None:
+        src = (
+            "User Function XYZBad()\n"
+            "    Local cFilAnt := '01'\n"   # shadow!
+            "    ConOut(cFilAnt)\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        bp008 = [f for f in findings if f["regra_id"] == "BP-008"]
+        assert len(bp008) == 1
+        assert bp008[0]["severidade"] == "critical"
+        assert "cFilAnt" in bp008[0]["snippet"] or "cFilAnt" in bp008[0]["sugestao_fix"]
+
+    def test_positive_static_cEmpAnt_case_insensitive(self) -> None:
+        src = (
+            "User Function XYZBad()\n"
+            "    static CEMPANT := ''\n"   # ADVPL is case-insensitive
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-008" in _ids(findings)
+
+    def test_positive_private_lMsErroAuto(self) -> None:
+        src = (
+            "User Function XYZBad()\n"
+            "    Private lMsErroAuto := .F.\n"   # reserved exec auto flag
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-008" in _ids(findings)
+
+    def test_positive_public_PARAMIXB(self) -> None:
+        src = (
+            "User Function XYZBad()\n"
+            "    Public PARAMIXB := {}\n"   # PE arg array, never override
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-008" in _ids(findings)
+
+    def test_positive_multi_var_decl(self) -> None:
+        """Local cVar1, cFilAnt, cVar2 := ... — BP-008 pega o cFilAnt no meio."""
+        src = (
+            "User Function XYZBad()\n"
+            "    Local cVar1, cFilAnt, cVar2 := 'x'\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-008" in _ids(findings)
+
+    def test_positive_tlpp_typed_decl(self) -> None:
+        """Local cFilAnt as character — TLPP type annotation, ainda shadow."""
+        src = (
+            "User Function XYZBad()\n"
+            "    Local cFilAnt as character\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-008" in _ids(findings)
+
+    def test_negative_similar_name(self) -> None:
+        """cFilAntiga não é cFilAnt — não deve match."""
+        src = (
+            "User Function XYZGood()\n"
+            "    Local cFilAntiga := '01'\n"
+            "    Local cFilAntx   := '02'\n"
+            "    Local nProgAntx  := 0\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-008" not in _ids(findings)
+
+    def test_negative_reserved_in_string(self) -> None:
+        """'cFilAnt' dentro de string literal não deve match."""
+        src = (
+            "User Function XYZGood()\n"
+            "    Local cMsg := 'cFilAnt is reserved'\n"
+            "    ConOut(cMsg)\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-008" not in _ids(findings)
+
+    def test_negative_reserved_in_comment(self) -> None:
+        """// Local cFilAnt não deve match."""
+        src = (
+            "User Function XYZGood()\n"
+            "    // Local cFilAnt — comentario explicativo\n"
+            "    Local cMinhaVar := '01'\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-008" not in _ids(findings)
+
+    def test_negative_use_without_declare(self) -> None:
+        """Usar cFilAnt sem declarar como Local NÃO é shadow — é uso correto."""
+        src = (
+            "User Function XYZGood()\n"
+            "    ConOut('Filial atual: ' + cFilAnt)\n"
+            "    DbSelectArea('SA1')\n"
+            "    DbSeek(xFilial('SA1') + cFilAnt)\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-008" not in _ids(findings)
+
+    def test_positive_reports_correct_line(self) -> None:
+        """Snippet/linha apontam pra linha correta."""
+        src = (
+            "User Function XYZBad()\n"   # 1
+            "    Local cVarOk := '01'\n" # 2
+            "    Local cEmpAnt := '99'\n"  # 3 — shadow aqui
+            "Return\n"                   # 4
+        )
+        findings = lint_source(_parsed_for(src), src)
+        bp008 = [f for f in findings if f["regra_id"] == "BP-008"]
+        assert len(bp008) == 1
+        assert bp008[0]["linha"] == 3

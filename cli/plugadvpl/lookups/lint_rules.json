@@ -90,10 +90,11 @@
     "titulo": "Shadowing de variável reservada (cFilAnt, cEmpAnt, PARAMIXB, etc.)",
     "severidade": "critical",
     "categoria": "best-practice",
-    "descricao": "Declarar variável Local/Static/Private com nome de Public reservada do framework (`cFilAnt`, `cEmpAnt`, `cUserName`, `PARAMIXB`, `aRotina`, `lMsErroAuto`, `__cInternet`, `nUsado`, etc.) faz shadowing — sua função enxerga `\"\"`/`Nil` em vez do valor real do framework.",
-    "fix_guidance": "Renomeie a variável local pra algo distinto (prefixo cliente). NUNCA crie Local/Private/Public com o mesmo nome de uma reservada framework.",
+    "descricao": "Declarar variável Local/Static/Private/Public com nome de Public reservada do framework Protheus faz shadowing — sua função enxerga `\"\"`/`Nil` em vez do valor real. Cobertas (case-insensitive): `cFilAnt`, `cEmpAnt`, `cUserName`, `cModulo`, `cTransac`, `nProgAnt`, `oMainWnd`, `__cInternet`, `nUsado`, `PARAMIXB`, `aRotina`, `lMsErroAuto`, `lMsHelpAuto`. Detecta também declarações multi-var (`Local cVar1, cFilAnt, cVar2`) e TLPP-typed (`Local cFilAnt as character`).",
+    "fix_guidance": "Renomeie a variável local pra algo distinto (prefixo cliente, ex: `cMinhaFilial`). NUNCA crie Local/Private/Public/Static com o mesmo nome de uma reservada framework — não há motivo legítimo de override em código custom.",
     "detection_kind": "regex",
-    "status": "planned"
+    "status": "active",
+    "impl_function": "_check_bp008_shadowed_reserved"
   },
   {
     "regra_id": "SEC-001",
