@@ -11,6 +11,13 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
   foram criados — o README anunciava como `/plugadvpl:*` mas só funcionavam
   via CLI direta. Agora o plugin Claude Code expõe os 18 comandos completos.
 
+### Changed
+- **Bump `uvx plugadvpl@0.1.0` → `@0.3.0`** em todos os assets do plugin
+  (14 skills antigas, 4 agents, hook `session-start.mjs`, `cli/README.md`).
+  Como migration 002 introduziu o schema v2, qualquer slash command pinado
+  em v0.1.0 contra um índice atual falharia com `OperationalError`. Specs
+  históricos em `docs/superpowers/` ficaram intocados.
+
 ### Fixed
 - **`install.ps1`** — compatibilidade real com Windows PowerShell 5.1.
   Três problemas atacados de uma vez: TLS default (1.0/1.1) que quebrava
