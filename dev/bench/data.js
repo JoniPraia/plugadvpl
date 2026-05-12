@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778616695396,
+  "lastUpdate": 1778616878908,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -745,6 +745,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00035084252497457713",
             "extra": "mean: 13.827659538459503 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "e72561336e75024e44daf3c9117a40be0c9d2810",
+          "message": "docs(skill): advpl-mvc-avancado — add PE STRU rotina table, FWModelActive, fix FwIsInCallStack capitalization, more grid/calc anti-patterns\n\nResearched and added concrete info Claude needs for PE customization:\n\nLookup-able PE table — which PE STRU goes with which standard\nrotina TOTVS. Added 8 common mappings: MATA010 -> MA010STRU,\nMATA070 -> MA070STRU, MATA103 -> MT103STRU, MATA440 -> MA440STRU,\nMATA460 -> M460STRU, CNTA300 -> A300STRU, FINA040 -> FA040STRU,\nFINA050 -> FA050STRU. Plus the other PE suffix families\n(<Rot>MOD/VLD/COMMIT/BLOQ/MARK/SEEK/BTN) with when each fires.\n\nMulti-grid hierarchy (pai/filho/neto) example — common in\nmanufatura/logística (Ordem Producao -> Operacoes -> Recursos),\nshowing SetRelation chained across three levels with proper\nSetUniqueLine per level.\n\nAddCalc/FWSaveRows interaction — TDN documents that AddCalc breaks\ngrid positioning. Now flagged as anti-pattern: every AddCalc that\nwalks the grid must wrap in FWSaveRows/FWRestRows.\n\nSetOnlyView vs SetOnlyQuery vs SetNoInsertLine/SetNoDeleteLine\ndisambiguation table — these get confused in practice. View=read-only;\nQuery=user edits but no save; NoInsertLine/NoDeleteLine=grid CRUD\ngates. Status-driven example combines them realistically.\n\nFWModelActive() — pattern to grab active model from utility\nfunctions called from SX3 X3_VALID/X3_INIT (PE flow that doesn't\nreceive oModel as parameter).\n\nPE × FWModelEvent decision table — when to use each. PE pattern\npreserves TOTVS upgradability (skill needed this contrast since\nadvpl-mvc was rewritten to lead with FWModelEvent).\n\nOther fixes:\n\n- mvc_hooks table claim removed (schema doesn't have it).\n- FwIsInCallStack capitalization corrected (TDN: lowercase 'w').\n- bLinePost preservation pattern expanded with explanation\n  (\"substituir cego quebra comportamento original TOTVS\").\n- MaFisEnd warning escalated to critical box (state leaks across\n  registers if forgotten).\n- 8 new anti-patterns enumerated.\n\nAI usability:\n\n- Frontmatter description names the common rotinas explicitly\n  (CNTA300/MATA070/MATA440/MATA460/FINA040 via *STRU).\n- Cross-refs via [[name]] to 9 related skills.\n- Sources section with 9 canonical references (TDN, TOTVS Central,\n  Terminal de Informação, dan-atilio AdvPL GitHub).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T17:14:05-03:00",
+          "tree_id": "0b849dac80ef4f5d45a8e22b84ef0e0bdf36ec72",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/e72561336e75024e44daf3c9117a40be0c9d2810"
+        },
+        "date": 1778616878660,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 22.559812984773867,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00037543278935837227",
+            "extra": "mean: 44.32660858824152 msec\nrounds: 17"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 70.41625064356582,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0004503278426948597",
+            "extra": "mean: 14.201267333329307 msec\nrounds: 12"
           }
         ]
       }
