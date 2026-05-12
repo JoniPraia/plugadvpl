@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778623453229,
+  "lastUpdate": 1778624361181,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -1249,6 +1249,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00041700738542461117",
             "extra": "mean: 14.526715153846883 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "a30cd325dd23b4c826570acfb737eea6b20f5112",
+          "message": "release: v0.3.5 — implement BP-008 (shadowing of reserved framework variables)\n\nFirst of the 11 planned-but-not-implemented lint rules graduates to\nstatus=active. Picked BP-008 because it's critical severity (silent bug\nclass) and well-detectable via regex on Local/Static/Private/Public\ndeclarations.\n\nWhat it detects:\n\nDeclarações Local/Static/Private/Public cujo nome bate (case-insensitive)\ncom uma das 13 variáveis Public reservadas que o framework Protheus cria\ne popula:\n\n- Contexto: cFilAnt, cEmpAnt, cUserName, cModulo, cTransac, nProgAnt\n- Janela/runtime: oMainWnd, __cInternet, nUsado\n- PE/MVC/ExecAuto: PARAMIXB, aRotina, lMsErroAuto, lMsHelpAuto\n\nBug protegido: programador declara `Local cFilAnt := \"\"` no header da\nfunção → daí em diante toda referência a cFilAnt vê string vazia em vez\ndo valor real da filial → query cross-filial vazia, ICMS calculado em\nfilial errada, RecLock que abre tabela compartilhada como se fosse\nexclusiva, etc.\n\nCobertura de edge cases (todos os 11 testes TDD passam):\n\n- Local cFilAnt := \"01\"                     → flag (positive)\n- Static cEmpAnt := \"\" (case-insensitive)   → flag\n- Private lMsErroAuto := .F.                → flag\n- Public PARAMIXB := {}                     → flag\n- Local cVar1, cFilAnt, cVar2 := \"x\"        → flag (multi-var)\n- Local cFilAnt as character                → flag (TLPP-typed)\n- Local cFilAntiga := \"01\"                  → NÃO flag (similar name)\n- Local cMsg := 'cFilAnt is reserved'        → NÃO flag (string)\n- // Local cFilAnt — comment                → NÃO flag (comment)\n- DbSeek(xFilial(\"SA1\") + cFilAnt)           → NÃO flag (uso, não declaração)\n\nImplementation:\n\n- _check_bp008_shadowed_reserved em parsing/lint.py:\n  - Strip comments + strings com strip_advpl(content, strip_strings=True)\n  - Regex _BP008_DECL_RE matches \"(Local|Static|Private|Public)\\s+(.+)\"\n    case-insensitive, multiline\n  - Para cada decl, split por vírgula e extrai bare identifier (regex\n    _BP008_VAR_RE pega primeiro [A-Za-z_]\\w* da peça, ignorando :=, as, etc.)\n  - Compara uppercase contra _BP008_RESERVED_VARS frozenset\n\n- Registrado no orchestrator lint_source() entre BP-006 e SEC-001.\n\nCatalog migration:\n\n- lookups/lint_rules.json: BP-008 status=\"planned\" → \"active\",\n  + impl_function=\"_check_bp008_shadowed_reserved\", titulo refinado\n  com edge-case coverage, descricao expandida.\n\nTest guard improvement:\n\n- test_lint_catalog_consistency: hardcoded n_active==24 trocado por\n  dinâmico n_active == len(impl). Futura promoção planned→active não\n  exige update do test, só catálogo + impl. Floor mantido em >=24\n  (regressão flag).\n\nSkills atualizadas:\n\n- advpl-code-review: BP-008 movida pra tabela \"active\" (14 single-file +\n  11 cross-file = 25 active total). Adicionado exemplo de fix com 3\n  cenários (shadow, rename, sem declarar). Checklist mental de\n  Critical inclui BP-008.\n- advpl-fundamentals: nota sobre BP-008 atualizada (agora detecta via\n  /plugadvpl:lint, cobre 13 reservadas case-insensitive).\n\nValidation:\n\n- 11/11 BP-008 tests PASS (positive + negative + multi-var + TLPP)\n- 42/42 todos os tests do test_lint.py PASS (zero regressão)\n- 7/7 test_lint_catalog_consistency PASS (catalog ↔ impl alinhados)\n- Drift audit: 0 items (catalog 35 = 25 active + 10 planned, bate impl 25)\n\nCatálogo agora: 25 active + 10 planned. Próximas candidatas pra promoção\na v0.3.6+: SEC-005 (TOTVS restricted via lookup), MOD-004 (AxCadastro→MVC),\nPERF-005 (RecCount > 0).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T19:18:51-03:00",
+          "tree_id": "4f18312030731a93bbe6ffe43f67ee09bc87d53b",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/a30cd325dd23b4c826570acfb737eea6b20f5112"
+        },
+        "date": 1778624360575,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 27.12152314158845,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0002241316210254429",
+            "extra": "mean: 36.87108555000691 msec\nrounds: 20"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 75.19029724362552,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00033445091751445864",
+            "extra": "mean: 13.299588333317539 msec\nrounds: 15"
           }
         ]
       }
