@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778618335705,
+  "lastUpdate": 1778622417848,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -1177,6 +1177,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0002975891751761373",
             "extra": "mean: 13.61433435714129 msec\nrounds: 14"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "c35acd3c4315c3745be0dee94a75c651eef36301",
+          "message": "docs(changelog): record the 16-skill comprehensive overhaul under [Unreleased]\n\nDocuments the work done across 16 commits (a8dfa90..0865c1d) reviewing\nevery knowledge skill against TDN, TOTVS Central, and community\ncanonical sources.\n\nCross-cutting changes recorded:\n\n- Phantom command /plugadvpl:sql removed from 3 skills (doesn't exist).\n- Wrong SQLite table names corrected in 5+ skills (sources->fontes,\n  simbolos->fonte_chunks, calls->chamadas_funcao, params->parametros_uso,\n  sql_refs->sql_embedado, ws_services/ws_structures->rest_endpoints/\n  http_calls, mvc_hooks and dictionary_sx removed entirely).\n- bCommit/bTudoOk deprecation documented; advpl-mvc now leads with\n  FWModelEvent + InstallEvent (canonical TOTVS pattern since 12.1.17+).\n- FWMVCRotina corrected to FWMVCRotAuto.\n- Identifier limit clarified (10 chars in .prw/.prx vs 250 in .tlpp;\n  the silent truncation bug class nTotalGeralAnual ≡ nTotalGeralMensal).\n- TLPP default-PRIVATE vs ADVPL default-PUBLIC port-trap noted.\n- Lint rules aligned to IMPL (not catalog) in 4 skills; drift\n  documented as issue #1 for v0.3.4.\n- ~120 bidirectional [[name]] cross-refs added (all 18 verified\n  pointing to real skills — none broken).\n- ~80 external Sources references (TDN, TOTVS Central, Terminal de\n  Informação, Medium, GitHub canónicos).\n\nIssue #1 filed (https://github.com/JoniPraia/plugadvpl/issues/1) to\ntrack the lookups/lint_rules.json vs lint.py drift fix for v0.3.4.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T18:46:36-03:00",
+          "tree_id": "2b381265e1cfc53be3f0f5fe55040c4dd04cd3cd",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/c35acd3c4315c3745be0dee94a75c651eef36301"
+        },
+        "date": 1778622417585,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 23.123659110017194,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00024278262992766706",
+            "extra": "mean: 43.24575082352771 msec\nrounds: 17"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 71.8625008999422,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00047402827850755223",
+            "extra": "mean: 13.915463384614887 msec\nrounds: 13"
           }
         ]
       }
