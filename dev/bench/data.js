@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778540604694,
+  "lastUpdate": 1778544484028,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -493,6 +493,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0003204286202197908",
             "extra": "mean: 41.195616789472545 msec\nrounds: 19"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "df2edc8222666a36197d0150adb9006a68152f89",
+          "message": "feat: v0.3.0 — Universo 2 (Dicionário SX)\n\n- Migration 002: 11 SX tables (SX1-SX9, SIX, SXA, SXB, SXG)\n- Ported parser_sx.py from internal Protheus project (872 lines, MIT same author)\n- New module cli/plugadvpl/parsing/sx_csv.py — handles all 11 SX CSV formats,\n  auto-detects encoding (cp1252/iso-8859) and delimiter, auto-converts\n  XLSX disguised as CSV, sanitizes Unicode surrogates, filters D_E_L_E_T_=*\n- New module cli/plugadvpl/ingest_sx.py — orchestrator with batch insert,\n  idempotent (INSERT OR REPLACE), skips missing CSVs gracefully\n- 4 new CLI commands: ingest-sx, impacto (killer feature), gatilho, sx-status\n- 11 cross-file lint rules SX-001..SX-011 (X3_VALID with unknown U_xxx,\n  SX7 trigger destination missing in SX3, MV_ params never read,\n  SX1 groups never used, custom fields with zero references, X3_VALID with\n  embedded SQL, X3_VALID calling restricted TOTVS function, shared table\n  with xFilial in VALID, required field with empty INIT, Pesquisar trigger\n  without SEEK, X3_F3 pointing to non-existent SXB consulta) — invoked via\n  `plugadvpl lint --cross-file`\n- New skill advpl-dicionario-sx-validacoes (X3_VALID/INIT/WHEN/VLDUSER,\n  X7_REGRA/CONDIC, X1_VALID + workflow plugadvpl impacto)\n- Tests: 11 new integration tests (test_ingest_sx.py) + 1 bench\n  (~26ms for 11 synthetic CSVs) + 3 e2e_local against D:/Clientes/CSV.\n  All 250 tests pass (was 239 in v0.2.0, +11 new).\n- Real-data validation: 421k rows ingested in 18s from 11 production CSVs\n  (sx3.csv = 407MB → 187k campos)\n\nKiller use case: `plugadvpl impacto A1_COD --depth 2` mostra TODA cadeia\nde impacto (fontes que usam, validações SX3, gatilhos SX7 com BFS,\nperguntas SX1) — em segundos, sem ler um único .prw.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-11T21:07:45-03:00",
+          "tree_id": "9eed6e3f5236f9c3d5cdf8fbc76ab0756432f490",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/df2edc8222666a36197d0150adb9006a68152f89"
+        },
+        "date": 1778544483743,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 23.745414084841176,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0007009963396626316",
+            "extra": "mean: 42.11339488235708 msec\nrounds: 17"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 68.85701317411701,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0017176050077355907",
+            "extra": "mean: 14.522848928566289 msec\nrounds: 14"
           }
         ]
       }
