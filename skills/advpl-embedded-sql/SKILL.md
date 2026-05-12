@@ -1,43 +1,52 @@
 ---
-description: SQL embarcado em ADVPL — BeginSql/EndSql, TCQuery, macros obrigatórias %notDel%, %xfilial%, %table%, %exp%, %Order%, 6 restrições de performance e segurança.
+description: SQL embarcado em ADVPL/TLPP — BeginSql/EndSql (preferido), TCQuery (legacy), TCSqlExec (DML), MPSysOpenQuery (autosetfield). Macros obrigatórias %notDel%, %xfilial%, %table%, %exp%, %Order%, %top%, %LIMIT%. Use ao gerar/editar query SQL embarcada, refatorar TCQuery+RetSqlName pra BeginSql, ou revisar regras PERF-001/002/003 e SEC-001 do lint.
 ---
 
-# advpl-embedded-sql — SQL nativo em ADVPL
+# advpl-embedded-sql — SQL nativo em ADVPL/TLPP
 
-ADVPL/TLPP suporta SQL embarcado direto no fonte com **substituição por macros** que garantem multi-empresa, multi-filial, anti-SQL-injection e portabilidade entre DBMS (Oracle, SQL Server, Postgres, DB2).
+ADVPL/TLPP suporta SQL embarcado direto no fonte com **substituição por macros** que garantem multi-empresa, multi-filial, anti-SQL-injection e portabilidade entre DBMS (Oracle, SQL Server, Postgres, DB2 via DBAccess).
 
-Existem duas formas principais:
+Famílias de execução SQL no Protheus:
 
-1. **`BeginSql alias <ALIAS> ... EndSql`** — recomendado, suporta macros.
-2. **`TCQuery cSql NEW ALIAS <ALIAS>`** — antigo, sem macros (string crua).
+| Comando / Função      | Tipo     | Use quando                                              |
+|-----------------------|----------|---------------------------------------------------------|
+| **`BeginSql/EndSql`** | SELECT   | **Default pra novo código**, suporta macros             |
+| `TCQuery`             | SELECT   | Legacy. Equivalente ao BeginSql mas string crua         |
+| `TCGenQry`            | SELECT   | Internamente usado por `TCQuery`; raramente direto      |
+| **`MPSysOpenQuery`**  | SELECT   | Como TCQuery mas com `TCSetField` automático dos campos dicionarizados |
+| **`TCSqlExec`**       | DML/DDL  | UPDATE/DELETE/INSERT/CREATE direto no DBMS              |
 
 ## Quando usar
 
 - Edit/criação de qualquer query SQL no fonte ADVPL.
-- Refator de SQL legado (`TCQuery` → `BeginSql`).
-- Revisão de regra `PERF-001..006` ou `SEC-001`.
+- Refator de SQL legado (`TCQuery` + concatenação → `BeginSql`).
+- Revisão de regra `PERF-001`/`PERF-002`/`PERF-003` ou `SEC-001` do lint.
+- DML em massa (atualização cross-tabela) — usar `TCSqlExec` em vez de loop ADVPL com `RecLock`.
 - Antes de testar performance — sem macros, queries dão problema em produção multi-empresa.
 
-## As 5 macros obrigatórias
+## Macros obrigatórias do `BeginSql`
 
 | Macro                | O que faz                                            | Output           | Safe injection |
 |----------------------|------------------------------------------------------|------------------|----------------|
 | `%table:TABLE%`      | Resolve nome físico (`SA1010` em vez de `SA1`)       | identifier       | sim            |
 | `%xfilial:TABLE%`    | Valor atual da filial, já entre aspas                | string literal   | sim            |
-| `%notDel%`           | Filtro `D_E_L_E_T_ <> '*'` (registros não-deletados) | predicate        | sim            |
+| `%notDel%`           | Filtro `D_E_L_E_T_ = ' '` (registros não-deletados)  | predicate        | sim            |
 | `%exp:VAR%`          | Binda variável ADVPL com escaping automático         | scalar literal   | sim            |
-| `%Order:TABLE%`      | Resolve `ORDER BY` da chave primária da tabela       | columns          | sim            |
+| `%Order:TABLE%`      | Resolve `ORDER BY` da chave primária (índice 1)      | columns          | sim            |
+| `%top:N%`            | `TOP N` / `ROWNUM <= N` / `LIMIT N` conforme DBMS     | clause           | sim            |
+| `%LIMIT:N%`          | Variante explícita pra paginação (alguns DBMS)        | clause           | sim            |
 
-**Concatenação com `+` para incluir variável é proibida** — viola `SEC-001` (crítico, SQL injection).
+**Concatenação com `+` para incluir variável é proibida** — viola `SEC-001` em código pré-v0.3.0 (catalog) e quebra `PERF-002`/`PERF-003` no impl atual quando não tem `%notDel%`/`%xfilial%`.
 
-## Exemplo correto — BeginSql
+## Exemplo canônico — `BeginSql`
 
 ```advpl
-Local cCodCli := "000001"
-Local cFilNF  := "01"
+Local cCodCli  := "000001"
+Local cFilNF   := "01"
 
 BeginSql Alias "QRY"
-    SELECT SF2.F2_DOC, SF2.F2_SERIE, SF2.F2_EMISSAO, SD2.D2_COD, SD2.D2_QUANT
+    SELECT SF2.F2_DOC, SF2.F2_SERIE, SF2.F2_EMISSAO,
+           SD2.D2_COD, SD2.D2_QUANT, SD2.D2_TOTAL
       FROM %table:SF2% SF2
       JOIN %table:SD2% SD2
         ON SD2.D2_FILIAL = SF2.F2_FILIAL
@@ -51,108 +60,252 @@ BeginSql Alias "QRY"
      ORDER BY %Order:SF2%
 EndSql
 
-// Tipagem de colunas — recomendado (PERF-003)
+// Tipagem de colunas — recomendado se a coluna nao bate o tipo default
 TCSetField("QRY", "F2_EMISSAO", "D")
 TCSetField("QRY", "D2_QUANT",   "N", 11, 2)
+TCSetField("QRY", "D2_TOTAL",   "N", 14, 2)
 
-While QRY->(!Eof())
+While !QRY->(Eof())
     // ...processa
     QRY->(DbSkip())
 EndDo
 QRY->(DbCloseArea())
 ```
 
-## As 6 restrições de SQL embarcado (regras de lint)
+> **Quirk:** o `*` (asterisco) **não pode ser primeiro char de linha** dentro de `BeginSql` — o pré-processador ADVPL trata como comentário (`*` é comentário de linha em alguns dialetos). Use indentação ou move pro fim da linha anterior.
 
-| Regra      | Severidade | O que não fazer                                                          |
-|------------|------------|--------------------------------------------------------------------------|
-| `PERF-001` | critical   | `SELECT *` em BeginSql ou TCQuery — fetcha colunas inúteis, memo fields  |
-| `PERF-002` | warning    | `DbSeek` dentro de `While`/`For` quando JOIN/IN resolveria               |
-| `PERF-003` | warning    | Faltar `TCSetField` para datas/numéricos pós-query                       |
-| `PERF-004` | warning    | Concatenação de string com `+`/`+=` em loop (use array + `Array2String`) |
-| `PERF-005` | warning    | `RecCount()` para checar existência — use `!Eof()` (full scan)           |
-| `PERF-006` | info       | `WHERE`/`ORDER BY` em colunas sem índice (consulte SIX)                  |
-| `SEC-001`  | critical   | SQL com `+ cVar +` em vez de `%exp:cVar%` — SQL injection                |
+## `MPSysOpenQuery` — TCQuery com tipagem automática
 
-## TCQuery (legacy) — quando aparece
+Variante moderna do `TCQuery` que faz `TCSetField` automaticamente para colunas que estão no SX3 — elimina o esforço manual:
 
 ```advpl
-// Estilo antigo — funciona, mas sem macros
-Local cSql := "SELECT F2_DOC FROM " + RetSqlName("SF2") + " "
-cSql += "WHERE F2_FILIAL = '" + xFilial("SF2") + "' "
-cSql += "  AND F2_CLIENTE = '" + cCodCli + "' "
-cSql += "  AND D_E_L_E_T_ <> '*'"
+Local cSql := "SELECT F2_DOC, F2_EMISSAO, F2_VALMERC " + ;
+              "  FROM " + RetSqlName("SF2") + " " + ;
+              " WHERE F2_FILIAL = '" + xFilial("SF2") + "'"
 
-TCQuery cSql NEW ALIAS "QRY"
+MPSysOpenQuery(cSql, "QRY")
+// F2_EMISSAO ja vem como Date (D), F2_VALMERC como Numeric (N, 14, 2)
+// Nao precisa de TCSetField manual
+
+While !QRY->(Eof())
+    // ...
+    QRY->(DbSkip())
+EndDo
+QRY->(DbCloseArea())
 ```
 
-**Migrate para `BeginSql`** sempre que possível. Se manter `TCQuery`, **NUNCA** concatene variável de input — use `%exp:` em string template do `BeginSql`.
+Quando usar `MPSysOpenQuery` vs `BeginSql`:
+- `BeginSql` se vai escrever SQL novo limpo (preferido).
+- `MPSysOpenQuery` se está mantendo legacy que usa string concat — pelo menos automatiza TCSetField.
 
-## `RetSqlName`, `xFilial` (equivalentes ADVPL)
+## `TCSqlExec` — DML direto no banco
 
-Quando precisar de SQL fora de `BeginSql` (ex: query dinâmica complexa):
+Para UPDATE/DELETE/INSERT em massa (mais rápido que loop ADVPL com `RecLock`):
 
-- `RetSqlName("SA1")` ↔ `%table:SA1%` (retorna nome físico).
-- `xFilial("SA1")` ↔ `%xfilial:SA1%` (retorna filial atual, sem aspas — precisa adicionar).
-- `D_E_L_E_T_ <> '*'` ↔ `%notDel%`.
+```advpl
+Local cSql := ""
+Local nRet := 0
+
+// IMPORTANTE: monte a query com aspas e filial via xFilial — TCSqlExec NÃO tem macros
+cSql := "UPDATE " + RetSqlName("SA1") + " " + ;
+        "   SET A1_BLOQ = 'S' " + ;
+        " WHERE A1_FILIAL = '" + xFilial("SA1") + "' " + ;
+        "   AND A1_RISCO  = 'E' " + ;
+        "   AND D_E_L_E_T_ = ' '"
+
+Begin Transaction
+    nRet := TCSqlExec(cSql)
+    If nRet < 0
+        // erro — TCSqlExec retorna negativo em falha
+        DisarmTransaction()
+        ConOut("UPDATE falhou: " + TCSqlError())
+        Break
+    EndIf
+End Transaction
+```
+
+> **Anti-pattern:** `TCSqlExec` sem `Begin Transaction` quando faz múltiplos updates relacionados → estado inconsistente em caso de falha.
+
+> **Crítico:** `TCSqlExec` **não tem macros** (`%notDel%`/`%xfilial%`). Você precisa expandir manualmente. **Esquecer `%xfilial%` aqui causa cross-filial corruption** — UPDATE pode atingir todas as filiais.
+
+## Limitações do cursor de query
+
+Um cursor aberto por `BeginSql`/`TCQuery`/`MPSysOpenQuery` é **read-only** e tem navegação limitada:
+
+| Operação                                   | Funciona?   |
+|--------------------------------------------|-------------|
+| `QRY->(DbSkip())`  (avança)                | ✓           |
+| `QRY->(DbGoTop())` (volta pro início)      | ✓           |
+| `QRY->(DbSkip(-1))` (volta uma linha)      | ❌ não      |
+| `QRY->(DbGoBottom())` (vai pra última)     | ❌ não      |
+| `QRY->(RecLock())` ou `Replace`/`FieldPut` | ❌ não      |
+| `QRY->(LastRec)` / `QRY->(RecCount())`     | ❌ retorna 0 (use `Count(*)` no SQL) |
+
+Pra contar linhas, use `SELECT COUNT(*) ...` em vez de `RecCount()` sobre o cursor.
+
+## Macros equivalentes — `BeginSql` vs ADVPL puro
+
+| Macro `BeginSql`        | Equivalente ADVPL                | Notas                                    |
+|-------------------------|----------------------------------|------------------------------------------|
+| `%table:T%`             | `RetSqlName("T")`                | Nome físico da tabela                    |
+| `%xfilial:T%`           | `"'" + xFilial("T") + "'"`       | Valor atual da filial (com aspas)        |
+| `%notDel%`              | `D_E_L_E_T_ = ' '`               | Filtro soft-delete                       |
+| `%exp:cVar%`            | (NÃO use concat — `SEC-001`)     | Bind seguro                              |
+| `%Order:T%`             | `IndexKey()` da chave 1          | Order by chave primária                  |
+| `%top:N%`               | `TOP N` / `ROWNUM<=N` / `LIMIT N`| Limite cross-DBMS                        |
+| `%LIMIT:N%`             | `LIMIT N` (Postgres/MySQL)       | Variante explícita                       |
+
+## Regras de lint relacionadas (impl real v0.3.3)
+
+| Regra      | Severidade | Comportamento real (impl)                                              |
+|------------|------------|------------------------------------------------------------------------|
+| `PERF-001` | warning    | `SELECT *` em `BeginSql`/`TCQuery`                                     |
+| `PERF-002` | error      | SQL contra tabela Protheus **sem `%notDel%`** (registros deletados)    |
+| `PERF-003` | error      | SQL contra tabela Protheus **sem `%xfilial%`** (cross-filial leak)     |
+| `SEC-001`  | critical   | `RpcSetEnv` dentro de REST (não é SQL injection — veja `[[advpl-code-review]]`) |
+| `SX-006`   | warning    | `X3_VALID` no SX3 com `BeginSql`/`TCQuery` (query a cada validação)    |
+
+Catalogadas mas **não implementadas** (use como checklist mental):
+
+- `PERF-004` — Concatenação de string com `+` em loop
+- `PERF-005` — `RecCount() > 0` para checar existência (use `!Eof()`)
+- `PERF-006` — `WHERE`/`ORDER BY` em coluna sem índice
 
 ## Workflow recomendado
 
-1. Antes de escrever SQL, rode `/plugadvpl:sql --op select --table SF2` para ver exemplos existentes no projeto.
+1. Antes de escrever SQL, busque exemplos no projeto:
+   - `/plugadvpl:grep "BeginSql"` — queries existentes
+   - `/plugadvpl:tables <T> --mode read` — quem lê a tabela
 2. Use sempre `BeginSql ... EndSql` para queries novas.
-3. Liste **explicitamente** as colunas (`SELECT F2_DOC, F2_SERIE, ...`) — nunca `SELECT *`.
+3. **Liste explicitamente** as colunas (`SELECT F2_DOC, F2_SERIE, ...`) — nunca `SELECT *`.
 4. Adicione `%notDel%` em **toda** tabela ADVPL que aparecer no `FROM`/`JOIN`.
 5. Adicione `%xfilial:TABLE%` no `WHERE` para filtro multi-filial.
 6. Bind variáveis com `%exp:` — nunca concatene.
-7. Após `EndSql`, chame `TCSetField` para `D` (data) e `N` (numérico).
-8. Sempre `DbCloseArea()` no fim ou em `Recover`.
+7. Após `EndSql`, chame `TCSetField` para `D` (data) e `N` (numérico) se a coluna não for dicionarizada. Em legacy com `MPSysOpenQuery`, isso é automático.
+8. Sempre `DbCloseArea()` no fim ou em `Recover` (proteção contra leak de cursor).
+9. Para DML em massa, use `TCSqlExec` dentro de `Begin Transaction`, com check de retorno (`nRet < 0` indica erro).
+10. Rode `/plugadvpl:lint <arq>` pra confirmar — pega `PERF-001/002/003`.
 
 ## Anti-padrões
 
 ```advpl
-// SEC-001 — SQL injection
-cSql := "SELECT * FROM SA1010 WHERE A1_COD = '" + cCod + "'"
+// SEC-001 catalog (impl: outra coisa, mas ainda vulnerabilidade real)
+// — SQL injection
+cSql := "SELECT * FROM " + RetSqlName("SA1") + " WHERE A1_COD = '" + cCod + "'"
 
 // PERF-001 — SELECT *
 BeginSql Alias "QRY"
     SELECT * FROM %table:SA1% SA1 WHERE SA1.%notDel%
 EndSql
 
-// PERF-002 — DbSeek em loop
-While SC5->(!Eof())
+// PERF-002 — sem %notDel% (impl real)
+BeginSql Alias "QRY"
+    SELECT A1_COD FROM %table:SA1% SA1
+     WHERE SA1.A1_FILIAL = %xfilial:SA1%
+       AND SA1.A1_GRUPO  = %exp:cGrupo%
+       -- esqueceu SA1.%notDel% — traz registros DELETADOS
+EndSql
+
+// PERF-003 — sem %xfilial% (impl real)
+BeginSql Alias "QRY"
+    SELECT C5_NUM FROM %table:SC5% SC5
+     WHERE SC5.C5_EMISSAO >= %exp:dInicio%
+       AND SC5.%notDel%
+       -- esqueceu SC5.C5_FILIAL = %xfilial:SC5% — vaza dados de OUTRAS FILIAIS
+EndSql
+
+// Pseudo-PERF-002 (legacy, não detectado mas crítico):
+//   DbSeek dentro de While quando JOIN/IN resolveria
+While !SC5->(Eof())
     DbSelectArea("SA1")
     DbSetOrder(1)
-    DbSeek(xFilial("SA1") + SC5->C5_CLIENTE)  // N seeks; melhor um JOIN
+    DbSeek(xFilial("SA1") + SC5->C5_CLIENTE)  // N seeks
     SC5->(DbSkip())
 EndDo
+// Refactor em [[advpl-refactoring]] padrão 1.
 
-// PERF-005 — RecCount para checar existência
-If RecCount() > 0   // full scan; melhor !Eof()
+// Cursor mal-fechado — leak
+BeginSql Alias "QRY"
+    SELECT ... FROM ...
+EndSql
+While !QRY->(Eof())
+    // ...
+    If alguma_condicao
+        Return                    // ESQUECEU DbCloseArea!
+    EndIf
+    QRY->(DbSkip())
+EndDo
+// Use Begin Sequence / Recover ou QRY->(DbCloseArea()) antes do Return
+
+// TCSqlExec cross-filial leak — esquece WHERE filial
+TCSqlExec("UPDATE " + RetSqlName("SA1") + " SET A1_BLOQ='S' WHERE A1_GRUPO='X'")
+// CORRETO: incluir A1_FILIAL = '" + xFilial("SA1") + "'"
+
+// TCSqlExec em transação sem check de retorno
+Begin Transaction
+    TCSqlExec(cSql1)      // se falhou, nROllback não acontece
+    TCSqlExec(cSql2)      // continua executando
+End Transaction
+// CORRETO: nRet := TCSqlExec(...); If nRet < 0; DisarmTransaction(); Break; EndIf
+
+// Loop sobre cursor com DbGoTop várias vezes
+While !QRY->(Eof())
+    QRY->(DbGoTop())      // só funciona porque é o ÚNICO movimento back; muito ineficiente
+EndDo
 ```
+
+## Cross-references com outras skills
+
+- `[[advpl-code-review]]` — regras PERF-001/002/003 (lint) e SX-006 (cross-file).
+- `[[advpl-refactoring]]` — padrão 1: DbSeek em loop → SQL embarcado.
+- `[[advpl-fundamentals]]` — tipos de variável, declaração `Local` antes de query.
+- `[[advpl-dicionario-sx-validacoes]]` — `X3_VALID` com `BeginSql` é anti-pattern SX-006.
+- `[[advpl-mvc]]` / `[[advpl-mvc-avancado]]` — queries dentro de hooks MVC.
+- `[[advpl-debugging]]` — quando query "trava" ou "retorna 0 linhas" (cursor read-only).
+- `[[advpl-jobs-rpc]]` — `TCSqlExec` em jobs de manutenção em massa.
+- `[[plugadvpl-index-usage]]` — `/plugadvpl:tables`, `/plugadvpl:grep "BeginSql"`.
 
 ## Referência rápida
 
-| Macro / função          | Equivalente                | Quando                  |
-|-------------------------|----------------------------|-------------------------|
-| `%table:T%`             | `RetSqlName("T")`          | FROM/JOIN               |
-| `%xfilial:T%`           | `"'" + xFilial("T") + "'"` | WHERE T_FILIAL =        |
-| `%notDel%`              | `D_E_L_E_T_ <> '*'`        | Todo predicate de tabela|
-| `%exp:cVar%`            | `"'" + cVar + "'"` (NÃO)   | Bind seguro de variável |
-| `%Order:T%`             | `IndexKey()` da chave 1    | ORDER BY                |
-| `TCSetField`            | —                          | Pós-query, tipagem      |
+| Função / Comando        | Para que serve                                                  |
+|-------------------------|-----------------------------------------------------------------|
+| `BeginSql / EndSql`     | SELECT com macros (preferido)                                   |
+| `TCQuery` (legacy)      | SELECT sem macros — migrate pra BeginSql                        |
+| `MPSysOpenQuery`        | SELECT que aplica `TCSetField` automático nos campos SX3        |
+| `TCSqlExec`             | DML/DDL — UPDATE/DELETE/INSERT/CREATE                           |
+| `TCSqlError`            | Mensagem de erro da última operação SQL                         |
+| `TCGetLastQuery`        | Retorna a última query executada (debug)                        |
+| `TCSetField`            | Define tipo de coluna pós-query (D, N, C, L)                    |
+| `RetSqlName("T")`       | Nome físico da tabela (uso fora de BeginSql)                    |
+| `ChangeQuery(cSql)`     | Aplica conversões cross-DBMS na string                          |
+| `DbCloseArea()`         | Fecha cursor — SEMPRE no final ou em Recover                    |
 
 ## Comandos plugadvpl relacionados
 
-- `/plugadvpl:sql --op {select|insert|update|delete} --table <T>` — busca SQL existente.
-- `/plugadvpl:lint <arq>` — executa PERF-001..006 e SEC-001.
-- `/plugadvpl:tables <T>` — lista quem usa a tabela.
+- `/plugadvpl:grep "BeginSql\|TCQuery"` — busca queries existentes.
+- `/plugadvpl:tables <T> --mode read` — quem lê a tabela.
+- `/plugadvpl:tables <T> --mode write` — quem grava (Replace, UPDATE, TCSqlExec).
+- `/plugadvpl:lint <arq>` — executa PERF-001/002/003 e SEC-001.
+- `/plugadvpl:lint --cross-file --regra SX-006` — X3_VALID com SQL no dicionário.
 
 ## Referência profunda
 
 Para detalhes completos (~1.6k linhas), consulte [`reference.md`](reference.md) ao lado deste arquivo:
 
-- Catálogo completo de macros `%`-prefixed (`%table%`, `%notDel%`, `%xfilial%`, `%exp%`, `%Order%`, `%Limit%`, `%top%`, `%FieldsList%`).
-- Diferenças entre `BeginSql`/`TCQuery`/`TCGenQry` e quando usar cada uma.
-- Padrões de paginação (LIMIT/OFFSET por DBMS — Oracle rownum × SQL Server TOP × Postgres LIMIT).
+- Catálogo completo de macros (`%table%`, `%notDel%`, `%xfilial%`, `%exp%`, `%Order%`, `%Limit%`, `%top%`, `%FieldsList%`).
+- Diferenças entre `BeginSql`/`TCQuery`/`TCGenQry`/`MPSysOpenQuery`/`PLSQuery` e quando usar cada.
+- Padrões de paginação (LIMIT/OFFSET por DBMS — Oracle ROWNUM × SQL Server TOP × Postgres LIMIT).
 - Uso correto de `TCSetField` para tipagem pós-query e implicações de performance.
 - Exemplos de queries complexas com JOIN multi-tabela + filtros de filial + tratamento de NULL.
+
+## Sources
+
+- [Embedded SQL - Guia de Boas Práticas - TDN](https://tdn.totvs.com/pages/viewpage.action?pageId=27675608)
+- [Embedded SQL - Frameworksp - TDN](https://tdn.totvs.com/display/framework/Embedded+SQL)
+- [Comandos DML em SQL: DBAccess - TOTVS Central](https://centraldeatendimento.totvs.com/hc/pt-br/articles/360024805754)
+- [Como Executar Queries com BeginSQL e EndSQL - ProtheusAdvpl](https://protheusadvpl.com.br/como-utilizar-beginsql-endsql-no-advpl/)
+- [Executando Instruções SQL com TCSQLExec - ProtheusAdvpl](https://protheusadvpl.com.br/como-executar-instrucoes-sql-com-tcsqlexec-no-advpl/)
+- [Diferença entre TCQuery e PLSQuery - Terminal de Informação](https://terminaldeinformacao.com/2020/08/27/qual-a-diferenca-entre-tcquery-e-plsquery/)
+- [Desenvolvendo queries no Protheus - TDN Homolog](https://tdn-homolog.totvs.com/display/public/framework/Desenvolvendo+queries+no+Protheus)
+- [TCSQLExec x TCQuery - BlackTDN](https://www.blacktdn.com.br/2025/12/dnatech-tcsqlexec-x-tcquery-quando-o.html)
+- [Vários TcSqlExec dentro de mesma transação - TOTVS Dev Forum](https://devforum.totvs.com.br/377-varios-tcsqlexec-dentro-de-uma-mesma-transacao)
