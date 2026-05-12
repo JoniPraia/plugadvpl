@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778616878908,
+  "lastUpdate": 1778617064997,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -781,6 +781,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0004503278426948597",
             "extra": "mean: 14.201267333329307 msec\nrounds: 12"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "7dc0d4020706f92a859864171167b279dd14cfaa",
+          "message": "docs(skill): advpl-embedded-sql — fix phantom command + lint, add TCSqlExec/MPSysOpenQuery/cursor limits\n\nThree buckets of fixes researched against TDN, TOTVS Central, and\ncommunity canonical sources:\n\nBug fixes:\n\n- `/plugadvpl:sql --op select --table SF2` was phantom (same bug as\n  plugadvpl-index-usage). Replaced with `/plugadvpl:tables --mode read`\n  and `/plugadvpl:grep \"BeginSql\"` actual flows.\n- Lint rules table re-aligned to IMPL (matching the audit done in\n  advpl-code-review skill): PERF-002 is \"no %notDel%\" (error, not\n  warning \"DbSeek loop\"); PERF-003 is \"no %xfilial%\" (error, not\n  warning \"TCSetField missing\"); SEC-001 is RpcSetEnv in REST (not\n  SQL injection). PERF-004/005/006 marked as catalogued-but-not-impl.\n- New row SX-006 (cross-file): X3_VALID with embedded SQL anti-pattern.\n\nContent expansion based on research:\n\n- TCSqlExec section — DML in mass (UPDATE/DELETE/INSERT/CREATE),\n  with rollback pattern wrapping in Begin Transaction + check\n  TCSqlExec retorno < 0 + DisarmTransaction + Break. Critical\n  cross-filial leak warning (TCSqlExec has no macros so xFilial\n  must be inlined manually).\n- MPSysOpenQuery section — alternative to TCQuery that auto-applies\n  TCSetField for dictionary-known columns. Eliminates manual\n  PERF-003-like effort in legacy code being maintained.\n- Cursor limitations table — query cursors are read-only, no\n  DbSkip(-1), no DbGoBottom, RecCount=0. Bug-magnet for devs who\n  assume cursor = table.\n- Macros table extended: added %top:N% and %LIMIT:N% (cross-DBMS\n  pagination — Oracle ROWNUM / SQL Server TOP / Postgres LIMIT).\n- Asterisk-as-comment quirk noted (* can't be first char of a\n  BeginSql line — preprocessor treats as comment).\n\nAnti-patterns enriched:\n\n- TCSqlExec without WHERE filial = cross-filial corruption (real\n  production incident class).\n- TCSqlExec in transaction without checking nRet < 0.\n- Cursor leaked by Return mid-loop without DbCloseArea.\n- Loop with DbGoTop() repeatedly inside (only \"back\" navigation\n  permitted, but inefficient).\n\nAI usability:\n\n- Frontmatter description names the families (BeginSql, TCQuery,\n  TCSqlExec, MPSysOpenQuery) and lint regras (PERF-001/002/003,\n  SEC-001) explicitly.\n- Cross-refs via [[name]] to 8 related skills.\n- Sources section with 9 canonical references.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T17:17:19-03:00",
+          "tree_id": "711b346524b2644cd6e5b2fb2826f133afebab30",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/7dc0d4020706f92a859864171167b279dd14cfaa"
+        },
+        "date": 1778617064657,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 23.935651956471816,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0003767104741808229",
+            "extra": "mean: 41.77868235294155 msec\nrounds: 17"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 68.37535414357379,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0020057530855304433",
+            "extra": "mean: 14.625152769230436 msec\nrounds: 13"
           }
         ]
       }
