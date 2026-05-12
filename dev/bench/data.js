@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778617374552,
+  "lastUpdate": 1778617512070,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -889,6 +889,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0005538730388461715",
             "extra": "mean: 14.059050846157106 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "22b0f0ff0ece010a0dac85f6fe12fe7879173f28",
+          "message": "docs(skill): advpl-webservice — distinguish REST tlppCore vs WSRESTFUL classic, PrepareIn/TenantId, JWT, fix table refs\n\nAdded clear distinction between the three WS families:\n- REST clássico WSRESTFUL+WSMETHOD GET/POST (for compat)\n- REST tlppCore @Get/@Post annotations on User Function (modern)\n- SOAP WSSERVICE+WSDATA+WSMETHOD (legacy/WSDL)\n\nTDN confirms REST tlppCore is NOT an evolution of REST ADVPL —\nit's a new resource without backward compat for user-based auth or\npre-loaded DB connections. Skill now leads with this fact.\n\nMulti-tenancy via PrepareIn + TenantId — new dedicated section\nwith appserver.ini snippet, header example (TenantId: 99,01), and\nthe in-endpoint behavior (cEmpAnt/cFilAnt already populated, NO\nRpcSetEnv needed). This is the canonical TOTVS Central guidance.\n\nJWT auth section — POST /api/oauth2/v1/token, response shape with\naccess_token/expires_in/token_type/refresh_token, JWTSecret config\nin appserver.ini, and Bearer header in subsequent requests.\n\nSEC-001 documentation aligned with IMPL real (RpcSetEnv em REST,\nnot SQL injection like the catalog says). SEC-002 footnote about\ncatalog vs impl divergence (catalog says \"GetContent without\nvalidation\"; impl detects \"User Function sem prefixo\"). Either\nway, input validation is mandatory.\n\nEncoding section — EncodeUTF8/DecodeUTF8 explicit at boundaries\ncp1252 source × UTF-8 REST. Cross-links to advpl-encoding.\n\nBug fixes:\n\n- Tables `ws_services`/`ws_structures` (referenced in skill 1\n  audit as non-existent) replaced with real `rest_endpoints` and\n  `http_calls`.\n- TamSX3() noted for validation of input size using actual SX3\n  truth (not hardcoded).\n\nAnti-patterns expanded from 7 to 11, adding:\n- PrepareIn em produção apontando empresa de teste (multi-tenant cai\n  no ambiente errado).\n- Security=0 em produção (endpoint público sem auth).\n- CORS * em endpoint que escreve sem validação de origin (CSRF).\n- Esquecer EncodeUTF8/DecodeUTF8 nos boundaries.\n\nAI usability:\n\n- Frontmatter description names the three families explicitly,\n  cites SEC-001 impl real, and adds JWT endpoint pattern.\n- Cross-refs via [[name]] to 10 related skills.\n- Sources section with 9 canonical references (TDN, TOTVS Central,\n  Every System, Terminal de Informação).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T17:24:44-03:00",
+          "tree_id": "6f7175090eb7e238abee7a569c6a145f7cb396e9",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/22b0f0ff0ece010a0dac85f6fe12fe7879173f28"
+        },
+        "date": 1778617511826,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 22.751899742474308,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00019129249872688008",
+            "extra": "mean: 43.95237370588239 msec\nrounds: 17"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 66.84688312112671,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0005887242723462127",
+            "extra": "mean: 14.95956061538423 msec\nrounds: 13"
           }
         ]
       }
