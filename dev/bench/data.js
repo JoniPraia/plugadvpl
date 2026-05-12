@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778544484028,
+  "lastUpdate": 1778594379359,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -529,6 +529,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0017176050077355907",
             "extra": "mean: 14.522848928566289 msec\nrounds: 14"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "fc3938580ec76d2315e99724d7c811394492d4c0",
+          "message": "docs(changelog): record the @0.1.0→@0.3.0 bump under [Unreleased]\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T10:53:04-03:00",
+          "tree_id": "0355dc254c19773cf29ae6c3e179582e0df04cc0",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/fc3938580ec76d2315e99724d7c811394492d4c0"
+        },
+        "date": 1778594379101,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 23.28957533112942,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0008315425357415507",
+            "extra": "mean: 42.93766570588238 msec\nrounds: 17"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 66.52913865477075,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0006897417933105636",
+            "extra": "mean: 15.031007769229413 msec\nrounds: 13"
           }
         ]
       }
