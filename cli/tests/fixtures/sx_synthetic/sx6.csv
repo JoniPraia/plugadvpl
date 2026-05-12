@@ -1,0 +1,5 @@
+"X6_FIL","X6_VAR","X6_TIPO","X6_DESCRIC","X6_DESC1","X6_CONTEUD","X6_PROPRI","X6_VALID","X6_INIT","D_E_L_E_T_"
+"","MV_LOCALIZA","C","Localizacao default","","01","S","","",""
+"","MV_XYZUSA","L","Usa custom XYZ","","T","U","","",""
+"","MV_XYZDEAD","C","Parametro nunca usado","","00","U","","",""
+"","MV_XYZUSED","C","Parametro usado","","01","U","","",""

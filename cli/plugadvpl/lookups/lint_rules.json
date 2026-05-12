@@ -214,5 +214,104 @@
     "descricao": "Legacy UI functions like `AxCadastro`, `Modelo 2` (`Ax2Model`), and `Modelo 3` (`Ax3Model`) are outdated patterns for building CRUD screens. Modern Protheus development uses `FWFormBrowse` or the MVC framework (`FWMVCModel`, `FWFormView`) for maintainable and standardized interfaces.",
     "fix_guidance": "Calls to `AxCadastro()`, `AxPesqui()`, `MBrowse()`, `Modelo2()`, `Modelo3()`, or manual `DEFINE MSDIALOG` / `ACTIVATE MSDIALOG` patterns for CRUD operations.",
     "detection_kind": "regex"
+  },
+  {
+    "regra_id": "SX-001",
+    "titulo": "X3_VALID references unknown user function (U_xxx not indexed)",
+    "severidade": "warning",
+    "categoria": "best-practice",
+    "descricao": "Field validation X3_VALID calls a U_xxx function that is not present in any indexed source. Either the source is missing from the project tree or the function name is a typo.",
+    "fix_guidance": "Re-run `plugadvpl ingest` to index missing sources, or correct the typo in X3_VALID.",
+    "detection_kind": "cross_file"
+  },
+  {
+    "regra_id": "SX-002",
+    "titulo": "SX7 trigger destination field does not exist in SX3",
+    "severidade": "error",
+    "categoria": "best-practice",
+    "descricao": "X7_CDOMIN points to a field that has no entry in SX3. The trigger will silently fail at runtime.",
+    "fix_guidance": "Add the missing field via PutSx3 or correct X7_CDOMIN to an existing field.",
+    "detection_kind": "cross_file"
+  },
+  {
+    "regra_id": "SX-003",
+    "titulo": "Custom MV_ parameter declared in SX6 but never read by any source",
+    "severidade": "warning",
+    "categoria": "modernization",
+    "descricao": "A custom parameter exists in SX6 but no GetMV/SuperGetMV/PutMV call references it. Likely dead configuration.",
+    "fix_guidance": "Remove the unused parameter via PutMV with empty value or document why it must remain.",
+    "detection_kind": "cross_file"
+  },
+  {
+    "regra_id": "SX-004",
+    "titulo": "SX1 question group declared but never used by any source (Pergunte)",
+    "severidade": "warning",
+    "categoria": "modernization",
+    "descricao": "A group of questions exists in SX1 but no source calls Pergunte('grupo'). Likely dead group from removed feature.",
+    "fix_guidance": "Remove the unused SX1 group or restore the usage that referenced it.",
+    "detection_kind": "cross_file"
+  },
+  {
+    "regra_id": "SX-005",
+    "titulo": "Custom SX3 field with no references in sources or SX dictionary",
+    "severidade": "warning",
+    "categoria": "modernization",
+    "descricao": "A custom (X3_PROPRI != S) field has zero references in any indexed source AND no other SX entry mentions it.",
+    "fix_guidance": "Confirm the field is truly unused before dropping; legacy fields may be referenced via virtual fields or external integrations.",
+    "detection_kind": "cross_file"
+  },
+  {
+    "regra_id": "SX-006",
+    "titulo": "X3_VALID executes embedded SQL (BeginSql/TCQuery) — anti-pattern",
+    "severidade": "warning",
+    "categoria": "performance",
+    "descricao": "Field validators that execute SQL run on every keystroke / record change. Use ExistCpo() or Posicione() with cache instead.",
+    "fix_guidance": "Replace TCQuery/BeginSql in X3_VALID with ExistCpo / Posicione / cached lookups.",
+    "detection_kind": "cross_file"
+  },
+  {
+    "regra_id": "SX-007",
+    "titulo": "X3_VALID calls a TOTVS-restricted function",
+    "severidade": "critical",
+    "categoria": "security",
+    "descricao": "Validator references a function listed in funcoes_restritas (internal/undocumented TOTVS API). Risk of breaking on ERP upgrade.",
+    "fix_guidance": "Replace with a documented public alternative or move the logic to a U_xxx wrapper that handles compatibility.",
+    "detection_kind": "cross_file"
+  },
+  {
+    "regra_id": "SX-008",
+    "titulo": "Shared table (X2_MODO=C) has X3_VALID using xFilial",
+    "severidade": "warning",
+    "categoria": "best-practice",
+    "descricao": "The table is shared across companies/branches but the validator references xFilial — inconsistency between data scope and validation scope.",
+    "fix_guidance": "Drop xFilial from validator OR change X2_MODO to E (exclusive) if the data should be branch-scoped.",
+    "detection_kind": "cross_file"
+  },
+  {
+    "regra_id": "SX-009",
+    "titulo": "Required field (X3_OBRIGAT) initialized with empty/zero",
+    "severidade": "warning",
+    "categoria": "best-practice",
+    "descricao": "Field is marked required but X3_RELACAO returns empty string / Space() / zero / .F. — every user has to retype.",
+    "fix_guidance": "Provide a meaningful default in X3_RELACAO or set X3_OBRIGAT to optional.",
+    "detection_kind": "cross_file"
+  },
+  {
+    "regra_id": "SX-010",
+    "titulo": "SX7 trigger of type Pesquisar (P) without X7_SEEK=S",
+    "severidade": "error",
+    "categoria": "best-practice",
+    "descricao": "X7_TIPO=P implies that the trigger does a DbSeek + return; X7_SEEK must be 'S'. Otherwise the seek is skipped and the trigger silently fails.",
+    "fix_guidance": "Set X7_SEEK='S' and verify X7_ALIAS/X7_ORDEM/X7_CHAVE are populated.",
+    "detection_kind": "cross_file"
+  },
+  {
+    "regra_id": "SX-011",
+    "titulo": "X3_F3 references SXB consulta alias that does not exist",
+    "severidade": "error",
+    "categoria": "best-practice",
+    "descricao": "X3_F3 points to a consulta alias that has no entry in SXB. F3 will not open anything for the user.",
+    "fix_guidance": "Create the SXB consulta or correct X3_F3 to an existing alias.",
+    "detection_kind": "cross_file"
   }
 ]

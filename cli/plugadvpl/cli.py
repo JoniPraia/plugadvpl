@@ -41,6 +41,7 @@ from plugadvpl.db import (
 )
 from plugadvpl.ingest import PARSER_VERSION, _write_parsed
 from plugadvpl.ingest import ingest as do_ingest
+from plugadvpl.ingest_sx import ingest_sx as do_ingest_sx
 from plugadvpl.output import render
 from plugadvpl.parsing import lint as lint_module
 from plugadvpl.parsing.parser import parse_source
@@ -56,10 +57,13 @@ from plugadvpl.query import (
 from plugadvpl.query import (
     doctor_diagnostics,
     find_any,
+    gatilho_query,
     grep_fts,
+    impacto_query,
     lint_query,
     param_query,
     stale_files,
+    sx_status,
     tables_query,
 )
 from plugadvpl.query import (
@@ -708,10 +712,42 @@ def lint(
     ] = None,
     regra: Annotated[
         str | None,
-        typer.Option("--regra", help="Filtra por regra_id (ex: BP-001)."),
+        typer.Option("--regra", help="Filtra por regra_id (ex: BP-001 ou SX-001)."),
     ] = None,
+    cross_file: Annotated[
+        bool,
+        typer.Option(
+            "--cross-file",
+            help=(
+                "Recalcula e grava findings cross-file SX-001..SX-011 "
+                "(requer ingest + ingest-sx prévios)."
+            ),
+        ),
+    ] = False,
 ) -> None:
-    """Lista lint findings (filtros opcionais por arquivo, severidade ou regra)."""
+    """Lista lint findings (filtros por arquivo/severidade/regra; ``--cross-file`` reavalia SX-*)."""
+    if cross_file:
+        # Modo write: precisa de conexão writable, recompute e persiste.
+        db_path: Path = ctx.obj["db"]
+        if not db_path.exists():
+            typer.secho(
+                f"Erro: índice não encontrado em {db_path}.",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=2)
+        conn = open_db(db_path)
+        try:
+            apply_migrations(conn)
+            findings = lint_module.lint_cross_file(conn)
+            n = lint_module.persist_cross_file_findings(conn, findings)
+        finally:
+            close_db(conn)
+        if not ctx.obj["quiet"]:
+            typer.secho(
+                f"OK  {n} findings cross-file gravados (SX-001..SX-011).",
+                err=True,
+            )
 
     rows = _with_ro_db(ctx, lambda c: lint_query(c, arquivo, severity, regra))
     _render_from_ctx(
@@ -768,6 +804,164 @@ def grep(
         rows,
         title=f"Grep ({mode.value}): {pattern}",
         next_steps=[f"plugadvpl arch {rows[0]['arquivo']}"] if rows else None,
+    )
+
+
+# ---------------------------------------------------------------------------
+# v0.3.0 — Universo 2: ingest-sx, impacto, gatilho, sx-status
+# ---------------------------------------------------------------------------
+
+
+@app.command(name="ingest-sx")
+def ingest_sx_cmd(
+    ctx: typer.Context,
+    csv_dir: Annotated[
+        Path,
+        typer.Argument(
+            help="Pasta com CSVs SX (sx1.csv, sx2.csv, ..., sxg.csv) exportados via Configurador → Misc → Exportar Dicionário.",
+        ),
+    ],
+    workers: Annotated[
+        int,
+        typer.Option(
+            "--workers",
+            "-w",
+            help="Reservado para futuro paralelismo. Atualmente não usado (parser é I/O bound + executemany single-thread).",
+        ),
+    ] = 0,
+) -> None:
+    """Indexa o Dicionário SX a partir de CSVs (Universo 2)."""
+    _ = workers  # explicitly unused; kept for symmetry with `ingest`
+    db_path: Path = ctx.obj["db"]
+    if not csv_dir.exists() or not csv_dir.is_dir():
+        typer.secho(
+            f"Pasta CSV inválida: {csv_dir}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    counters = do_ingest_sx(csv_dir.resolve(), db_path)
+    summary_rows: list[dict[str, object]] = [
+        {
+            "tabela": tabela,
+            "rows": counters["per_table"].get(tabela, 0),
+        }
+        for tabela in (
+            "tabelas", "campos", "indices", "gatilhos", "parametros",
+            "perguntas", "tabelas_genericas", "relacionamentos", "pastas",
+            "consultas", "grupos_campo",
+        )
+    ]
+    summary_rows.append(
+        {
+            "tabela": "_TOTAL",
+            "rows": counters["total_rows"],
+        }
+    )
+    if not ctx.obj["quiet"]:
+        typer.secho(
+            f"OK  {counters['csvs_ok']}/{counters['csvs_total']} CSVs ingeridos "
+            f"({counters['csvs_skipped']} pulados, {counters.get('csvs_failed', 0)} falhos) "
+            f"em {counters['duration_ms']}ms",
+            err=True,
+        )
+    _render_from_ctx(
+        ctx,
+        summary_rows,
+        title="Ingest SX — rows por tabela",
+        next_steps=[
+            "plugadvpl impacto A1_COD",
+            "plugadvpl gatilho A1_COD",
+        ],
+    )
+
+
+@app.command()
+def impacto(
+    ctx: typer.Context,
+    campo: Annotated[
+        str,
+        typer.Argument(help="Nome do campo SX3 (ex: A1_COD)."),
+    ],
+    depth: Annotated[
+        int,
+        typer.Option(
+            "--depth",
+            "-d",
+            min=1,
+            max=3,
+            help="Profundidade da cadeia de gatilhos SX7 (1..3).",
+        ),
+    ] = 1,
+) -> None:
+    """Cruza referências a um campo: fontes ↔ SX3 (VALID/WHEN/INIT) ↔ SX7 ↔ SX1.
+
+    Killer feature do v0.3.0. Em segundos: para um campo arbitrário, lista TODA
+    a cadeia de impacto (fontes que mencionam, validações que dependem,
+    gatilhos que disparam, perguntas SX1 que referenciam).
+    """
+    rows = _with_ro_db(ctx, lambda c: impacto_query(c, campo, depth=depth))
+    columns = ["tipo", "local", "contexto", "severidade"]
+    _render_from_ctx(
+        ctx,
+        rows,
+        columns=columns,
+        title=f"Impacto de {campo.upper()} (depth={depth})",
+        next_steps=(
+            [
+                f"plugadvpl gatilho {campo}",
+                f"plugadvpl tables {campo.split('_')[0] if '_' in campo else campo}",
+            ]
+            if rows
+            else None
+        ),
+    )
+
+
+@app.command()
+def gatilho(
+    ctx: typer.Context,
+    campo: Annotated[
+        str,
+        typer.Argument(help="Nome do campo SX3 (ex: A1_COD)."),
+    ],
+    depth: Annotated[
+        int,
+        typer.Option(
+            "--depth",
+            "-d",
+            min=1,
+            max=3,
+            help="Profundidade da cadeia (1..3). Default 3.",
+        ),
+    ] = 3,
+) -> None:
+    """Lista cadeia de gatilhos SX7 originados/destinados ao campo."""
+    rows = _with_ro_db(ctx, lambda c: gatilho_query(c, campo, depth=depth))
+    columns = ["nivel", "via", "origem", "sequencia", "destino", "regra", "tipo"]
+    _render_from_ctx(
+        ctx,
+        rows,
+        columns=columns,
+        title=f"Cadeia de gatilhos SX7 — {campo.upper()} (depth={depth})",
+        next_steps=[f"plugadvpl impacto {campo}"] if rows else None,
+    )
+
+
+@app.command(name="sx-status")
+def sx_status_cmd(ctx: typer.Context) -> None:
+    """Mostra contadores por tabela do Dicionário SX (após ``ingest-sx``)."""
+    rows = _with_ro_db(ctx, sx_status)
+    _render_from_ctx(
+        ctx,
+        rows,
+        title="Status do Dicionário SX",
+        next_steps=(
+            ["plugadvpl ingest-sx <pasta-csv>"]
+            if rows and not rows[0].get("sx_ingerido")
+            else ["plugadvpl impacto A1_COD"]
+        ),
     )
 
 

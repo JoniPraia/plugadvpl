@@ -21,4 +21,10 @@ This product includes:
    from the author's production projects, sanitized for public distribution
    (no client-specific identifiers).
 
+6. Universe 2 (SX dictionary) parser was ported from the author's internal
+   Protheus project (parser_sx.py, 872 lines) — adapted for plugadvpl by
+   removing SaaS-specific dependencies (FastAPI, Supabase, ChromaDB) and
+   trimming parsers out of v0.3.0 scope (parse_padrao_*, parse_jobs,
+   parse_schedules, parse_mpmenu — reserved for v0.4+).
+
 Todas as fontes acima estão sob licença MIT compatível.

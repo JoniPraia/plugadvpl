@@ -39,6 +39,7 @@ EXPECTED_KNOWLEDGE_SKILLS = {
     "advpl-web",
     "advpl-dicionario-sx",
     "advpl-mvc-avancado",
+    "advpl-dicionario-sx-validacoes",
 }
 EXPECTED_AGENTS = {
     "advpl-analyzer",

@@ -1,0 +1,5 @@
+"X7_CAMPO","X7_SEQUENC","X7_CDOMIN","X7_REGRA","X7_TIPO","X7_ALIAS","X7_CONDIC","X7_PROPRI","X7_SEEK","X7_ORDEM","X7_CHAVE","D_E_L_E_T_"
+"A1_COD","01","A1_NREDUZ","SA1->A1_NREDUZ","P","SA1","","S","S","1","xFilial('SA1') + M->A1_COD",""
+"A1_COD","02","A1_FANTASMA","M->A1_COD","P","","","U","","","",""
+"A1_NREDUZ","01","A1_XCUSTOM","Upper(M->A1_NREDUZ)","P","","","U","","","",""
+"A1_COD","03","A1_TIPO","Posicione('SA1',1,xFilial('SA1')+M->A1_COD,'A1_TIPO')","P","","","U","S","","",""

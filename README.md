@@ -147,7 +147,7 @@ Se aparecer output com counters do índice, o plugin está instalado e funcionan
 
 ## Comandos disponíveis
 
-O CLI Python expõe **14 subcomandos**, espelhados em **14 slash commands** do plugin Claude Code.
+O CLI Python expõe **18 subcomandos** (a partir do v0.3.0), espelhados em slash commands do plugin Claude Code.
 
 | Comando | Função |
 |---|---|
@@ -161,10 +161,14 @@ O CLI Python expõe **14 subcomandos**, espelhados em **14 slash commands** do p
 | `/plugadvpl:tables <T>` | Quem usa a tabela `T` (`--mode read/write/reclock`) |
 | `/plugadvpl:param <MV>` | Onde o parâmetro `MV_*` aparece |
 | `/plugadvpl:arch <arq>` | **Visão arquitetural** — use SEMPRE antes de `Read` |
-| `/plugadvpl:lint [arq]` | Lint findings (`--severity`, `--regra`) |
+| `/plugadvpl:lint [arq]` | Lint findings (`--severity`, `--regra`, `--cross-file`) |
 | `/plugadvpl:doctor` | Diagnósticos (encoding, órfãos, FTS sync, lookups) |
 | `/plugadvpl:grep <pattern>` | Busca textual nos chunks (`--mode fts/literal/identifier`) |
 | `/plugadvpl:help` | Lista comandos (atalho do CLI `--help`) |
+| **`/plugadvpl:ingest-sx <pasta-csv>`** | **(v0.3.0)** Ingere dicionário SX exportado em CSV (sx1..sxg) |
+| **`/plugadvpl:impacto <campo>`** | **(v0.3.0)** **Killer feature** — cruza referências a um campo em fontes ↔ SX3 ↔ SX7 ↔ SX1 (com `--depth 1..3`) |
+| **`/plugadvpl:gatilho <campo>`** | **(v0.3.0)** Cadeia de gatilhos SX7 origem → destino (com `--depth 1..3`) |
+| **`/plugadvpl:sx-status`** | **(v0.3.0)** Counts por tabela do dicionário SX |
 
 Reference completa: [docs/cli-reference.md](docs/cli-reference.md).
 
@@ -217,13 +221,14 @@ Quando você pergunta algo ao Claude sobre o projeto, o slash command roda uma q
 
 ## Status
 
-**v0.1.0 — MVP release-ready.**
+**v0.3.0 — Universo 2: Dicionário SX (killer feature `impacto`).**
 
-- 14 subcomandos, 24 skills, 4 agents, 1 hook
-- 22 tabelas físicas + 2 FTS5 + 6 lookups (Universo 1 — Fontes — completo)
-- 239 testes (unit + integration), 87% coverage de linha + branch
-- Bench em ~2.000 fontes ADVPL: ingest completo < 60s com `--workers 8`
-- Schema baseado em projeto interno anterior do autor
+- 18 subcomandos, 31 skills, 4 agents, 1 hook
+- 33 tabelas físicas (22 fontes + 11 SX) + 2 FTS5 + 6 lookups
+- 250+ testes (unit + integration + bench + e2e_local)
+- Bench em ~2.000 fontes: ingest <60s com `--workers 8`; ingest-sx
+  do dicionário completo (~420k rows) <30s
+- Schema + parser SX baseado em projeto interno anterior do autor
 
 **Roadmap.**
 
@@ -236,7 +241,7 @@ Detalhes em `docs/superpowers/specs/2026-05-11-plugadvpl-design.md` (§15 — Ro
 
 ## Documentação
 
-- [docs/cli-reference.md](docs/cli-reference.md) — reference completa dos 14 subcomandos com sintaxe, opções e exemplos
+- [docs/cli-reference.md](docs/cli-reference.md) — reference completa dos 18 subcomandos com sintaxe, opções e exemplos
 - [docs/schema.md](docs/schema.md) — schema SQLite (22 tabelas + 2 FTS5 + diagrama Mermaid + queries úteis)
 - [docs/architecture.md](docs/architecture.md) — fluxo, componentes, decisões-chave e guia para contribuir com novas extrações
 - [CONTRIBUTING.md](CONTRIBUTING.md) — setup local, fixtures, estilo, commits

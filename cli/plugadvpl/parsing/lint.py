@@ -1,23 +1,24 @@
-"""Lint findings: detecta 13 anti-padrões single-file via regex sobre stripped content + parsed data.
+"""Lint findings: detecta anti-padrões single-file (regex) + cross-file (SX, v0.3.0).
 
 Cada regra retorna list[Finding] dict com:
 - arquivo: str
 - funcao: str (best-effort — pode ser '' se não dentro de função clara)
 - linha: int (1-based)
-- regra_id: str (e.g., 'BP-001')
+- regra_id: str (e.g., 'BP-001', 'SX-001')
 - severidade: str ('critical'|'error'|'warning')
 - snippet: str (linha problemática, <=200 chars)
 - sugestao_fix: str (texto curto explicando o fix)
 
 Estratégia:
-- Cada regra é uma função `_check_<id>(arquivo, parsed, content) -> list[Finding]`.
-- `lint_source` é o orquestrador público que aplica as 13 regras.
-- Apenas regras single-file/regex são implementadas no MVP. Regras que dependem
-  de cross-file analysis (BP-007, BP-008, SEC-003...) são adiadas para v0.2.
+- Single-file: cada regra é função ``_check_<id>(arquivo, parsed, content)``.
+  ``lint_source`` aplica todas durante o ingest (passa o resultado para ``lint_findings``).
+- Cross-file (v0.3.0): regras SX-*** dependem do dicionário SX já ingerido em DB.
+  ``lint_cross_file(conn)`` é orquestrador separado, invocado via ``plugadvpl lint --cross-file``.
 """
 from __future__ import annotations
 
 import re
+import sqlite3
 from typing import Any
 
 from plugadvpl.parsing.stripper import strip_advpl
@@ -704,3 +705,509 @@ def lint_source(parsed: dict[str, Any], content: str) -> list[dict[str, Any]]:
 
     findings.sort(key=lambda f: (int(f["linha"]), str(f["regra_id"])))
     return findings
+
+
+# =============================================================================
+# v0.3.0 — Cross-file lint rules (SX dictionary required, depends on migration 002)
+# =============================================================================
+# Cada regra é função ``_check_sxNNN(conn) -> list[Finding]``. Findings têm os
+# mesmos campos do lint single-file, mas ``arquivo`` pode ser sintético no
+# formato ``SX:<tabela>`` (quando o problema vive no dicionário, não em fonte).
+
+# Regex usadas pelas regras cross-file.
+_SX005_MAX_FINDINGS = 100  # corte defensivo para SX-005 em DBs grandes
+_USER_FUNC_CALL_RE = re.compile(r"\bU_([A-Z][A-Z0-9_]{1,30})\b", re.IGNORECASE)
+_SQL_IN_VALID_RE = re.compile(
+    r"\b(?:BeginSql|TCQuery|TCSqlExec|MPSysOpenQuery)\b",
+    re.IGNORECASE,
+)
+_INIT_RETURNS_EMPTY_RE = re.compile(
+    r"""(['"])\s*\1                    # ""  ou  ''  literal
+        | \bSpace\s*\(\s*\d+\s*\)       # Space(N)
+        | \bCToD\s*\(\s*['"]\s*['"]\s*\) # CToD("")
+        | \bNil\b
+        | \b\.F\.\b                     # bool false
+        | \b0\s*$                       # apenas zero
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+_XFILIAL_IN_VALID_RE = re.compile(r"\bxFilial\b", re.IGNORECASE)
+
+
+def _sx_present(conn: sqlite3.Connection) -> bool:
+    """``True`` se migration 002 já foi aplicada (tabela ``campos`` existe)."""
+    row = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='campos'"
+    ).fetchone()
+    return row is not None
+
+
+def _index_known_user_funcs(conn: sqlite3.Connection) -> set[str]:
+    """Coleta todas as user-functions indexadas (case-insensitive, sem ``U_``)."""
+    known: set[str] = set()
+    rows = conn.execute(
+        "SELECT funcao_norm FROM fonte_chunks WHERE tipo_simbolo IN ('user_function', 'main_function')"
+    ).fetchall()
+    for (norm,) in rows:
+        known.add((norm or "").upper())
+    return known
+
+
+def _index_campos_set(conn: sqlite3.Connection) -> set[str]:
+    """``set`` de todos os campos do dicionário (uppercase)."""
+    rows = conn.execute("SELECT campo FROM campos").fetchall()
+    return {(c[0] or "").upper() for c in rows}
+
+
+def _index_consultas_aliases(conn: sqlite3.Connection) -> set[str]:
+    """``set`` de aliases SXB conhecidos (uppercase)."""
+    rows = conn.execute("SELECT DISTINCT alias FROM consultas").fetchall()
+    return {(c[0] or "").upper() for c in rows}
+
+
+def _index_funcoes_restritas(conn: sqlite3.Connection) -> set[str]:
+    """``set`` de nomes de funções restritas (uppercase)."""
+    try:
+        rows = conn.execute("SELECT nome FROM funcoes_restritas").fetchall()
+    except sqlite3.OperationalError:
+        return set()
+    return {(c[0] or "").upper() for c in rows}
+
+
+def _check_sx001_x3_valid_unknown_func(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """SX-001 (warning): ``X3_VALID`` chama ``U_XYZ`` que não existe nos fontes indexados."""
+    findings: list[dict[str, Any]] = []
+    known = _index_known_user_funcs(conn)
+    rows = conn.execute(
+        "SELECT tabela, campo, validacao FROM campos "
+        "WHERE validacao LIKE '%U_%' AND validacao != ''"
+    ).fetchall()
+    for tabela, campo, valid in rows:
+        for m in _USER_FUNC_CALL_RE.finditer(valid):
+            func = m.group(1).upper()
+            if func not in known:
+                findings.append(
+                    {
+                        "arquivo": f"SX:{tabela}",
+                        "funcao": campo,
+                        "linha": 0,
+                        "regra_id": "SX-001",
+                        "severidade": "warning",
+                        "snippet": valid[:200],
+                        "sugestao_fix": (
+                            f"X3_VALID de {tabela}.{campo} chama U_{func} que não foi indexada. "
+                            "Verifique se o fonte está no projeto ou rode 'plugadvpl ingest'."
+                        ),
+                    }
+                )
+                break  # 1 finding por campo basta
+    return findings
+
+
+def _check_sx002_x7_destino_inexistente(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """SX-002 (error): SX7 ``X7_REGRA`` referencia ``X_FIELD`` que não existe em ``campos``."""
+    findings: list[dict[str, Any]] = []
+    known_campos = _index_campos_set(conn)
+    if not known_campos:
+        return findings
+    rows = conn.execute(
+        "SELECT campo_origem, sequencia, campo_destino FROM gatilhos "
+        "WHERE campo_destino != ''"
+    ).fetchall()
+    for orig, seq, dest in rows:
+        if dest.upper() not in known_campos:
+            findings.append(
+                {
+                    "arquivo": f"SX:gatilho:{orig}",
+                    "funcao": f"#{seq}",
+                    "linha": 0,
+                    "regra_id": "SX-002",
+                    "severidade": "error",
+                    "snippet": f"{orig} → {dest}",
+                    "sugestao_fix": (
+                        f"Gatilho {orig}#{seq} aponta para campo destino {dest} que não existe "
+                        "em campos (SX3). Pode ser typo ou export incompleto."
+                    ),
+                }
+            )
+    return findings
+
+
+def _check_sx003_mv_param_unused_in_fontes(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """SX-003 (warning): parâmetro SX6 declarado mas nunca lido em fonte algum."""
+    findings: list[dict[str, Any]] = []
+    rows = conn.execute(
+        """
+        SELECT p.variavel, p.descricao
+        FROM parametros p
+        WHERE p.custom = 1
+          AND NOT EXISTS (
+              SELECT 1 FROM parametros_uso pu
+              WHERE upper(pu.parametro) = upper(p.variavel)
+          )
+        LIMIT 200
+        """
+    ).fetchall()
+    for var, desc in rows:
+        findings.append(
+            {
+                "arquivo": f"SX:param:{var}",
+                "funcao": "",
+                "linha": 0,
+                "regra_id": "SX-003",
+                "severidade": "warning",
+                "snippet": (desc or "")[:200],
+                "sugestao_fix": (
+                    f"Parâmetro {var} declarado em SX6 mas nenhum fonte indexado o consulta "
+                    "(GetMV/SuperGetMV/PutMV). Possível dead code."
+                ),
+            }
+        )
+    return findings
+
+
+def _check_sx004_pergunta_unused_in_fontes(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """SX-004 (warning): grupo SX1 sem nenhum ``Pergunte()`` correspondente nos fontes."""
+    findings: list[dict[str, Any]] = []
+    rows = conn.execute(
+        """
+        SELECT DISTINCT p.grupo
+        FROM perguntas p
+        WHERE NOT EXISTS (
+            SELECT 1 FROM perguntas_uso pu
+            WHERE upper(pu.grupo) = upper(p.grupo)
+        )
+        LIMIT 200
+        """
+    ).fetchall()
+    for (grupo,) in rows:
+        findings.append(
+            {
+                "arquivo": f"SX:pergunta:{grupo}",
+                "funcao": "",
+                "linha": 0,
+                "regra_id": "SX-004",
+                "severidade": "warning",
+                "snippet": grupo,
+                "sugestao_fix": (
+                    f"Grupo de perguntas {grupo} declarado em SX1 mas nenhum fonte chama "
+                    "Pergunte('{grupo}'). Possível dead code."
+                ),
+            }
+        )
+    return findings
+
+
+def _check_sx005_campo_usado_zero_refs(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """SX-005 (info): campo SX3 com ``X3_USADO`` mas zero referências em fontes/SX/SX7."""
+    findings: list[dict[str, Any]] = []
+    # Heurística simplificada: campos custom que não aparecem em fonte_chunks.content.
+    # Limitamos a custom (não vamos lintar 80k campos padrão).
+    rows = conn.execute(
+        """
+        SELECT tabela, campo
+        FROM campos
+        WHERE custom = 1
+        LIMIT 500
+        """
+    ).fetchall()
+    for tabela, campo in rows:
+        used = conn.execute(
+            "SELECT 1 FROM fonte_chunks WHERE upper(content) LIKE '%' || ? || '%' LIMIT 1",
+            (campo.upper(),),
+        ).fetchone()
+        if used is not None:
+            continue
+        # Verifica também se está em alguma validacao SX3 ou regra SX7.
+        in_sx = conn.execute(
+            """
+            SELECT 1 FROM campos WHERE upper(validacao) LIKE '%' || ? || '%' LIMIT 1
+            UNION ALL
+            SELECT 1 FROM gatilhos WHERE upper(regra) LIKE '%' || ? || '%' LIMIT 1
+            LIMIT 1
+            """,
+            (campo.upper(), campo.upper()),
+        ).fetchone()
+        if in_sx is not None:
+            continue
+        findings.append(
+            {
+                "arquivo": f"SX:{tabela}",
+                "funcao": campo,
+                "linha": 0,
+                "regra_id": "SX-005",
+                "severidade": "warning",
+                "snippet": f"{tabela}.{campo}",
+                "sugestao_fix": (
+                    f"Campo custom {tabela}.{campo} não é referenciado em fonte algum nem em "
+                    "outras entradas SX. Provável legado — considerar remoção."
+                ),
+            }
+        )
+        if len(findings) >= _SX005_MAX_FINDINGS:
+            break
+    return findings
+
+
+def _check_sx006_perf_sql_in_x3_valid(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """SX-006 (warning): ``X3_VALID`` faz query SQL (BeginSql/TCQuery) — anti-pattern."""
+    findings: list[dict[str, Any]] = []
+    rows = conn.execute(
+        "SELECT tabela, campo, validacao FROM campos "
+        "WHERE validacao != ''"
+    ).fetchall()
+    for tabela, campo, valid in rows:
+        if _SQL_IN_VALID_RE.search(valid or ""):
+            findings.append(
+                {
+                    "arquivo": f"SX:{tabela}",
+                    "funcao": campo,
+                    "linha": 0,
+                    "regra_id": "SX-006",
+                    "severidade": "warning",
+                    "snippet": valid[:200],
+                    "sugestao_fix": (
+                        f"X3_VALID de {tabela}.{campo} faz query SQL (BeginSql/TCQuery). "
+                        "Isso executa em CADA validação — caro. Considere ExistCpo() ou "
+                        "Posicione() com cache."
+                    ),
+                }
+            )
+    return findings
+
+
+def _check_sx007_restricted_func_in_x3_valid(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """SX-007 (critical): função em ``X3_VALID`` é uma das ``funcoes_restritas`` TOTVS."""
+    findings: list[dict[str, Any]] = []
+    restritas = _index_funcoes_restritas(conn)
+    if not restritas:
+        return findings
+    rows = conn.execute(
+        "SELECT tabela, campo, validacao FROM campos "
+        "WHERE validacao != ''"
+    ).fetchall()
+    # Padrão para extrair nomes de função do validador (não captura U_).
+    func_re = re.compile(r"\b([A-Z][A-Z0-9_]{2,30})\s*\(", re.IGNORECASE)
+    for tabela, campo, valid in rows:
+        for m in func_re.finditer(valid or ""):
+            fname = m.group(1).upper()
+            if fname in restritas:
+                findings.append(
+                    {
+                        "arquivo": f"SX:{tabela}",
+                        "funcao": campo,
+                        "linha": 0,
+                        "regra_id": "SX-007",
+                        "severidade": "critical",
+                        "snippet": valid[:200],
+                        "sugestao_fix": (
+                            f"X3_VALID de {tabela}.{campo} chama {fname}, função restrita TOTVS "
+                            "(não documentada/suportada). Pode quebrar em update do ERP."
+                        ),
+                    }
+                )
+                break
+    return findings
+
+
+def _check_sx008_xfilial_in_modo_c(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """SX-008 (warning): tabela ``X2_MODO='C'`` (compartilhada) tem campo SX3 usando ``xFilial``."""
+    findings: list[dict[str, Any]] = []
+    rows = conn.execute(
+        """
+        SELECT c.tabela, c.campo, c.validacao
+        FROM campos c
+        JOIN tabelas t ON t.codigo = c.tabela
+        WHERE t.modo = 'C'
+          AND c.validacao != ''
+        """
+    ).fetchall()
+    for tabela, campo, valid in rows:
+        if _XFILIAL_IN_VALID_RE.search(valid or ""):
+            findings.append(
+                {
+                    "arquivo": f"SX:{tabela}",
+                    "funcao": campo,
+                    "linha": 0,
+                    "regra_id": "SX-008",
+                    "severidade": "warning",
+                    "snippet": valid[:200],
+                    "sugestao_fix": (
+                        f"Tabela {tabela} tem X2_MODO='C' (compartilhada), mas X3_VALID de "
+                        f"{campo} usa xFilial(). Inconsistência: dado é único, validação "
+                        "tenta filtrar por filial."
+                    ),
+                }
+            )
+    return findings
+
+
+def _check_sx009_obrigat_with_empty_init(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """SX-009 (warning): campo obrigatório mas ``X3_INIT`` retorna vazio (heurística regex)."""
+    findings: list[dict[str, Any]] = []
+    rows = conn.execute(
+        "SELECT tabela, campo, inicializador FROM campos "
+        "WHERE obrigatorio = 1 AND inicializador != ''"
+    ).fetchall()
+    for tabela, campo, init in rows:
+        if _INIT_RETURNS_EMPTY_RE.search(init or ""):
+            findings.append(
+                {
+                    "arquivo": f"SX:{tabela}",
+                    "funcao": campo,
+                    "linha": 0,
+                    "regra_id": "SX-009",
+                    "severidade": "warning",
+                    "snippet": init[:200],
+                    "sugestao_fix": (
+                        f"Campo {tabela}.{campo} é obrigatório mas X3_RELACAO inicializa "
+                        "com vazio/zero — usuário sempre vai precisar digitar. Considere "
+                        "default real ou tornar opcional."
+                    ),
+                }
+            )
+    return findings
+
+
+def _check_sx010_pesquisar_sem_seek(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """SX-010 (error): gatilho SX7 ``X7_TIPO='P'`` (Pesquisar) sem ``X7_SEEK`` válido."""
+    findings: list[dict[str, Any]] = []
+    rows = conn.execute(
+        """
+        SELECT campo_origem, sequencia, alias, seek
+        FROM gatilhos
+        WHERE upper(tipo) = 'P'
+        """
+    ).fetchall()
+    for orig, seq, alias, seek in rows:
+        if not seek or seek.upper() not in ("S", "1", ".T."):
+            findings.append(
+                {
+                    "arquivo": f"SX:gatilho:{orig}",
+                    "funcao": f"#{seq}",
+                    "linha": 0,
+                    "regra_id": "SX-010",
+                    "severidade": "error",
+                    "snippet": f"alias={alias} seek={seek}",
+                    "sugestao_fix": (
+                        f"Gatilho {orig}#{seq} é tipo Pesquisar (P) mas não tem X7_SEEK='S'. "
+                        "Marque seek ou troque para tipo Primário (P→S inválido sem SEEK)."
+                    ),
+                }
+            )
+    return findings
+
+
+def _check_sx011_x3_f3_consulta_inexistente(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """SX-011 (error): ``X3_F3`` aponta para alias SXB que não existe."""
+    findings: list[dict[str, Any]] = []
+    aliases = _index_consultas_aliases(conn)
+    if not aliases:
+        return findings
+    rows = conn.execute(
+        "SELECT tabela, campo, f3 FROM campos WHERE f3 != ''"
+    ).fetchall()
+    for tabela, campo, f3 in rows:
+        # X3_F3 pode ter prefixo/sufixo; usamos uppercase exato.
+        if f3.upper() not in aliases:
+            findings.append(
+                {
+                    "arquivo": f"SX:{tabela}",
+                    "funcao": campo,
+                    "linha": 0,
+                    "regra_id": "SX-011",
+                    "severidade": "error",
+                    "snippet": f"X3_F3={f3}",
+                    "sugestao_fix": (
+                        f"X3_F3 de {tabela}.{campo} aponta para consulta '{f3}' que não existe "
+                        "em SXB (consultas). F3 não vai abrir nada."
+                    ),
+                }
+            )
+    return findings
+
+
+# --- Orchestrator cross-file --------------------------------------------------
+
+
+_CROSS_FILE_RULES: list[tuple[str, Any]] = [
+    ("SX-001", _check_sx001_x3_valid_unknown_func),
+    ("SX-002", _check_sx002_x7_destino_inexistente),
+    ("SX-003", _check_sx003_mv_param_unused_in_fontes),
+    ("SX-004", _check_sx004_pergunta_unused_in_fontes),
+    ("SX-005", _check_sx005_campo_usado_zero_refs),
+    ("SX-006", _check_sx006_perf_sql_in_x3_valid),
+    ("SX-007", _check_sx007_restricted_func_in_x3_valid),
+    ("SX-008", _check_sx008_xfilial_in_modo_c),
+    ("SX-009", _check_sx009_obrigat_with_empty_init),
+    ("SX-010", _check_sx010_pesquisar_sem_seek),
+    ("SX-011", _check_sx011_x3_f3_consulta_inexistente),
+]
+
+
+def lint_cross_file(
+    conn: sqlite3.Connection,
+    *,
+    rules: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Aplica as 11 regras cross-file (SX-001..SX-011). Retorna lista ordenada.
+
+    Pré-requisito: migration 002 aplicada e dicionário SX ingerido (``ingest-sx``).
+    Se as tabelas SX não existirem, retorna lista vazia silenciosamente (não é erro).
+
+    Args:
+        conn: conexão SQLite.
+        rules: filtro opcional (lista de regra_ids). ``None`` = todas as 11.
+    """
+    if not _sx_present(conn):
+        return []
+    findings: list[dict[str, Any]] = []
+    selected = set(rules) if rules else None
+    for regra_id, check_fn in _CROSS_FILE_RULES:
+        if selected is not None and regra_id not in selected:
+            continue
+        try:
+            findings.extend(check_fn(conn))
+        except sqlite3.OperationalError:
+            # Tabela ausente (ingest_sx incompleto) — pula esta regra.
+            continue
+    findings.sort(
+        key=lambda f: (str(f["regra_id"]), str(f["arquivo"]), str(f["funcao"]))
+    )
+    return findings
+
+
+def persist_cross_file_findings(
+    conn: sqlite3.Connection, findings: list[dict[str, Any]]
+) -> int:
+    """Grava findings cross-file na tabela ``lint_findings`` (DELETE + INSERT por regra_id).
+
+    Retorna ``count`` de rows inseridas. Idempotente: deleta findings cross-file
+    anteriores antes de inserir os novos (compara por ``regra_id LIKE 'SX-%'``).
+    """
+    conn.execute("DELETE FROM lint_findings WHERE regra_id LIKE 'SX-%'")
+    if not findings:
+        conn.commit()
+        return 0
+    rows = [
+        (
+            f.get("arquivo", ""),
+            f.get("funcao", ""),
+            int(f.get("linha", 0)),
+            f.get("regra_id", ""),
+            f.get("severidade", "warning"),
+            (f.get("snippet", "") or "")[:500],
+            f.get("sugestao_fix", "") or "",
+        )
+        for f in findings
+    ]
+    conn.executemany(
+        """
+        INSERT INTO lint_findings (
+            arquivo, funcao, linha, regra_id, severidade, snippet, sugestao_fix
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        rows,
+    )
+    conn.commit()
+    return len(rows)

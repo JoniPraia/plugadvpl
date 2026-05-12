@@ -4,6 +4,60 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-11
+
+### Added — Universo 2: Dicionário SX
+
+- **Migration 002** — 11 novas tabelas SQLite cobrindo todo o dicionário
+  Protheus exportado em CSV: `tabelas` (SX2), `campos` (SX3), `indices` (SIX),
+  `gatilhos` (SX7), `parametros` (SX6), `perguntas` (SX1), `tabelas_genericas`
+  (SX5), `relacionamentos` (SX9), `pastas` (SXA), `consultas` (SXB),
+  `grupos_campo` (SXG). Indexes específicos para cross-lookup em
+  `validacao`/`vlduser`/`when_expr`/`inicializador`/`f3`.
+- **Parser SX** (`plugadvpl/parsing/sx_csv.py`, ~440 linhas, type-hinted) —
+  port do parser interno do autor (`parser_sx.py`, 872 linhas). Auto-detect
+  encoding (cp1252/utf-8-sig), delimiter (vírgula/ponto-e-vírgula),
+  conversão XLSX disfarçado de CSV, sanitização de surrogates Unicode.
+  Filtra rows logicamente deletadas (`D_E_L_E_T_ = '*'`).
+- **Pipeline** `plugadvpl/ingest_sx.py` — orquestrador idempotente
+  (`INSERT OR REPLACE`), batches de 1000 rows, tolerante a CSVs faltantes.
+- **3 novos comandos CLI**:
+  - `plugadvpl ingest-sx <pasta-csv>` — popula o dicionário SX no índice.
+  - `plugadvpl impacto <campo> [--depth 1..3]` — **killer feature**: cruza
+    referências a um campo em fontes ↔ SX3 ↔ SX7 ↔ SX1, com cadeia de
+    gatilhos configurável.
+  - `plugadvpl gatilho <campo> [--depth 1..3]` — lista cadeia SX7
+    origem → destino com BFS.
+  - `plugadvpl sx-status` — counts por tabela do dicionário.
+  - `plugadvpl lint --cross-file` — recalcula as 11 regras cross-file SX-***.
+- **11 cross-file lint rules** SX-001..SX-011 (regra_id `SX-*`):
+  X3_VALID com U_xxx não indexado, gatilho SX7 com destino inexistente em SX3,
+  parâmetro MV_ nunca lido, pergunta SX1 nunca usada, campo custom sem
+  referências, X3_VALID com SQL embarcado (BeginSql/TCQuery), função restrita
+  TOTVS em validador, tabela compartilhada com xFilial em VALID, campo
+  obrigatório com INIT vazio, gatilho Pesquisar sem SEEK, X3_F3 apontando
+  para SXB inexistente.
+- **Skill nova** `advpl-dicionario-sx-validacoes` — guia completo das
+  expressões ADVPL embutidas no dicionário (X3_VALID/INIT/WHEN/VLDUSER,
+  X7_REGRA/CONDIC/CHAVE, X1_VALID, X6_VALID/INIT) e workflow para
+  análise de impacto.
+- **Tests** — 11 novos integration tests cobrindo ingest-sx, impacto,
+  gatilho, sx-status, lint --cross-file; 1 bench (~26ms para 11 CSVs
+  sintéticos); 3 e2e_local contra `D:/Clientes/CSV` (gated por env var
+  `PLUGADVPL_E2E_SX_DIR`).
+
+### Changed
+- `SCHEMA_VERSION` bumped to `"2"`.
+- `plugin.json` / `marketplace.json` versão `0.3.0`.
+- `plugadvpl --help` agora lista 18 subcomandos (14 + 4 novos).
+
+### Notes
+- Plugin agora ingere **apenas** o dicionário custom do cliente
+  (`plugadvpl ingest-sx <pasta>`). Padrão TOTVS é ignorado por design
+  (carga inútil para auditoria de customização).
+- `sxg.csv` com header `X3_*` (export malformado) é silenciosamente
+  pulado — apenas exports legítimos com header `XG_*` são ingeridos.
+
 ## [0.2.0] - 2026-05-11
 
 ### Added

@@ -156,7 +156,7 @@ class TestApplyMigrations:
             version = conn.execute(
                 "SELECT valor FROM meta WHERE chave='schema_version'"
             ).fetchone()
-            assert version == ("1",)
+            assert version == ("2",)
         finally:
             close_db(conn)
 
@@ -177,16 +177,16 @@ class TestMeta:
     def test_schema_version_after_apply_migrations_and_init_meta(
         self, tmp_path: Path
     ) -> None:
-        """Após apply_migrations + init_meta, schema_version deve ser '1'
-        (gravado por apply_migrations, NÃO por init_meta)."""
+        """Após apply_migrations + init_meta, schema_version deve ser '2'
+        (gravado por apply_migrations, NÃO por init_meta — v0.3.0 = migration 002)."""
         db_path = tmp_path / "test.db"
         conn = open_db(db_path)
         try:
             apply_migrations(conn)
             init_meta(conn, project_root=str(tmp_path), cli_version="0.1.0")
-            assert get_meta(conn, "schema_version") == "1"
+            assert get_meta(conn, "schema_version") == "2"
             # SCHEMA_VERSION (constante informacional) ainda existe e bate.
-            assert SCHEMA_VERSION == "1"
+            assert SCHEMA_VERSION == "2"
         finally:
             conn.close()
 

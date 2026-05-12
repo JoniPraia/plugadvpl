@@ -1,0 +1,5 @@
+"INDICE","ORDEM","CHAVE","DESCRICAO","PROPRI","F3","NICKNAME","SHOWPESQ","D_E_L_E_T_"
+"SA1","1","A1_FILIAL+A1_COD","Codigo","S","","","S",""
+"SA1","2","A1_FILIAL+A1_NREDUZ","Nome Reduzido","S","","","S",""
+"SC5","1","C5_FILIAL+C5_NUM","Numero do Pedido","S","","","S",""
+"ZA1","1","ZA1_FILIAL+ZA1_COD","Codigo","U","","","S",""

@@ -420,3 +420,316 @@ def _json_or_default(raw: str | None, default: Any) -> Any:
         return json.loads(raw)
     except (json.JSONDecodeError, TypeError):
         return default
+
+
+# ---------------------------------------------------------------------------
+# v0.3.0 — Universo 2: queries do dicionário SX (impacto + gatilho)
+# ---------------------------------------------------------------------------
+
+
+def _sx_tables_present(conn: sqlite3.Connection) -> bool:
+    """Sentinela: ``True`` se migration 002 já criou as tabelas do dicionário SX."""
+    row = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='campos'"
+    ).fetchone()
+    return row is not None
+
+
+def _truncate(text: str | None, max_len: int = 80) -> str:
+    """Trunca strings para snippet display (impacto/gatilho)."""
+    if not text:
+        return ""
+    text = " ".join(text.split())  # collapse whitespace
+    if len(text) <= max_len:
+        return text
+    return text[: max_len - 1] + "…"
+
+
+_WRITE_KEYWORDS = ("RECLOCK", "REPLACE", "UPDATE ", "INSERT ", "MSEXECAUTO")
+
+
+def _impacto_fontes(
+    conn: sqlite3.Connection, campo_up: str, max_rows: int
+) -> list[dict[str, Any]]:
+    """Hits no índice de fontes (fonte_chunks.content)."""
+    out: list[dict[str, Any]] = []
+    rows = conn.execute(
+        """
+        SELECT arquivo, funcao, linha_inicio,
+               substr(content, max(1, instr(upper(content), ?) - 30), 160) AS snippet
+        FROM fonte_chunks
+        WHERE upper(content) LIKE '%' || ? || '%'
+        LIMIT ?
+        """,
+        (campo_up, campo_up, max_rows),
+    ).fetchall()
+    for arquivo, funcao, linha, snippet in rows:
+        snip_up = (snippet or "").upper()
+        is_write = any(k in snip_up for k in _WRITE_KEYWORDS)
+        out.append(
+            {
+                "tipo": "fonte",
+                "local": f"{arquivo}:{linha or 1}::{funcao or ''}",
+                "contexto": _truncate(snippet, 100),
+                "severidade": "critical" if is_write else "warning",
+            }
+        )
+    return out
+
+
+def _impacto_sx3(
+    conn: sqlite3.Connection, campo_up: str, max_rows: int
+) -> list[dict[str, Any]]:
+    """Hits em SX3: registro próprio + campos com VALID/INIT/WHEN/VLDUSER referenciando."""
+    out: list[dict[str, Any]] = []
+    own = conn.execute(
+        "SELECT tabela, campo, tipo, tamanho, descricao FROM campos "
+        "WHERE upper(campo) = ?",
+        (campo_up,),
+    ).fetchone()
+    if own:
+        out.append(
+            {
+                "tipo": "SX3",
+                "local": f"{own[0]}.{own[1]}",
+                "contexto": _truncate(f"{own[2]}({own[3]}) {own[4]}", 100),
+                "severidade": "warning",
+            }
+        )
+    sx3_refs = conn.execute(
+        """
+        SELECT tabela, campo, validacao, vlduser, when_expr, inicializador
+        FROM campos
+        WHERE upper(validacao)     LIKE '%' || ? || '%'
+           OR upper(vlduser)       LIKE '%' || ? || '%'
+           OR upper(when_expr)     LIKE '%' || ? || '%'
+           OR upper(inicializador) LIKE '%' || ? || '%'
+        LIMIT ?
+        """,
+        (campo_up, campo_up, campo_up, campo_up, max_rows),
+    ).fetchall()
+    for tabela, c, valid, vld, wh, init in sx3_refs:
+        if c.upper() == campo_up:
+            continue
+        bits: list[str] = []
+        if campo_up in (valid or "").upper():
+            bits.append(f"VALID={_truncate(valid, 40)}")
+        if campo_up in (vld or "").upper():
+            bits.append(f"VLDUSER={_truncate(vld, 40)}")
+        if campo_up in (wh or "").upper():
+            bits.append(f"WHEN={_truncate(wh, 40)}")
+        if campo_up in (init or "").upper():
+            bits.append(f"INIT={_truncate(init, 40)}")
+        out.append(
+            {
+                "tipo": "SX3",
+                "local": f"{tabela}.{c}",
+                "contexto": _truncate(" | ".join(bits), 100),
+                "severidade": "warning",
+            }
+        )
+    return out
+
+
+def _impacto_sx7_chain(
+    conn: sqlite3.Connection, campo_up: str, depth: int, max_per_kind: int
+) -> list[dict[str, Any]]:
+    """Cadeia SX7 com BFS até ``depth`` níveis."""
+    out: list[dict[str, Any]] = []
+    visited: set[str] = {campo_up}
+    frontier: list[str] = [campo_up]
+    for level in range(1, max(1, min(depth, 3)) + 1):
+        next_frontier: list[str] = []
+        for orig in frontier:
+            sx7_rows = conn.execute(
+                """
+                SELECT campo_origem, sequencia, campo_destino, regra, condicao, tipo
+                FROM gatilhos
+                WHERE upper(campo_origem) = ?
+                   OR upper(regra)        LIKE '%' || ? || '%'
+                   OR upper(condicao)     LIKE '%' || ? || '%'
+                LIMIT ?
+                """,
+                (orig, orig, orig, max_per_kind),
+            ).fetchall()
+            for co, seq, cd, regra, cond, tp in sx7_rows:
+                ctx_parts = [f"depth={level}", f"tipo={tp or '?'}"]
+                if regra:
+                    ctx_parts.append(f"regra={_truncate(regra, 30)}")
+                if cond:
+                    ctx_parts.append(f"cond={_truncate(cond, 25)}")
+                out.append(
+                    {
+                        "tipo": "SX7",
+                        "local": f"{co}#{seq} → {cd or '(s/destino)'}",
+                        "contexto": _truncate(" | ".join(ctx_parts), 100),
+                        "severidade": "critical",
+                    }
+                )
+                if cd and cd.upper() not in visited:
+                    visited.add(cd.upper())
+                    next_frontier.append(cd.upper())
+        frontier = next_frontier
+        if not frontier:
+            break
+    return out
+
+
+def _impacto_sx1(
+    conn: sqlite3.Connection, campo_up: str, max_rows: int
+) -> list[dict[str, Any]]:
+    """Hits em SX1: validacao ou conteudo_padrao referenciando o campo."""
+    out: list[dict[str, Any]] = []
+    rows = conn.execute(
+        """
+        SELECT grupo, ordem, pergunta, validacao, conteudo_padrao
+        FROM perguntas
+        WHERE upper(validacao)       LIKE '%' || ? || '%'
+           OR upper(conteudo_padrao) LIKE '%' || ? || '%'
+        LIMIT ?
+        """,
+        (campo_up, campo_up, max_rows),
+    ).fetchall()
+    for grupo, ordem, perg, val, cont in rows:
+        bits: list[str] = []
+        if campo_up in (val or "").upper():
+            bits.append(f"VALID={_truncate(val, 40)}")
+        if campo_up in (cont or "").upper():
+            bits.append(f"DEF={_truncate(cont, 40)}")
+        out.append(
+            {
+                "tipo": "SX1",
+                "local": f"{grupo}#{ordem}",
+                "contexto": _truncate(f"{perg} | {' | '.join(bits)}", 100),
+                "severidade": "warning",
+            }
+        )
+    return out
+
+
+def impacto_query(
+    conn: sqlite3.Connection,
+    campo: str,
+    *,
+    depth: int = 1,
+    max_per_kind: int = 50,
+) -> list[dict[str, Any]]:
+    """Cruza referências a ``campo`` em fontes ↔ SX3 ↔ SX7 ↔ SX1.
+
+    Args:
+        conn: conexão SQLite (RO ok).
+        campo: nome do campo (ex: ``A1_COD``, case-insensitive).
+        depth: profundidade da cadeia de gatilhos a seguir (1..3). Default 1
+            = só gatilhos onde ``campo_origem == campo``. ``depth=2`` segue
+            também os destinos desses gatilhos como novas origens.
+        max_per_kind: máximo de hits por tipo (fonte/SX3/SX7/SX1) — defesa
+            contra campos muito comuns (ex: A1_FILIAL) explodirem o output.
+
+    Returns:
+        Lista de dicts ``{tipo, local, contexto, severidade}`` ordenada por
+        ``severidade`` (critico/error/warning) e ``tipo``. Vazia se ``campo``
+        não tem referência alguma OU se o dicionário SX ainda não foi ingerido.
+    """
+    campo_up = campo.upper().strip()
+    if not campo_up:
+        return []
+
+    out = _impacto_fontes(conn, campo_up, max_per_kind)
+    if _sx_tables_present(conn):
+        out.extend(_impacto_sx3(conn, campo_up, max_per_kind))
+        out.extend(_impacto_sx7_chain(conn, campo_up, depth, max_per_kind))
+        out.extend(_impacto_sx1(conn, campo_up, max_per_kind))
+
+    out.sort(key=lambda r: (_severity_rank(r["severidade"]), r["tipo"], r["local"]))
+    return out
+
+
+def _severity_rank(sev: str) -> int:
+    """Ordem para sort: critical < error < warning < info < unknown."""
+    return {"critical": 0, "error": 1, "warning": 2, "info": 3}.get(sev, 4)
+
+
+def gatilho_query(
+    conn: sqlite3.Connection,
+    campo: str,
+    *,
+    depth: int = 3,
+    max_rows: int = 100,
+) -> list[dict[str, Any]]:
+    """Lista cadeia de gatilhos SX7 originados/destinados ao ``campo``.
+
+    Cada row representa um gatilho na cadeia: ``{nivel, origem, destino, regra,
+    condicao, tipo}``. Recursivo: o destino do nível N vira origem do nível N+1.
+
+    Args:
+        conn: conexão SQLite.
+        campo: nome do campo (case-insensitive).
+        depth: profundidade máxima (1..3). Default 3.
+        max_rows: corte defensivo no total de rows retornadas.
+    """
+    if not _sx_tables_present(conn):
+        return []
+    campo_up = campo.upper().strip()
+    if not campo_up:
+        return []
+    out: list[dict[str, Any]] = []
+    visited: set[str] = {campo_up}
+    frontier: list[tuple[str, str]] = [(campo_up, "raiz")]
+    for level in range(1, max(1, min(depth, 3)) + 1):
+        next_frontier: list[tuple[str, str]] = []
+        for origem, parent in frontier:
+            rows = conn.execute(
+                """
+                SELECT campo_origem, sequencia, campo_destino, regra, condicao,
+                       tipo, alias, seek
+                FROM gatilhos
+                WHERE upper(campo_origem) = ?
+                ORDER BY sequencia
+                """,
+                (origem,),
+            ).fetchall()
+            for co, seq, cd, regra, cond, tp, alias, seek in rows:
+                if len(out) >= max_rows:
+                    break
+                out.append(
+                    {
+                        "nivel": level,
+                        "origem": co,
+                        "sequencia": seq,
+                        "destino": cd,
+                        "regra": _truncate(regra, 60),
+                        "condicao": _truncate(cond, 40),
+                        "tipo": tp,
+                        "alias": alias,
+                        "seek": seek,
+                        "via": parent if level > 1 else "",
+                    }
+                )
+                if cd and cd.upper() not in visited:
+                    visited.add(cd.upper())
+                    next_frontier.append((cd.upper(), f"{co}#{seq}"))
+            if len(out) >= max_rows:
+                break
+        frontier = next_frontier
+        if not frontier or len(out) >= max_rows:
+            break
+    return out
+
+
+def sx_status(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """Resumo do dicionário SX ingerido: counts por tabela + ``last_sx_ingest_at``."""
+    if not _sx_tables_present(conn):
+        return [{"sx_ingerido": False, "msg": "Rode 'plugadvpl ingest-sx <dir>' primeiro."}]
+    out: dict[str, Any] = {
+        "sx_ingerido": True,
+        "last_sx_ingest_at": get_meta(conn, "last_sx_ingest_at"),
+        "sx_csv_dir": get_meta(conn, "sx_csv_dir"),
+    }
+    for table in (
+        "tabelas", "campos", "indices", "gatilhos", "parametros",
+        "perguntas", "tabelas_genericas", "relacionamentos", "pastas",
+        "consultas", "grupos_campo",
+    ):
+        n = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+        out[table] = n
+    return [out]

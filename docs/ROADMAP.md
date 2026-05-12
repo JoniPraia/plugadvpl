@@ -21,19 +21,27 @@ Visão pública do que vem no plugadvpl. Datas são estimativas — comunidade p
 - CLAUDE.md fragment muito mais rico (tabela de decisão + workflow numerado)
 - Skill `setup` com detecção de ambiente CLI vs VSCode
 
-## 🟡 v0.3.0 — Universo 2: Dicionário SX (planejado, ~1-2 semanas focadas)
+## ✅ v0.3.0 — Universo 2: Dicionário SX (2026-05)
 
 [Milestone v0.3.0](https://github.com/JoniPraia/plugadvpl/milestone/1)
 
-- Ingest do dicionário SX exportado da rotina U_DICEXP do Protheus (CSV)
-- Tabelas populadas: `tabelas` (SX2), `campos` (SX3), `gatilhos` (SX7),
+- Ingest do dicionário SX exportado da rotina de exportação do Protheus
+  (CSV — Configurador → Misc → Exportar Dicionário). Apenas customizações
+  do cliente; padrão TOTVS é ignorado por design.
+- 11 tabelas populadas: `tabelas` (SX2), `campos` (SX3), `gatilhos` (SX7),
   `parametros` (SX6), `perguntas` (SX1), `consultas` (SXB), `pastas` (SXA),
-  `relacionamentos` (SX9), `indices` (SIX)
-- Comando novo: `plugadvpl ingest-sx <pasta-csv>`
-- Comando novo: `plugadvpl impacto <campo>` cruzando fontes ↔ SX
-- Comando novo: `plugadvpl gatilho <campo>` lista cadeias de gatilhos SX7
-- 11 lint rules cross-file/semantic ativadas (BP-007 em diante)
-- Skill nova: `advpl-dicionario-sx-validacoes` (X3_VALID, X3_WHEN, X3_RELACAO)
+  `relacionamentos` (SX9), `indices` (SIX), `tabelas_genericas` (SX5),
+  `grupos_campo` (SXG).
+- 3 comandos novos: `plugadvpl ingest-sx <pasta-csv>`, `plugadvpl impacto
+  <campo> [--depth N]` (killer feature), `plugadvpl gatilho <campo>` +
+  `plugadvpl sx-status` (auxiliar).
+- 11 lint rules cross-file ativadas (`SX-001..SX-011`): valida que
+  `X3_VALID`/`X7_REGRA` referenciam funções/campos/consultas que
+  realmente existem.
+- Skill nova: `advpl-dicionario-sx-validacoes` (X3_VALID, X3_INIT, X3_WHEN,
+  X3_VLDUSER, X7_REGRA + workflow plugadvpl impacto).
+- Parser portado de projeto interno do autor (872 linhas, MIT) — adaptado
+  para plugadvpl removendo dependências SaaS.
 
 ## 🟡 v0.4.0 — Universo 3: Rastreabilidade unificada (planejado)
 

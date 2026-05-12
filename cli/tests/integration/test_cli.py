@@ -68,14 +68,15 @@ class TestVersion:
 
 
 class TestHelp:
-    def test_help_lists_all_13_subcommands(self, runner: CliRunner) -> None:
+    def test_help_lists_all_subcommands(self, runner: CliRunner) -> None:
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        # Verifica os 14 comandos (13 + version).
+        # 14 comandos do MVP + 4 novos do v0.3.0 (ingest-sx, impacto, gatilho, sx-status) = 18.
         for cmd in (
             "version", "init", "ingest", "reindex", "status",
             "find", "callers", "callees", "tables", "param",
             "arch", "lint", "doctor", "grep",
+            "ingest-sx", "impacto", "gatilho", "sx-status",
         ):
             assert cmd in result.stdout
 

@@ -1,0 +1,4 @@
+"X1_GRUPO","X1_ORDEM","X1_PERGUNT","X1_VARIAVL","X1_TIPO","X1_TAMANHO","X1_DECIMAL","X1_F3","X1_VALID","X1_DEF01","D_E_L_E_T_"
+"MGFREL01","01","Cliente De?","mv_ch1","C",6,0,"SA1","ExistCpo('SA1')","000001",""
+"MGFREL01","02","Cliente Ate?","mv_ch2","C",6,0,"SA1","","ZZZZZZ",""
+"MGFDEAD","01","Pergunta nao usada","mv_ch1","C",6,0,"","","000001",""
