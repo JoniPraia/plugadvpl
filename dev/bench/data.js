@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778607246523,
+  "lastUpdate": 1778608213627,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -673,6 +673,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0005646364139210244",
             "extra": "mean: 14.48360671428566 msec\nrounds: 14"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "c654bdfdf2d7400c95ce85014fbc7b4519e98c56",
+          "message": "release: v0.3.3\n\nQuality-of-life release: install fica significativamente mais rapido pra\nquem ja tem Python local, GitHub Releases voltam a anexar wheel, e o\nplugin ganha duas skills de conhecimento pra cobrir os fluxos de\n\"refatorar/melhorar\" e \"investigar bug\".\n\nAdded:\n- skills/advpl-refactoring — 6 padroes de refactor com before/after:\n  DbSeek loop -> SQL embarcado (anti-N+1), Posicione repetido -> cache,\n  IFs hardcoded -> SX5/SX6 ou User Function, AxCadastro -> MVC, string\n  concat em loop -> array+aJoin, RecLock solto -> Begin Transaction.\n  Cada padrao inclui \"quando NAO refatorar\".\n- skills/advpl-debugging — 30 erros comuns em producao com tabela\n  sintoma -> causa raiz -> diagnostico (com comando plugadvpl) -> fix.\n  Cobre os tracebacks tipicos do AppServer.log + metodos manuais de\n  debug (ConOut, MemoWrite, FwLogMsg, varInfo, aClone+diff).\n\nChanged:\n- install.ps1 agora detecta Python 3.11+ ja instalado (via py launcher\n  do Windows que consulta o registro, nao cai na MS Store stub) e passa\n  --python <path> pro `uv tool install`. Evita o download de ~30MB de\n  Python managed que era a causa principal dos \"stuck em [2/3]\" que\n  usuarios reportaram. Script agora tem 4 steps (uv -> Python -> plugadvpl -> done).\n- release.yml anexa wheel + sdist ao GitHub Release. Antes o job\n  github-release fazia checkout e tentava `files: cli/dist/*` que nao\n  existia naquele job — resultado: GitHub Releases vinham vazios desde\n  v0.3.0. Fix com upload-artifact + download-artifact entre jobs.\n\nPlugin agora: 18 knowledge skills (era 16) + 18 CLI wrappers + 1 setup\nhelper = 37 skills total. 4 agents, 1 hook.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T14:49:37-03:00",
+          "tree_id": "c7fefa0c37b8d9b094982d5a976501acd28333ee",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/c654bdfdf2d7400c95ce85014fbc7b4519e98c56"
+        },
+        "date": 1778608212930,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 23.5926671176186,
+            "unit": "iter/sec",
+            "range": "stddev: 0.001407308305152382",
+            "extra": "mean: 42.38605135293148 msec\nrounds: 17"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 72.62233538257512,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0003811123334432423",
+            "extra": "mean: 13.76986838459533 msec\nrounds: 13"
           }
         ]
       }
