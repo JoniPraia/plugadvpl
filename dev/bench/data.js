@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778594608612,
+  "lastUpdate": 1778599872976,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -601,6 +601,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00048700846562242016",
             "extra": "mean: 14.945912769226547 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "a8a597d7ddc5d2f8ad08776f13ae6d4e67d07e9b",
+          "message": "docs: add upgrade section + troubleshooting FAQ for common pitfalls\n\nReal users on v0.3.0 → v0.3.1 hit a few avoidable headaches:\n\n- `uv` silently dropped from PATH (Windows Store Python isolates PATH;\n  after re-imaging or terminal restart the previously-installed `uv`\n  is no longer found) → `uv cache clean plugadvpl` fails immediately\n  with \"command not found\".\n- `uv tool upgrade plugadvpl` reports \"Nothing to do\" even when a\n  newer version is on PyPI, because uv's cache holds the older one\n  that already satisfies the specifier — need `uv cache clean +\n  --reinstall --force` to actually pull the new wheel.\n- Plugin metadata updates ahead of the slash-command CLI pin in the\n  skills, so even after `/plugin marketplace update` users still\n  invoke the older CLI through `uvx plugadvpl@X.Y.Z`.\n\nREADME now has a focused \"Atualizando para uma versão nova\" section\nright after the install one-liner (the obvious place a user looks).\nFAQ gains a \"Troubleshooting de atualização\" subsection at the bottom\nwith the three symptoms above plus the `0.0.0+dev` case for editable\ninstalls.\n\nDrive-by: bumped \"15 knowledge skills\" → \"16\" in the FAQ entry that\nexplains the CLI vs plugin split.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T12:30:48-03:00",
+          "tree_id": "e0b74c6126a54f55987575b06d30fd44a08b000f",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/a8a597d7ddc5d2f8ad08776f13ae6d4e67d07e9b"
+        },
+        "date": 1778599872738,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 22.88658437468515,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0008152925575430253",
+            "extra": "mean: 43.693719588236156 msec\nrounds: 17"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 70.83257987446895,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0005016433367871155",
+            "extra": "mean: 14.117797230768977 msec\nrounds: 13"
           }
         ]
       }
