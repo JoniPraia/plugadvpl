@@ -4,6 +4,38 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+### Changed
+- **Skills overhaul completo** — todas as 16 knowledge skills (`plugadvpl-index-usage`,
+  `advpl-fundamentals`, `advpl-code-review`, `advpl-mvc`, `advpl-mvc-avancado`,
+  `advpl-embedded-sql`, `advpl-pontos-entrada`, `advpl-encoding`, `advpl-webservice`,
+  `advpl-web`, `advpl-jobs-rpc`, `advpl-dicionario-sx`, `advpl-dicionario-sx-validacoes`,
+  `advpl-matxfis`, `advpl-tlpp`, `advpl-advanced`) revisadas, pesquisadas
+  contra TDN/TOTVS Central/blogs canônicos e atualizadas. Mudanças cross-cutting:
+  - **Phantom command `/plugadvpl:sql` removido** de 3 skills (não existe no CLI).
+  - **Nomes de tabela corrigidos** — `sources`→`fontes`, `simbolos`→`fonte_chunks`,
+    `calls`→`chamadas_funcao`, `params`→`parametros_uso`, `sql_refs`→`sql_embedado`,
+    `ws_services`/`ws_structures`→`rest_endpoints`/`http_calls`. `mvc_hooks` e
+    `dictionary_sx` removidos (não existem no schema).
+  - **bCommit/bTudoOk descontinuados** documentados — `advpl-mvc` agora lidera com
+    `FWModelEvent` + `InstallEvent()` (3 momentos: BeforeTTS/InTTS/AfterTTS), padrão
+    canônico TOTVS desde Protheus 12.1.17+.
+  - **`FWMVCRotina` corrigido para `FWMVCRotAuto`** (canônico).
+  - **Limite identificador clarificado** — `.prw`/`.prx` mantém legado 10 chars
+    (truncamento silencioso causa bug `nTotalGeralAnual` ≡ `nTotalGeralMensal`);
+    `.tlpp` libera 250 chars.
+  - **TLPP default PRIVATE vs ADVPL PUBLIC** documentado — armadilha de port.
+  - **Lint rules alinhados à impl real** (não ao catálogo) em `advpl-code-review`,
+    `advpl-embedded-sql`, `advpl-jobs-rpc`, `advpl-advanced`. Discrepância
+    documentada como [issue #1](https://github.com/JoniPraia/plugadvpl/issues/1)
+    pra resolução em v0.3.4.
+  - **Cross-refs `[[name]]`** entre skills — ~120 links bidirecionais.
+  - **Sources sections** com ~80 referências externas verificáveis (TDN, TOTVS
+    Central, Terminal de Informação, Medium, GitHub canônicos).
+
+### Fixed
+- **Skills com claims falsos sobre estrutura interna** — várias skills citavam
+  tabelas SQLite que não existem no schema. Auditadas e corrigidas individualmente.
+
 ## [0.3.3] - 2026-05-12
 
 ### Added
