@@ -1,131 +1,118 @@
 ---
-description: 24 regras de code review ADVPL (BP/SEC/PERF/MOD). No MVP plugadvpl v0.1, 13 são detectadas via regex single-file; 11 deferidas para v0.2 (semantic/cross-file). Use após gerar/editar código ADVPL.
+description: 24 regras de code review ADVPL/TLPP implementadas (13 single-file via regex + 11 cross-file SX que requerem ingest-sx). Mais 11 regras catalogadas porém ainda não detectadas. Use após gerar/editar fonte ADVPL, antes de marcar tarefa como concluída, ou quando o usuário pede "revise este código".
 ---
 
-# advpl-code-review — As 24 regras de code review
+# advpl-code-review — As regras de code review do plugadvpl
 
-`plugadvpl` cataloga **24 regras de code review** para ADVPL/TLPP, agrupadas em 4 categorias:
+`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **24 são efetivamente detectadas hoje** (v0.3.3): **13 single-file** via regex/AST sobre o conteúdo do fonte, e **11 cross-file SX-***  que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes). As outras 11 ficam **catalogadas mas não detectadas** — guia mental, sem alerta automático.
 
-- **BP-xxx** — Best-Practice (8 regras).
-- **SEC-xxx** — Segurança (5 regras).
-- **PERF-xxx** — Performance (6 regras).
-- **MOD-xxx** — Modernização (4 regras).
-
-No **MVP v0.1**, 13 regras são detectáveis com **regex single-file** (rápido, alto recall). As outras 11 ficam catalogadas em `lint_rules` mas só serão detectadas no **v0.2** (análise semantic / cross-file).
+> **Nota sobre o catálogo:** o arquivo `lookups/lint_rules.json` tem títulos parcialmente desalinhados com a implementação real (`cli/plugadvpl/parsing/lint.py`). **Este skill descreve o comportamento real do que dispara**, não o catálogo. Discrepância documentada como follow-up de v0.3.4.
 
 ## Quando usar
 
-- Logo após gerar/editar qualquer fonte ADVPL.
-- Antes de marcar tarefa como "concluída".
+- Logo após gerar/editar qualquer fonte ADVPL/TLPP.
+- Antes de marcar tarefa como "concluída" ou propor PR/commit.
 - Quando usuário pede "revise este código" / "tem boa prática aqui?".
-- Antes de propor PR / commit.
+- Em conjunto com `[[advpl-refactoring]]` (refatorar) e `[[advpl-debugging]]` (investigar bug).
 
 Rode `/plugadvpl:lint <arq>` para resultado de fato — esta skill é o **guia mental** das regras.
 
-## As 24 regras — quick reference
+## As 24 regras detectadas — quick reference
 
-### Best Practice (BP)
+### Single-file (13) — `lint.py`, regex/AST sobre conteúdo
 
-| ID         | Sev      | Título                                                          | v0.1 |
-|------------|----------|-----------------------------------------------------------------|------|
-| `BP-001`   | critical | `RecLock` sem `MsUnlock` correspondente                         | ✅   |
-| `BP-002`   | error    | `Local` declarado fora do header da função                      | ✅   |
-| `BP-002b`  | warning  | Variável como `Private`/`Public` em vez de `Local`              | ✅   |
-| `BP-003`   | warning  | Falta `GetArea/RestArea` em função que usa `DbSelectArea/DbSeek`| ⏸ (v0.2) |
-| `BP-004`   | warning  | `#Include "Protheus.ch"` em vez de `"TOTVS.CH"`                 | ✅   |
-| `BP-005`   | warning  | Falta `Begin Sequence/Recover/End` em operação crítica          | ⏸ (v0.2) |
-| `BP-006`   | info     | Variável sem notação húngara                                    | ✅   |
-| `BP-007`   | info     | Função sem header Protheus.doc                                  | ✅   |
-| `BP-008`   | critical | Shadowing de variável reservada (cFilAnt, cEmpAnt, etc.)        | ✅   |
+| ID         | Sev      | Comportamento real implementado                                                |
+|------------|----------|-------------------------------------------------------------------------------|
+| `BP-001`   | critical | `RecLock` sem `MsUnlock` pareado no mesmo escopo de função                    |
+| `BP-002`   | critical | `BEGIN TRANSACTION` sem `END TRANSACTION` pareado                              |
+| `BP-003`   | error    | `MsExecAuto` sem checar `lMsErroAuto` nas linhas seguintes                     |
+| `BP-004`   | warning  | `Pergunte("GRUPO", .F.)` sem uso subsequente de `MV_PAR*`                      |
+| `BP-005`   | warning  | Função declarada com **mais de 6 parâmetros**                                  |
+| `BP-006`   | error    | Mistura `RecLock` + `dbAppend()`/`DbRLock` raw na mesma função                  |
+| `SEC-001`  | critical | `RpcSetEnv` dentro de classe que herda de `WSRESTFUL`                          |
+| `SEC-002`  | warning  | `User Function` sem prefixo cliente (2-3 letras) ou nome de PE oficial         |
+| `PERF-001` | warning  | `SELECT *` em `BeginSql`/`TCQuery`                                             |
+| `PERF-002` | error    | SQL contra tabela Protheus **sem `%notDel%`** (traz registros deletados)       |
+| `PERF-003` | error    | SQL contra tabela Protheus **sem `%xfilial%`** (cross-filial data leak)        |
+| `MOD-001`  | warning  | `ConOut(...)` em vez de `FwLogMsg(...)` (Code Analysis acusa)                  |
+| `MOD-002`  | warning  | Declaração `Public` (polui escopo global)                                      |
 
-### Security (SEC)
+### Cross-file SX (11) — `lint --cross-file`, requer `ingest-sx`
 
-| ID         | Sev      | Título                                                          | v0.1 |
-|------------|----------|-----------------------------------------------------------------|------|
-| `SEC-001`  | critical | SQL com concatenação `+` (SQL injection)                        | ✅   |
-| `SEC-002`  | critical | `SELF:GetContent()` / `oRest:GetBody` sem validação             | ⏸ (v0.2) |
-| `SEC-003`  | warning  | PII/credenciais em `ConOut`/`FWLogMsg`                          | ⏸ (v0.2) |
-| `SEC-004`  | warning  | Credenciais hardcoded                                           | ✅   |
-| `SEC-005`  | critical | Uso de função TOTVS restrita/interna                            | ✅ (via lookup) |
+Disponíveis após `/plugadvpl:ingest-sx <pasta-csv>`. Acionadas com `--cross-file`. Veja `[[advpl-dicionario-sx-validacoes]]`.
 
-### Performance (PERF)
+| ID        | Sev      | Comportamento                                                                  |
+|-----------|----------|--------------------------------------------------------------------------------|
+| `SX-001`  | warning  | `X3_VALID = "U_XYZVALID()"` mas a User Function não existe nos fontes          |
+| `SX-002`  | error    | Gatilho SX7 `X7_CDOMIN` aponta pra campo que não existe em `campos` (SX3)      |
+| `SX-003`  | warning  | Parâmetro SX6 (`MV_*`) declarado mas zero referências em fonte                 |
+| `SX-004`  | warning  | Grupo SX1 sem `Pergunte("GRUPO")` em nenhum fonte                              |
+| `SX-005`  | info     | Campo SX3 custom (`X3_PROPRI='U'`) sem referência em fonte/SX/SX7              |
+| `SX-006`  | warning  | `X3_VALID` faz `BeginSql`/`TCQuery` (anti-pattern — query a cada validação)    |
+| `SX-007`  | critical | `X3_VALID` chama função listada em `funcoes_restritas` TOTVS                   |
+| `SX-008`  | warning  | Tabela `X2_MODO='C'` (compartilhada) usa `xFilial` em `X3_VALID`               |
+| `SX-009`  | warning  | Campo obrigatório (`X3_OBRIGAT='X'`) com `X3_INIT` vazio/zero                  |
+| `SX-010`  | error    | Gatilho `X7_TIPO='P'` (Pesquisar) sem `X7_SEEK='S'` válido                      |
+| `SX-011`  | error    | `X3_F3` aponta pra alias SXB que não existe                                    |
 
-| ID         | Sev      | Título                                                          | v0.1 |
-|------------|----------|-----------------------------------------------------------------|------|
-| `PERF-001` | critical | `SELECT *` em BeginSql/TCQuery                                  | ✅   |
-| `PERF-002` | warning  | `DbSeek` dentro de loop                                         | ⏸ (v0.2) |
-| `PERF-003` | warning  | Falta `TCSetField` para data/numérico pós-query                 | ⏸ (v0.2) |
-| `PERF-004` | warning  | Concatenação de string com `+`/`+=` em loop                     | ⏸ (v0.2) |
-| `PERF-005` | warning  | `RecCount()` para checar existência                             | ✅   |
-| `PERF-006` | info     | `WHERE`/`ORDER BY` em coluna sem índice                         | ⏸ (v0.2 — cross-file SIX) |
+## As 11 regras catalogadas mas não detectadas (v0.3.3)
 
-### Modernization (MOD)
+Aparecem em `lookups/lint_rules.json` mas o `lint.py` ainda não implementa detecção. Use como checklist mental.
 
-| ID         | Sev   | Título                                                              | v0.1 |
-|------------|-------|---------------------------------------------------------------------|------|
-| `MOD-001`  | info  | `.prw` com `CLASS` que poderia migrar para `.tlpp`                  | ✅   |
-| `MOD-002`  | info  | `using namespace` em `.tlpp` em vez de `.th` include                | ✅   |
-| `MOD-003`  | info  | Funções com prefixo comum candidatas a virar classe                 | ⏸ (v0.2 — cross-function) |
-| `MOD-004`  | info  | Uso de `AxCadastro`/`Modelo2`/`Modelo3` em vez de MVC               | ✅   |
-
-**Total v0.1 ativas: 13** (8 BP-detectáveis + 3 SEC + 1 PERF + 3 MOD — contabilizando aliás `SEC-005` que é via lookup).
+| ID         | Sev      | Título do catálogo                                                            |
+|------------|----------|-------------------------------------------------------------------------------|
+| `BP-002b`  | warning  | Variável declarada como `Private`/`Public` em vez de `Local`                  |
+| `BP-007`   | info     | Função sem header Protheus.doc                                                |
+| `BP-008`   | critical | Shadowing de variável reservada (`cFilAnt`, `cEmpAnt`, etc.)                  |
+| `SEC-003`  | warning  | PII/credenciais em `ConOut`/`FwLogMsg`                                        |
+| `SEC-004`  | warning  | Credenciais hardcoded                                                         |
+| `SEC-005`  | critical | Uso de função TOTVS restrita/interna (lookup `funcoes_restritas`)             |
+| `PERF-004` | warning  | Concatenação de string com `+`/`+=` em loop                                   |
+| `PERF-005` | warning  | `RecCount() > 0` para checar existência (use `!Eof()`)                        |
+| `PERF-006` | info     | Query sem hint de índice ou ORDER BY não casando índice                       |
+| `MOD-003`  | info     | Grupos de funções com prefixo comum candidatas a classe                       |
+| `MOD-004`  | info     | Uso de `AxCadastro`/`Modelo2`/`Modelo3` em vez de MVC                         |
 
 ## Severidades — política de bloqueio
 
-| Severidade | Significado                              | Bloqueia merge?              |
-|------------|------------------------------------------|------------------------------|
-| `critical` | Bug grave / falha de segurança garantida | **SIM** (corrigir antes)     |
-| `error`    | Erro de compilação ou runtime provável   | **SIM**                      |
-| `warning`  | Funciona, mas má prática                 | Corrigir; pode flagged em PR |
-| `info`     | Estilo / sugestão                        | Não bloqueia                 |
+| Severidade | Significado                                       | Bloqueia merge?              |
+|------------|---------------------------------------------------|------------------------------|
+| `critical` | Bug grave / falha de segurança / cross-filial leak | **SIM** (corrigir antes)     |
+| `error`    | Erro de compilação ou runtime provável            | **SIM**                      |
+| `warning`  | Funciona, mas má prática                          | Corrigir; pode flagged em PR |
+| `info`     | Estilo / sugestão                                 | Não bloqueia                 |
 
-## Workflow de revisão
+## Workflow
 
-1. Termine de editar o arquivo.
-2. `/plugadvpl:lint <arq>` — roda regex single-file, lista findings.
-3. Para cada `critical`/`error`: corrija **antes** de prosseguir.
-4. Para `warning`: corrija; justifique se não der (PR-only).
-5. Para `info`: trate como TODO de longo prazo.
-6. Para v0.2 (regras deferidas), faça revisão manual usando esta skill como checklist.
+### Single-file
 
-## Checklist mental por severidade (ao gerar código)
+1. Termine de editar o fonte.
+2. `/plugadvpl:lint <arquivo>` — roda as 13 regras single-file.
+3. Filtre por severidade pra triagem rápida: `/plugadvpl:lint <arq> --severity critical,error`.
+4. Pra cada `critical`/`error`: corrija **antes** de prosseguir.
+5. Pra `warning`: corrija; justifique se não der (comentar no PR).
+6. Pra `info`: trate como TODO de longo prazo.
 
-**Antes de devolver código para o usuário, mentalmente percorra:**
+### Cross-file SX
 
-### Critical (não passar com isso)
+1. **Pré-requisito**: `/plugadvpl:ingest-sx <pasta-csv>` (popula tabelas SX no índice).
+2. `/plugadvpl:lint --cross-file` — roda as 11 regras SX-001..SX-011 contra TODO o projeto.
+3. Filtre por regra específica: `/plugadvpl:lint --cross-file --regra SX-005`.
+4. SX-001 e SX-002 são tipicamente os primeiros que aparecem em base nova — começar por eles.
 
-- [ ] Todo `RecLock` tem `MsUnlock` pareado, inclusive em branch de erro (`BP-001`).
-- [ ] Nenhuma variável reservada (`cFilAnt`, `cEmpAnt`, `nUsado`) declarada como `Local` (`BP-008`).
-- [ ] Nenhum SQL concatenado com `+ cVar +` (`SEC-001`) — use `%exp:`.
-- [ ] Nenhuma função restrita TOTVS usada (`SEC-005`) — checou `funcoes_restritas`?
-- [ ] `SELECT *` removido (`PERF-001`).
+### Filtros úteis
 
-### Error/Warning
+```bash
+plugadvpl lint <arq>                              # tudo do arquivo
+plugadvpl lint <arq> --severity critical          # só críticos
+plugadvpl lint <arq> --regra BP-001               # só uma regra
+plugadvpl lint --cross-file                       # SX-001..SX-011 no projeto
+plugadvpl lint --cross-file --regra SX-005        # uma regra cross-file
+plugadvpl lint <arq> --format json                # output JSON pra parsear
+plugadvpl lint <arq> --format md                  # output markdown (default em chat)
+```
 
-- [ ] `Local` no topo da função, antes de qualquer statement (`BP-002`).
-- [ ] `Local` em vez de `Private`/`Public` quando possível (`BP-002b`).
-- [ ] `GetArea/RestArea` em funções que mudam WorkArea (`BP-003`).
-- [ ] `#include "TOTVS.CH"` (não `Protheus.ch`) (`BP-004`).
-- [ ] `Begin Sequence/Recover/End Sequence` em operações críticas (`BP-005`).
-- [ ] Credenciais via SuperGet/SX6, não hardcoded (`SEC-004`).
-- [ ] Logs de `ConOut` sem PII/senha (`SEC-003`).
-- [ ] Validação de input REST antes de usar (`SEC-002`).
-- [ ] `DbSeek` em loop substituído por JOIN/IN quando possível (`PERF-002`).
-- [ ] `TCSetField` após query pra colunas D/N (`PERF-003`).
-- [ ] Concatenação em loop usa array + `Array2String` (`PERF-004`).
-- [ ] Existência testada com `!Eof()`, não `RecCount() > 0` (`PERF-005`).
-
-### Info (sugestões)
-
-- [ ] Notação húngara em todas as variáveis (`BP-006`).
-- [ ] Header Protheus.doc em todas as funções (`BP-007`).
-- [ ] Cobertura de índice consultada (`PERF-006`).
-- [ ] Classes em `.prw` candidatas a `.tlpp` (`MOD-001`).
-- [ ] `.tlpp` usa `.th` em vez de `using namespace` (`MOD-002`).
-- [ ] Grupos de funções com prefixo comum → considerar classe (`MOD-003`).
-- [ ] Sem `AxCadastro`/`Modelo2`/`Modelo3` — usar MVC (`MOD-004`).
-
-## Exemplos de fix por regra
+## Exemplos de fix (regras críticas/error)
 
 ### BP-001 — RecLock sem MsUnlock
 
@@ -133,68 +120,222 @@ Rode `/plugadvpl:lint <arq>` para resultado de fato — esta skill é o **guia m
 // ERRADO
 RecLock("SA1", .F.)
 SA1->A1_NOME := "novo"
-// faltou MsUnlock
+// faltou MsUnlock — lock fica orfao ate session morrer
 
-// CORRETO
+// CORRETO (simples)
 RecLock("SA1", .F.)
 SA1->A1_NOME := "novo"
 SA1->(MsUnlock())
+
+// MELHOR (em fluxo com erro possivel)
+Begin Transaction
+    RecLock("SA1", .F.)
+    SA1->A1_NOME := "novo"
+    SA1->(MsUnlock())
+    // Se erro ocorrer aqui, rollback automatico + unlock
+End Transaction
 ```
 
-### BP-002 — Local no meio do código
+### BP-002 — BEGIN TRANSACTION sem END
 
 ```advpl
 // ERRADO
-Function Foo()
-    DbSelectArea("SA1")
-    Local cCod := "001"  // declarado depois de statement
+Begin Transaction
+    RecLock("SC5", .T.)
+    SC5->C5_NUM := cNum
+    SC5->(MsUnlock())
+    // erro aqui = transacao fica aberta, processo trava recursos
+// FALTOU End Transaction
+
+// CORRETO + protecao Begin Sequence
+Begin Sequence
+    Begin Transaction
+        RecLock("SC5", .T.)
+        SC5->C5_NUM := cNum
+        SC5->(MsUnlock())
+    End Transaction
+Recover Using oErr
+    DisarmTransaction()  // forca rollback explicito
+    ConOut("Falha: " + oErr:Description)
+    Break oErr
+End Sequence
+```
+
+### BP-003 — MsExecAuto sem checar erro
+
+```advpl
+// ERRADO
+MsExecAuto({|x,y| MATA030(x,y)}, aCab, 3)
+// se falhou, ninguem fica sabendo
 
 // CORRETO
-Function Foo()
-    Local cCod := "001"  // todos no topo
-    DbSelectArea("SA1")
+Private lMsErroAuto := .F.
+
+MsExecAuto({|x,y| MATA030(x,y)}, aCab, 3)
+If lMsErroAuto
+    MostraErro()    // ou: aErros := GetAutoGRLog(); ... pra logar
+    DisarmTransaction()
+    Return .F.
+EndIf
 ```
 
-### SEC-001 — SQL injection
+### SEC-001 — RpcSetEnv em REST
 
 ```advpl
 // ERRADO
-cSql := "SELECT * FROM SA1010 WHERE A1_COD = '" + cCod + "'"
+WSMETHOD GET listaClientes WSSERVICE zClientes
+    RpcSetEnv("99", "01")    // bypassa controle de empresa/filial!
+    // ... consulta
+WSEND
+
+// CORRETO
+// 1. appserver.ini define PrepareIn pra cada grupo de empresa:
+//    [HTTPREST]
+//    PrepareIn=01
+//    Security=1
+// 2. Cliente passa empresa/filial no header TenantId
+// 3. Method nao chama RpcSetEnv — recebe ambiente pronto
+WSMETHOD GET listaClientes WSSERVICE zClientes
+    // cFilAnt/cEmpAnt ja estao setados pelo framework
+    Self:SetResponse('{"filial":"' + cFilAnt + '","ok":true}')
+WSEND
+```
+
+### PERF-002 — SQL sem %notDel%
+
+```advpl
+// ERRADO — Protheus usa soft-delete em D_E_L_E_T_
+BeginSql Alias "QRY"
+    SELECT A1_COD, A1_NOME
+      FROM %table:SA1% SA1
+     WHERE SA1.A1_FILIAL = %xfilial:SA1%
+       AND SA1.A1_GRUPO  = %exp:cGrupo%
+EndSql
+// traz registros LOGICAMENTE deletados — bug em totais/contagens
 
 // CORRETO
 BeginSql Alias "QRY"
     SELECT A1_COD, A1_NOME
       FROM %table:SA1% SA1
      WHERE SA1.A1_FILIAL = %xfilial:SA1%
-       AND SA1.A1_COD    = %exp:cCod%
-       AND SA1.%notDel%
+       AND SA1.A1_GRUPO  = %exp:cGrupo%
+       AND SA1.%notDel%      -- expande pra SA1.D_E_L_E_T_ = ' '
 EndSql
 ```
 
-### PERF-005 — RecCount para existência
+### PERF-003 — SQL sem %xfilial%
 
 ```advpl
-// ERRADO
-TCQuery cSql NEW ALIAS "QRY"
-If QRY->(RecCount()) > 0
-    // ...
+// ERRADO — vaza dados entre filiais
+BeginSql Alias "QRY"
+    SELECT C5_NUM, C5_CLIENTE
+      FROM %table:SC5% SC5
+     WHERE SC5.C5_EMISSAO >= %exp:dInicio%
+       AND SC5.%notDel%
+EndSql
+// usuario da filial 01 ve pedidos da filial 02!
 
 // CORRETO
-TCQuery cSql NEW ALIAS "QRY"
-If !QRY->(Eof())
-    // ...
+BeginSql Alias "QRY"
+    SELECT C5_NUM, C5_CLIENTE
+      FROM %table:SC5% SC5
+     WHERE SC5.C5_FILIAL  = %xfilial:SC5%   -- filtra filial atual
+       AND SC5.C5_EMISSAO >= %exp:dInicio%
+       AND SC5.%notDel%
+EndSql
 ```
+
+### SX-005 — campo custom não-referenciado
+
+Detectado por `/plugadvpl:lint --cross-file --regra SX-005`:
+
+```
+arquivo=SX:SA1 funcao=A1_XGHOST severidade=warning
+  sugestao_fix: Campo custom SA1.A1_XGHOST nao e referenciado em fonte algum
+                nem em outras entradas SX. Provavel legado — considerar remocao.
+```
+
+Decisão: **remover** do SX3 + script de delete, OU implementar uso pendente.
+
+## Checklist mental (ao gerar código)
+
+**Antes de devolver código para o usuário, mentalmente percorra:**
+
+### Critical (não passar com isso)
+
+- [ ] Todo `RecLock` tem `MsUnlock` pareado, inclusive em branch de erro (`BP-001`).
+- [ ] Todo `Begin Transaction` tem `End Transaction` pareado (`BP-002`).
+- [ ] Nenhum REST API tem `RpcSetEnv` (`SEC-001`) — use `PrepareIn`/`TenantId`.
+
+### Error
+
+- [ ] `MsExecAuto` sempre seguido de `If lMsErroAuto MostraErro()` (`BP-003`).
+- [ ] Não há mistura `RecLock`+`dbAppend` raw (`BP-006`).
+- [ ] Toda query tem `%xfilial%` em tabela filializada (`PERF-003`).
+- [ ] Toda query tem `%notDel%` em tabela Protheus (`PERF-002`).
+
+### Warning
+
+- [ ] Função tem <= 6 parâmetros (`BP-005`).
+- [ ] `Pergunte` é seguido por uso de `MV_PAR*` (`BP-004`).
+- [ ] `User Function` tem prefixo cliente (`SEC-002`).
+- [ ] Sem `SELECT *` em `BeginSql` (`PERF-001`).
+- [ ] `ConOut` substituído por `FwLogMsg` em código novo (`MOD-001`).
+- [ ] Sem declaração `Public` (`MOD-002`).
+
+### Info / Checklist mental (não detectadas automaticamente)
+
+- [ ] Notação húngara em todas as variáveis (`BP-006` catalog).
+- [ ] Header Protheus.doc em todas as funções (`BP-007`).
+- [ ] Sem shadowing de reservadas — `cFilAnt`/`cEmpAnt`/`PARAMIXB`/etc. (`BP-008`).
+- [ ] Sem PII/senha em logs (`SEC-003`).
+- [ ] Sem credenciais hardcoded (`SEC-004`).
+- [ ] Sem função restrita TOTVS (`SEC-005`) — checar via `/plugadvpl:find function`.
+- [ ] String concat em loop usa array + `FwArrayJoin` (`PERF-004`) — veja `[[advpl-refactoring]]`.
+- [ ] Existência testada com `!Eof()`, não `RecCount() > 0` (`PERF-005`).
+- [ ] Sem `AxCadastro`/`Modelo2`/`Modelo3` em código novo — usar MVC (`MOD-004`).
 
 ## Anti-padrões gerais
 
-- Aplicar fix automático cego sem entender a regra → pode quebrar lógica.
-- Suprimir warning sem comentário justificativo → conhecimento perdido.
-- Tratar `info` como ruído → no agregado, é o que diferencia código mantível.
-- Não rodar lint antes de PR → ciclo de review fica longo desnecessariamente.
+- **Aplicar fix automático cego sem entender a regra** → pode quebrar lógica.
+- **Suprimir warning sem comentário justificativo** → conhecimento perdido em 6 meses.
+- **Tratar `info` como ruído** → no agregado, é o que diferencia código mantível.
+- **Não rodar lint antes de PR** → ciclo de review fica longo desnecessariamente.
+- **Misturar transação básica `dbAppend` com Framework `RecLock`** → semântica de lock conflita, integridade quebra.
+- **Salvar/restaurar `MV_PAR*` ao chamar `Pergunte` aninhado** — Private compartilhada, sobrescreve facilmente.
+
+## Cross-references com outras skills
+
+- `[[advpl-fundamentals]]` — convenções de variáveis/funções que estas regras assumem.
+- `[[advpl-refactoring]]` — padrões pra resolver violações (DbSeek loop, AxCadastro→MVC, etc.).
+- `[[advpl-debugging]]` — quando lint detecta algo, debugar a causa raiz.
+- `[[advpl-dicionario-sx-validacoes]]` — detalhe das regras SX-001..SX-011 (expressões em X3_VALID/X7_REGRA/etc.).
+- `[[advpl-embedded-sql]]` — macros `%xfilial%`, `%notDel%`, `%exp:%`, `%table:%`.
+- `[[advpl-webservice]]` — padrão correto pra REST sem `RpcSetEnv`.
+- `[[advpl-jobs-rpc]]` — onde `RpcSetEnv` É correto (Jobs, não REST).
+- `[[plugadvpl-index-usage]]` — workflow completo plugadvpl.
 
 ## Comandos plugadvpl relacionados
 
-- `/plugadvpl:lint <arq>` — roda as 13 regras ativas do MVP.
+- `/plugadvpl:lint <arq>` — roda as 13 regras single-file no arquivo.
 - `/plugadvpl:lint` (sem arg) — roda no projeto inteiro.
-- `/plugadvpl:find function <restrita>` — descobre funções proibidas (SEC-005).
-- A tabela `lint_findings` no índice armazena o histórico; útil pra dashboard.
+- `/plugadvpl:lint --cross-file` — roda as 11 regras SX-001..SX-011 (requer `ingest-sx`).
+- `/plugadvpl:lint <arq> --severity critical,error` — filtro por severidade.
+- `/plugadvpl:lint <arq> --regra BP-001` — filtro por regra.
+- `/plugadvpl:lint <arq> --format json` — output programático.
+- `/plugadvpl:find function <restrita>` — descobre se função é proibida (SEC-005).
+- Tabela `lint_findings` no índice armazena histórico — útil pra dashboard.
+
+## Sources
+
+- [Embedded SQL - Guia de Boas Práticas - TDN](https://tdn.totvs.com/pages/viewpage.action?pageId=27675608)
+- [Embedded SQL - Frameworksp - TDN](https://tdn.totvs.com/display/framework/Embedded+SQL)
+- [Controle de transações - TDN](https://tdn.totvs.com/pages/viewpage.action?pageId=271843449)
+- [REST com segurança - TOTVS Central](https://centraldeatendimento.totvs.com/hc/pt-br/articles/8919254403735)
+- [PrepareIn / TenantId - TOTVS Central](https://centraldeatendimento.totvs.com/hc/pt-br/articles/4410465974167)
+- [Como distinguir erros ExecAuto - TOTVS Central](https://centraldeatendimento.totvs.com/hc/pt-br/articles/360020737352)
+- [ParamBox vs SX1 - TOTVS Central](https://centraldeatendimento.totvs.com/hc/pt-br/articles/360026045651)
+- [Boas Práticas em Transações ADVPL](https://www.scribd.com/document/390059884/Boas-Praticas-Transacoes-em-ADVPL)
+- [ConOut → FwLogMsg - Terminal de Informação](https://terminaldeinformacao.com/2024/02/11/exibindo-mensagens-no-console-log-com-a-fwlogmsg-maratona-advpl-e-tl-228/)
+- [NG Informática ADVPL Coding Standards (GitHub)](https://github.com/nginformatica/advpl-coding-standards)
+- [Escopo de variáveis ADVPL - PH Cardoso](https://paulohcc.com/escopo-variaveis-advpl/)
