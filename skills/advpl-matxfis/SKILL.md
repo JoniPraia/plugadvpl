@@ -95,12 +95,23 @@ A **TES** (cadastrada em `SF4`) é o coração do cálculo tributário. Define:
 - Bases e alíquotas de IPI, ICMS, PIS, COFINS.
 - Tratamento de Substituição Tributária.
 
-Funções utilitárias:
+Funções utilitárias do contexto fiscal:
 
-- `MaFisRef("operacao_fiscal", "tag", aDados)` — leitura/gravação de campos fiscais.
-- `MaFisGet("tag")` — lê valor fiscal corrente do contexto.
-- `MaFisEnd()` — encerra contexto fiscal.
-- `MaFisIni()` — inicia contexto.
+```advpl
+// Inicia contexto fiscal — chamada ANTES de qualquer outra MaFis*
+MaFisIni(lAtu, lECF, cTipo, cOrigem, cEspecie, cCliFor, cLoja, cCFOP, cFiltro, cAlias)
+//        ↑      ↑     ↑      ↑         ↑        ↑       ↑      ↑       ↑       ↑
+//  recalcula? ECF?  M/E   M(an)/I(mp) NF       cli/for loja  CFOP   filtro  alias
+// Exemplo comum: MaFisIni(.F., .F., "MT", "M")
+
+MaFisRef("IT_VALMERC", "M", nValor)    // grava tag M=Mestre
+nVal := MaFisGet("IT_VALICM", "M")     // lê tag
+MaFisCalc("IT_VALMERC", "M")           // recalcula imposto baseado na tag
+nRet := MaFisRet(, "IT_VALICM")        // retorna valor calculado
+MaFisEnd()                              // ENCERRA — sempre obrigatório!
+```
+
+> **Crítico:** sempre par `MaFisIni()` + `MaFisEnd()`. Esquecer `MaFisEnd()` faz contexto vazar pra próxima nota — bug clássico que gera ICMS/IPI errado em registros subsequentes.
 
 ## Cálculo de impostos — quem é responsável
 
@@ -150,12 +161,24 @@ Esta skill cobre o panorama. Acione o agente especialista quando o usuário pedi
 - Diagnóstico de rejeição NF-e por código (rejeição 539, 627, etc.).
 - Histórico de uma legislação específica (NT 2024.xxx).
 
+## Cross-references com outras skills
+
+- `[[advpl-mvc-avancado]]` — `MaFisIni`/`MaFisCalc`/`MaFisEnd` dentro de gatilho MVC (cálculo em tempo real ao mudar valor).
+- `[[advpl-pontos-entrada]]` — PEs fiscais (`M460FIM`, `MA440PGN`, `NFEXMLAUT`, etc.) seguem padrão `User Function NOME(PARAMIXB)`.
+- `[[advpl-dicionario-sx]]` — TES vive na SF4 (cadastro), CFOP na SX5, alíquotas na SF7.
+- `[[advpl-embedded-sql]]` — relatórios fiscais usam BeginSql contra SF2/SD2/SF3/CDA com `%xfilial%` + `%notDel%`.
+- `[[advpl-jobs-rpc]]` — geração de SPED tipicamente roda em JOB schedulado.
+- `[[advpl-webservice]]` — NF-e transmissão chama SOAP da SEFAZ via `XmlChildEx`/`SoapClient`.
+- `[[advpl-debugging]]` — diagnose de rejeição NF-e, ICMS errado, SPED inconsistente.
+- `[[plugadvpl-index-usage]]` — `/plugadvpl:tables SF2 --mode write`, `/plugadvpl:callers MaFisCalc`.
+
 ## Comandos plugadvpl relacionados
 
 - `/plugadvpl:tables SF2` (e SD2, SF3, SF6, CDA, CDF) — quem usa o quê.
 - `/plugadvpl:find function MaFisCalc` — usos no projeto.
 - `/plugadvpl:arch <fonte>` antes de tocar em qualquer rotina fiscal.
 - `/plugadvpl:callers <PE_fiscal>` — onde a PE está implementada.
+- `/plugadvpl:grep "MaFisIni\|MaFisEnd"` — auditoria de contexto fiscal (devem ser pareados).
 
 ## Referência profunda
 
@@ -172,3 +195,12 @@ Para detalhes completos (~1.3k linhas), consulte [`reference.md`](reference.md) 
 Veja a pasta [`exemplos/`](exemplos/) ao lado deste SKILL.md para fonte real ADVPL de produção:
 
 - `DAMDFE.prw` — impressão do Documento Auxiliar do Manifesto Eletrônico (MDF-e) com tratamento de contingência, layout estruturado em `oDamdfe:SetPaperSize`/`SetMargin` e parsing do XML MDF-e via `XMLXFUN.CH`.
+
+## Sources
+
+- [MATXFIS - Frameworksp - TDN](https://tdn.totvs.com/display/public/framework/MATXFIS)
+- [MaFisCalc, MaFisRef, MaFisIni - TOTVS Central](https://centraldeatendimento.totvs.com/hc/pt-br/articles/360024805754)
+- [Pontos de Entrada Faturamento - Código Expresso](https://codigoexpresso.com/2025/07/06/pontos-de-entrada-do-faturamento-protheus/)
+- [SPED Fiscal Protheus - TOTVS Central](https://centraldeatendimento.totvs.com/hc/pt-br/articles/360045401793)
+- [NF-e e rejeições SEFAZ - Tudo em AdvPL](https://siga0984.wordpress.com/tag/nf-e/)
+- [Manual ICMS-ST DIFAL FCP - TDN](https://tdn.totvs.com/display/public/framework/DIFAL)
