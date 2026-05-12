@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778617955109,
+  "lastUpdate": 1778618044510,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -1069,6 +1069,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00042967202175318067",
             "extra": "mean: 13.408341133334053 msec\nrounds: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "d55764ced22a07246093b5c76667121ecc2061c4",
+          "message": "docs(skill): advpl-matxfis — expand MaFis* signature with critical pairing warning, add cross-refs\n\nNiche fiscal skill — already well-structured. Targeted enhancements:\n\n- MaFisIni() full signature documented (lAtu/lECF/cTipo/cOrigem/\n  cEspecie/cCliFor/cLoja/cCFOP/cFiltro/cAlias). Old skill just said\n  'inicia contexto'. With concrete example MaFisIni(.F., .F., \"MT\", \"M\")\n  and the canonical Ini->Ref->Calc->Ret->End sequence.\n- Critical pairing warning highlighted: MaFisIni without MaFisEnd\n  leaks fiscal context to next NF, causing ICMS/IPI errado em\n  registros subsequentes — classic production bug class.\n- Cross-refs via [[name]] to 8 related skills (mvc-avancado for\n  fiscal in MVC trigger, pontos-entrada for fiscal PEs, dicionario-sx\n  for TES/CFOP/aliquotas tables, embedded-sql for fiscal reports,\n  jobs-rpc for SPED scheduled, webservice for NF-e SEFAZ SOAP,\n  debugging, plugadvpl-index-usage).\n- Auditoria command added: /plugadvpl:grep \"MaFisIni\\|MaFisEnd\"\n  for checking pairing.\n- Sources section with 6 canonical references (TDN MATXFIS, TOTVS\n  Central, Código Expresso PEs Faturamento, siga0984 NF-e).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T17:33:35-03:00",
+          "tree_id": "cc364f2bd2a0220fb026beebe3d4c60172ca2c54",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/d55764ced22a07246093b5c76667121ecc2061c4"
+        },
+        "date": 1778618043848,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 27.83811158213503,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0002531307907010241",
+            "extra": "mean: 35.92197685714232 msec\nrounds: 21"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 74.33885844178221,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000447590183743734",
+            "extra": "mean: 13.451914933333834 msec\nrounds: 15"
           }
         ]
       }
