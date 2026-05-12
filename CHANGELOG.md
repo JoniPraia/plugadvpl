@@ -4,6 +4,8 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-05-12
+
 ### Added
 - **4 slash commands faltantes do v0.3.0**: `/plugadvpl:ingest-sx`,
   `/plugadvpl:impacto`, `/plugadvpl:gatilho`, `/plugadvpl:sx-status`. Os
