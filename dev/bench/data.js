@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778617512070,
+  "lastUpdate": 1778617640037,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -925,6 +925,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0005887242723462127",
             "extra": "mean: 14.95956061538423 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "d0d695f2fa00d3acab7e2eda43643e28505caff0",
+          "message": "docs(skill): advpl-web — add JOB_WEBEX config, .APW vs .APH, XSS escape, encoding mismatch warning\n\nResearched against TOTVS Central + community canonical sources:\n\n- JOB_WEBEX section in appserver.ini documented with full keys\n  (TYPE=webex, ENVIRONMENT, INSTANCES min/max, ONSTART/ONCONNECT/\n  ONEXIT thread lifecycle hooks). Old skill only had HTTPSERVER+WEBEX.\n- .APW (process) vs .APH (page) distinction added — .APW is User\n  Function only without HTML template, .APH is ASP-style mixed.\n- #include \"apwebex.ch\" mandatory header noted (without it\n  HTTPGet/HTTPPost/etc don't resolve).\n- HTMLEscape() helper for XSS prevention with concrete before/after\n  example. Old skill only flagged XSS as anti-pattern without showing\n  the fix.\n- Encoding section — Content-Type header explicit (cp1252/ISO-8859-1\n  vs UTF-8) with EncodeUTF8 conversion. Mismatch is the most common\n  mojibake source in production portals.\n- Path traversal warning explicit on WebSendFile pattern.\n\nSEC-001 clarification: in ADVPL Web, RpcSetEnv is the canonical way\nto open Protheus context per request (Webex thread model). It's only\nprohibited in REST 2.0 where PrepareIn+TenantId substitute. Lint\nSEC-001 impl is REST-specific (WSRESTFUL).\n\nAnti-patterns expanded from 6 to 10 with:\n- HTTPContentType missing → mojibake\n- PII in console.log\n- RpcSetEnv without RpcClearEnv (thread state leak between requests)\n- Static variable in Webex thread (state leak between requests)\n\nAI usability:\n\n- Frontmatter description names .APH/.APW, key functions, and\n  cross-refs to advpl-webservice for REST.\n- Cross-refs via [[name]] to 8 related skills.\n- Sources section with 5 canonical references.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-12T17:26:50-03:00",
+          "tree_id": "eebe2844cc404eee66c43e914fc66fe53d147099",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/d0d695f2fa00d3acab7e2eda43643e28505caff0"
+        },
+        "date": 1778617639813,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 23.66500494867363,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0003410611709860193",
+            "extra": "mean: 42.256488099997114 msec\nrounds: 10"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 70.39852534802314,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0008932750470788658",
+            "extra": "mean: 14.204842999997314 msec\nrounds: 13"
           }
         ]
       }
