@@ -750,6 +750,134 @@ def _check_bp008_shadowed_reserved(
     return findings
 
 
+# --- PERF-004: string concat com +/+= em loop (O(n²)) -----------------------
+
+# Estratégia em 2 passes sobre o conteúdo já stripado de strings/comentários:
+# 1. Encontra ranges (start, end) de cada loop body — While/EndDo, For/Next.
+#    Stack-based pra suportar loops aninhados.
+# 2. Em cada range, busca padrões de concat de string em variável c-prefixed
+#    (hungarian notation: `c<NAME>` = character/string).
+
+_PERF004_LOOP_KW_RE = re.compile(
+    r"\b(While|For|EndDo|Next)\b",
+    re.IGNORECASE,
+)
+
+# Compound: cVar += ... (variável começa com c → string por convenção húngara)
+_PERF004_COMPOUND_RE = re.compile(
+    r"\bc[A-Za-z_]\w*\s*\+=",
+    re.IGNORECASE,
+)
+
+# Long form: cVar := cVar + ... (mesmo nome dos dois lados via backreference)
+_PERF004_LONGFORM_RE = re.compile(
+    r"\b(c[A-Za-z_]\w*)\s*:=\s*\1\s*\+",
+    re.IGNORECASE,
+)
+
+
+def _perf004_loop_ranges(stripped: str) -> list[tuple[int, int]]:
+    """Retorna lista de (start, end) pra cada loop body (entre While/EndDo, For/Next).
+
+    Suporta loops aninhados via stack. Loops mal-pareados (sem closer) são ignorados.
+    """
+    ranges: list[tuple[int, int]] = []
+    stack: list[tuple[str, int]] = []  # [(kind, body_start_pos), ...]
+    for m in _PERF004_LOOP_KW_RE.finditer(stripped):
+        kw = m.group(1).lower()
+        if kw == "while":
+            stack.append(("while", m.end()))   # body começa após "While"
+        elif kw == "for":
+            stack.append(("for", m.end()))     # body começa após "For"
+        elif kw == "enddo":
+            # Match com While mais recente
+            for i in range(len(stack) - 1, -1, -1):
+                if stack[i][0] == "while":
+                    body_start = stack.pop(i)[1]
+                    ranges.append((body_start, m.start()))
+                    break
+        elif kw == "next":
+            for i in range(len(stack) - 1, -1, -1):
+                if stack[i][0] == "for":
+                    body_start = stack.pop(i)[1]
+                    ranges.append((body_start, m.start()))
+                    break
+    return ranges
+
+
+def _check_perf004_string_concat_in_loop(
+    arquivo: str, parsed: dict[str, Any], content: str
+) -> list[dict[str, Any]]:
+    """PERF-004 (warning): cVar += ou cVar := cVar + ... dentro de loop While/For (O(n²)).
+
+    Strings ADVPL são imutáveis — cada concat aloca string nova, copia conteúdo
+    antigo + novo, descarta o anterior. 1.000 concats = ~500.000 chars copiados.
+    Usa hungarian notation (variável começa com `c`) pra distinguir string concat
+    de accumulator numérico (`nTotal += 1` é OK — n-prefix = numeric).
+    """
+    findings: list[dict[str, Any]] = []
+    stripped = strip_advpl(content, strip_strings=True)
+    funcoes = parsed.get("funcoes", []) or []
+    loop_ranges = _perf004_loop_ranges(stripped)
+    if not loop_ranges:
+        return findings
+
+    seen: set[tuple[int, int]] = set()  # dedup por (linha, col-ish via match.start)
+
+    for body_start, body_end in loop_ranges:
+        body = stripped[body_start:body_end]
+        # Compound (cVar +=)
+        for m in _PERF004_COMPOUND_RE.finditer(body):
+            offset = body_start + m.start()
+            linha = _line_at(stripped, offset)
+            key = (linha, m.start())
+            if key in seen:
+                continue
+            seen.add(key)
+            funcao = _funcao_at_line(funcoes, linha)
+            findings.append(
+                {
+                    "arquivo": arquivo,
+                    "funcao": funcao,
+                    "linha": linha,
+                    "regra_id": "PERF-004",
+                    "severidade": "warning",
+                    "snippet": _snippet_at_line(content, linha),
+                    "sugestao_fix": (
+                        "Strings ADVPL são imutáveis — concat em loop é O(n²) (cada "
+                        "iteração aloca string nova + copia anterior). Acumule em "
+                        "array (aAdd) e use FwArrayJoin/Array2String no final, OU "
+                        "use FCreate/FWrite buffer pra arquivo, OU StringBuilder."
+                    ),
+                }
+            )
+        # Long form (cVar := cVar + ...)
+        for m in _PERF004_LONGFORM_RE.finditer(body):
+            offset = body_start + m.start()
+            linha = _line_at(stripped, offset)
+            key = (linha, m.start())
+            if key in seen:
+                continue
+            seen.add(key)
+            funcao = _funcao_at_line(funcoes, linha)
+            findings.append(
+                {
+                    "arquivo": arquivo,
+                    "funcao": funcao,
+                    "linha": linha,
+                    "regra_id": "PERF-004",
+                    "severidade": "warning",
+                    "snippet": _snippet_at_line(content, linha),
+                    "sugestao_fix": (
+                        f"`{m.group(1)} := {m.group(1)} + ...` em loop é O(n²) — "
+                        "strings ADVPL são imutáveis. Acumule em array + "
+                        "FwArrayJoin/Array2String no final pra O(n)."
+                    ),
+                }
+            )
+    return findings
+
+
 # --- MOD-004: AxCadastro/Modelo2/Modelo3 (legacy) em vez de MVC ------------
 
 # Funções de UI legacy substituídas pelo padrão MVC moderno (FWMBrowse +
@@ -977,7 +1105,7 @@ def _check_perf005_reccount_for_existence(
 
 
 def lint_source(parsed: dict[str, Any], content: str) -> list[dict[str, Any]]:
-    """Aplica as 17 regras single-file. Retorna list[Finding] ordenada por linha.
+    """Aplica as 18 regras single-file. Retorna list[Finding] ordenada por linha.
 
     Args:
         parsed: dict produzido por parse_source() (com funcoes, sql_embedado, etc.).
@@ -1002,6 +1130,7 @@ def lint_source(parsed: dict[str, Any], content: str) -> list[dict[str, Any]]:
     findings.extend(_check_perf001_select_star(arquivo, parsed, content))
     findings.extend(_check_perf002_no_notdel(arquivo, parsed, content))
     findings.extend(_check_perf003_no_xfilial(arquivo, parsed, content))
+    findings.extend(_check_perf004_string_concat_in_loop(arquivo, parsed, content))
     findings.extend(_check_perf005_reccount_for_existence(arquivo, parsed, content))
     findings.extend(_check_mod001_conout_instead_fwlogmsg(arquivo, parsed, content))
     findings.extend(_check_mod002_public_declaration(arquivo, parsed, content))

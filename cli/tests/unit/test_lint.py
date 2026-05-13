@@ -940,3 +940,159 @@ class TestMOD004LegacyCadastro:
         mod = [f for f in findings if f["regra_id"] == "MOD-004"]
         assert len(mod) == 1
         assert mod[0]["linha"] == 3
+
+
+# --- PERF-004: string concat com +/+= em loop --------------------------------
+
+
+class TestPERF004StringConcatInLoop:
+    """PERF-004 (warning): cVar += ou cVar := cVar + ... dentro de While/For (O(n²))."""
+
+    def test_positive_compound_assign_in_while(self) -> None:
+        src = (
+            "User Function ZBad()\n"
+            "    Local cBuf := ''\n"
+            "    Local nI := 1\n"
+            "    While nI < 1000\n"
+            "        cBuf += 'linha ' + cValToChar(nI)\n"   # O(n²)!
+            "        nI++\n"
+            "    EndDo\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        perf = [f for f in findings if f["regra_id"] == "PERF-004"]
+        assert len(perf) == 1
+        assert perf[0]["severidade"] == "warning"
+
+    def test_positive_compound_assign_in_for(self) -> None:
+        src = (
+            "User Function ZBad()\n"
+            "    Local cMsg := ''\n"
+            "    Local nI\n"
+            "    For nI := 1 To 100\n"
+            "        cMsg += 'item' + cValToChar(nI) + Chr(13)\n"
+            "    Next nI\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-004" in _ids(findings)
+
+    def test_positive_long_form_in_while(self) -> None:
+        """cVar := cVar + ... (long form, mesmo nome via backreference)."""
+        src = (
+            "User Function ZBad()\n"
+            "    Local cAcc := ''\n"
+            "    While !Eof()\n"
+            "        cAcc := cAcc + AllTrim(SA1->A1_NOME) + ';'\n"
+            "        DbSkip()\n"
+            "    EndDo\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-004" in _ids(findings)
+
+    def test_positive_nested_loop(self) -> None:
+        """Concat no loop interno deve disparar."""
+        src = (
+            "User Function ZBad()\n"
+            "    Local cOut := ''\n"
+            "    Local i, j\n"
+            "    For i := 1 To 10\n"
+            "        For j := 1 To 10\n"
+            "            cOut += cValToChar(i*j)\n"
+            "        Next j\n"
+            "    Next i\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-004" in _ids(findings)
+
+    def test_positive_multiple_concats_separate_findings(self) -> None:
+        src = (
+            "User Function ZBad()\n"
+            "    Local cA := ''\n"
+            "    Local cB := ''\n"
+            "    While !Eof()\n"
+            "        cA += AllTrim(SA1->A1_NOME)\n"
+            "        cB += AllTrim(SA1->A1_CGC)\n"
+            "        DbSkip()\n"
+            "    EndDo\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        perf = [f for f in findings if f["regra_id"] == "PERF-004"]
+        assert len(perf) == 2
+
+    def test_negative_numeric_accumulator(self) -> None:
+        """nTotal += 1 — accumulator numérico, não string concat."""
+        src = (
+            "User Function ZGood()\n"
+            "    Local nTotal := 0\n"
+            "    Local nI\n"
+            "    For nI := 1 To 100\n"
+            "        nTotal += nI\n"   # nTotal começa com n, hungarian = numeric
+            "    Next nI\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-004" not in _ids(findings)
+
+    def test_negative_concat_outside_loop(self) -> None:
+        """cVar += fora de loop (init ou single-shot) NÃO é PERF-004."""
+        src = (
+            "User Function ZGood()\n"
+            "    Local cMsg := 'header'\n"
+            "    cMsg += ' - body'\n"   # 1 concat, fora de loop, OK
+            "    cMsg += ' - footer'\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-004" not in _ids(findings)
+
+    def test_negative_concat_in_string(self) -> None:
+        src = (
+            "User Function ZGood()\n"
+            "    Local cMsg := 'cVar += \"x\" eh anti-pattern'\n"
+            "    ConOut(cMsg)\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-004" not in _ids(findings)
+
+    def test_negative_concat_in_comment(self) -> None:
+        src = (
+            "User Function ZGood()\n"
+            "    // While ... cBuf += deve ser refatorado\n"
+            "    Return .T.\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-004" not in _ids(findings)
+
+    def test_negative_long_form_different_vars(self) -> None:
+        """cBuf := cFoo + cBar (não é o mesmo nome dos dois lados — não accumulator)."""
+        src = (
+            "User Function ZGood()\n"
+            "    Local cBuf := ''\n"
+            "    While !Eof()\n"
+            "        cBuf := cFoo + cBar\n"   # diferente, não accumulator
+            "        DbSkip()\n"
+            "    EndDo\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-004" not in _ids(findings)
+
+    def test_positive_reports_correct_line(self) -> None:
+        src = (
+            "User Function ZBad()\n"      # 1
+            "    Local cBuf := ''\n"      # 2
+            "    Local nI\n"              # 3
+            "    For nI := 1 To 10\n"     # 4
+            "        cBuf += '.'\n"       # 5 — match
+            "    Next nI\n"               # 6
+            "Return\n"                    # 7
+        )
+        findings = lint_source(_parsed_for(src), src)
+        perf = [f for f in findings if f["regra_id"] == "PERF-004"]
+        assert len(perf) == 1
+        assert perf[0]["linha"] == 5

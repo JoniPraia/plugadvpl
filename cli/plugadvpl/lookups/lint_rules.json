@@ -187,10 +187,11 @@
     "titulo": "Concatenação de string com + ou += em loop",
     "severidade": "warning",
     "categoria": "performance",
-    "descricao": "Em ADVPL, string é imutável. Cada `cVar += \"x\"` aloca string nova, copia conteúdo antigo + \"x\", descarta o anterior. 1.000 concatenações = 1.000 alocações, ~500.000 chars copiados. Comportamento O(n²).",
-    "fix_guidance": "Acumule em array e faça `FwArrayJoin()` (R26+) ou `Array2String()` (legacy) no final. Comportamento vira O(n).",
+    "descricao": "Em ADVPL strings são imutáveis — cada `cVar += \"x\"` aloca string nova, copia conteúdo antigo + \"x\", descarta o anterior. Comportamento O(n²): 1.000 concats = ~500.000 chars copiados. NG Informática reporta caso real: 1+ hora → 14-15s após otimização. Detecção encontra ranges de loops (`While...EndDo`, `For...Next`) com stack pra suportar nesting, e dentro de cada range busca: (a) compound assign `cVar += ...` ou (b) long form `cVar := cVar + ...` (mesmo nome via backreference). Usa hungarian notation (`c<NAME>`) pra distinguir string de accumulator numérico (`nTotal += 1` é OK).",
+    "fix_guidance": "Opções pra O(n): (1) acumule em array com `aAdd` + `FwArrayJoin()` (R26+) ou `Array2String()`/`ArrTokStr()`/`CenArr2Str()` (legacy) no final. (2) `FCreate('buffer.bin')` + `FWrite()` por iteração + `FRead` no final pra strings muito grandes. (3) StringBuilder class custom (~240x faster em benchmarks NG Informática).",
     "detection_kind": "regex",
-    "status": "planned"
+    "status": "active",
+    "impl_function": "_check_perf004_string_concat_in_loop"
   },
   {
     "regra_id": "PERF-005",

@@ -4,6 +4,43 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.9] - 2026-05-13
+
+### Added
+- **`PERF-004` (warning) implementado** — detector de string concat em loop
+  (anti-pattern O(n²)). Antes catalogada como `planned`. Pesquisa contra
+  NG Informática's [advpl-performance-research](https://github.com/nginformatica/advpl-performance-research)
+  e [string-builder-advpl](https://github.com/nginformatica/string-builder-advpl)
+  confirmou: caso real reportado de 1+ hora → 14-15s após otimização. Strings
+  ADVPL imutáveis — cada `cVar += "x"` aloca string nova + copia anterior.
+  
+  Detecção em 2 passes:
+  1. Encontra ranges (start, end) de cada loop body via stack-based parser
+     (`While...EndDo`, `For...Next` — suporta loops aninhados)
+  2. Em cada range, busca:
+     - **Compound**: `cVar += ...` (variável c-prefix = string via hungarian)
+     - **Long form**: `cVar := cVar + ...` (mesmo nome via regex backreference)
+  
+  Heurística hungarian notation distingue string concat (`cVar += "x"`) de
+  numeric accumulator (`nTotal += 1`) — só flagga c-prefix.
+
+  Sugestão de fix com 3 alternativas: array + FwArrayJoin/Array2String/
+  ArrTokStr/CenArr2Str, FCreate+FWrite buffer, StringBuilder class custom.
+
+- **`tests/unit/test_lint.py::TestPERF004StringConcatInLoop`** (11 asserts):
+  6 positives (compound em While, em For, long form, nested loop, múltiplas
+  concats, linha correta) + 5 negatives (numeric accumulator, fora de loop,
+  string, comentário, long-form com vars diferentes). Validado 11/11 PASS,
+  84/84 todos lint tests sem regressão.
+
+### Changed
+- **Catálogo `lint_rules.json`**: PERF-004 promovido de `status="planned"`
+  para `status="active"` + `impl_function="_check_perf004_string_concat_in_loop"`.
+  Total: **29 active + 6 planned = 35** (mantido).
+- **Skill `advpl-code-review`**: PERF-004 movida pra "active" (18 single-file).
+  Adicionado exemplo de fix com 3 alternativas (FwArrayJoin, FCreate buffer,
+  StringBuilder).
+
 ## [0.3.8] - 2026-05-13
 
 ### Added

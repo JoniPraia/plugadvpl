@@ -4,7 +4,7 @@ description: 24 regras de code review ADVPL/TLPP implementadas (13 single-file v
 
 # advpl-code-review — As regras de code review do plugadvpl
 
-`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **28 são efetivamente detectadas** (v0.3.8+): **17 single-file** via regex/AST/lookup sobre o conteúdo do fonte, e **11 cross-file `SX-*`** que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes). As outras 7 ficam **catalogadas como `status='planned'`** — sem detecção automática hoje, mas servem como roadmap + checklist mental.
+`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **29 são efetivamente detectadas** (v0.3.9+): **18 single-file** via regex/AST/lookup sobre o conteúdo do fonte, e **11 cross-file `SX-*`** que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes). As outras 6 ficam **catalogadas como `status='planned'`** — sem detecção automática hoje, mas servem como roadmap + checklist mental.
 
 > **Catálogo alinhado com a impl** desde v0.3.4. Antes (v0.3.0..v0.3.3), o
 > `lookups/lint_rules.json` tinha 25 itens em drift com `parsing/lint.py`
@@ -24,7 +24,7 @@ Rode `/plugadvpl:lint <arq>` para resultado de fato — esta skill é o **guia m
 
 ## As 24 regras detectadas — quick reference
 
-### Single-file (17) — `lint.py`, regex/AST/lookup sobre conteúdo
+### Single-file (18) — `lint.py`, regex/AST/lookup sobre conteúdo
 
 | ID         | Sev      | Comportamento real implementado                                                |
 |------------|----------|-------------------------------------------------------------------------------|
@@ -41,6 +41,7 @@ Rode `/plugadvpl:lint <arq>` para resultado de fato — esta skill é o **guia m
 | `PERF-001` | warning  | `SELECT *` em `BeginSql`/`TCQuery`                                             |
 | `PERF-002` | error    | SQL contra tabela Protheus **sem `%notDel%`** (traz registros deletados)       |
 | `PERF-003` | error    | SQL contra tabela Protheus **sem `%xfilial%`** (cross-filial data leak)        |
+| `PERF-004` | warning  | `cVar += ...` ou `cVar := cVar + ...` em loop While/For (O(n²)) — **novo em v0.3.9** |
 | `PERF-005` | warning  | `RecCount() > 0` (e variantes) pra checar existência — use `!Eof()` — **novo em v0.3.6** |
 | `MOD-001`  | warning  | `ConOut(...)` em vez de `FwLogMsg(...)` (Code Analysis acusa)                  |
 | `MOD-002`  | warning  | Declaração `Public` (polui escopo global)                                      |
@@ -64,7 +65,7 @@ Disponíveis após `/plugadvpl:ingest-sx <pasta-csv>`. Acionadas com `--cross-fi
 | `SX-010`  | error    | Gatilho `X7_TIPO='P'` (Pesquisar) sem `X7_SEEK='S'` válido                      |
 | `SX-011`  | error    | `X3_F3` aponta pra alias SXB que não existe                                    |
 
-## As 7 regras catalogadas mas não detectadas (v0.3.8)
+## As 6 regras catalogadas mas não detectadas (v0.3.9)
 
 Aparecem em `lookups/lint_rules.json` com `status="planned"`. Use como checklist mental.
 
@@ -74,7 +75,6 @@ Aparecem em `lookups/lint_rules.json` com `status="planned"`. Use como checklist
 | `BP-007`   | info     | Função sem header Protheus.doc                                                |
 | `SEC-003`  | warning  | PII/credenciais em `ConOut`/`FwLogMsg`                                        |
 | `SEC-004`  | warning  | Credenciais hardcoded                                                         |
-| `PERF-004` | warning  | Concatenação de string com `+`/`+=` em loop                                   |
 | `PERF-006` | info     | Query sem hint de índice ou ORDER BY não casando índice                       |
 | `MOD-003`  | info     | Grupos de funções com prefixo comum candidatas a classe                       |
 
@@ -249,6 +249,42 @@ BeginSql Alias "QRY"
        AND SC5.%notDel%
 EndSql
 ```
+
+### PERF-004 — Concat de string em loop (O(n²) → O(n))
+
+```advpl
+// ERRADO — strings ADVPL imutáveis, cada iteração aloca + copia (O(n²))
+// Caso real reportado por NG Informática: 1+ hora de execução
+Local cBuf := ''
+Local nI
+For nI := 1 To 100000
+    cBuf += Str(nI) + ';'   // 100k allocs, ~5GB chars copiados
+Next nI
+ConOut(cBuf)
+
+// CORRETO opção 1: array + FwArrayJoin (R26+) ou Array2String (legacy) — O(n)
+Local aBuf := {}
+Local nI
+For nI := 1 To 100000
+    aAdd(aBuf, Str(nI))   // O(1) por iteração
+Next nI
+Local cBuf := FwArrayJoin(aBuf, ';')   // single join no final, O(n)
+
+// CORRETO opção 2: file buffer (FCreate/FWrite) — pra strings muito grandes
+Local nFp := FCreate('\system\buf.tmp')
+For nI := 1 To 100000
+    FWrite(nFp, Str(nI) + ';')
+Next nI
+FClose(nFp)
+Local cBuf := MemoRead('\system\buf.tmp')
+FErase('\system\buf.tmp')
+
+// CORRETO opção 3: StringBuilder (NG Informática reporta ~240x faster)
+// Ver github.com/nginformatica/string-builder-advpl
+```
+
+**Long form também detecta** (mesmo nome via backreference): `cAcc := cAcc + AllTrim(SA1->A1_NOME)` em loop.
+**Não detecta** accumulator numérico: `nTotal += 1` (n-prefix indica numeric, não string).
 
 ### MOD-004 — AxCadastro/Modelo2/Modelo3 → MVC
 
