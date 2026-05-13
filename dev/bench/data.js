@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778702449599,
+  "lastUpdate": 1778705054626,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -1321,6 +1321,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00043273152223037234",
             "extra": "mean: 13.776265615389933 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "1eef324a1e3304cf6a03edc37a9aa2b4c159ef84",
+          "message": "release: v0.3.7 — implement SEC-005 (TOTVS restricted function calls)\n\nThird planned rule graduates to active. SEC-005 is critical — flags\ncalls to TOTVS internal/restricted functions cataloged in\nfuncoes_restritas (~194 entries: StaticCall, PTInternal, plus ~192\nmodule-internal functions categorized by module).\n\nWhy critical:\n\n- Restricted functions are not documented or supported by TOTVS.\n- They can be removed/changed in any release-bump without notice.\n- Some have compilation blocked since 12.1.33 (StaticCall, PTInternal).\n- Customer code calling them breaks silently when ERP is upgraded.\n\nImplementation:\n\n- _check_sec005_restricted_function_call em parsing/lint.py\n- Lookup loaded once via importlib.resources from funcoes_restritas.json,\n  cached em module-level dict (lazy init via _sec005_load_restricted()).\n- Regex _SEC005_CALL_RE matches `\\b<NAME>\\s*\\(` with negative lookbehind\n  for `:` (method call) and `.` (TLPP property access).\n- Definition skip: 50-char prefix lookback for \"User Function|Static\n  Function|Function|Method|Class|Procedure\" — avoids flagging the\n  function being defined itself when its name happens to collide.\n- Dedup por (linha, name) — múltiplas chamadas na mesma linha geram 1 finding.\n- Sugestao_fix usa o campo `alternativa` do catálogo quando preenchido,\n  fallback para genérico \"Substitua por equivalente público em TDN\".\n\nFalse positives controlled:\n\n- DbSelectArea, AllTrim, xFilial — não estão no restritas list, OK.\n- U_XYZHelper — user function custom, ignorada (não bate uppercase\n  contra entries restritas).\n- oObj:StaticCall() — method call, lookbehind exclude.\n- \"Use StaticCall com cuidado\" string — comentários/strings stripados.\n- // StaticCall foi removido — comentário stripado.\n\nTests:\n\n- TestSEC005RestrictedFunctionCall: 10/10 PASS.\n- Regression: 62/62 todos lint tests PASS (era 52, +10).\n- Consistency: 7/7 PASS (catalog active=27 = impl=27).\n\nCatalog state:\n- Active: 26 → 27 (added SEC-005)\n- Planned: 9 → 8\n- Total: 35 unchanged\n\nSkill advpl-code-review:\n- Single-file count 15 → 16\n- SEC-005 moved planned → active\n- Critical checklist mental ganha SEC-005\n- Planned table shrunk to 8\n\nPróximas candidatas planned: PERF-004 (string concat em loop),\nMOD-004 (AxCadastro→MVC), SEC-004 (hardcoded credentials).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-13T17:44:01-03:00",
+          "tree_id": "cdf5bbb049e6c712bb8e4953897bc2a76b1490eb",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/1eef324a1e3304cf6a03edc37a9aa2b4c159ef84"
+        },
+        "date": 1778705054394,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 21.24258121969222,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0012157023974040818",
+            "extra": "mean: 47.07525840000007 msec\nrounds: 15"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 71.92403357017072,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00032069342130963924",
+            "extra": "mean: 13.903558384616698 msec\nrounds: 13"
           }
         ]
       }
