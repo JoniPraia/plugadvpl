@@ -11,7 +11,7 @@
         "repo": "JoniPraia/plugadvpl"
       },
       "description": "Indexa fontes ADVPL/TLPP em SQLite + FTS5 para Claude consultar antes de ler arquivo cru",
-      "version": "0.3.7"
+      "version": "0.3.8"
     }
   ]
 }

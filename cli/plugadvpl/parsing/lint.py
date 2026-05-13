@@ -750,6 +750,84 @@ def _check_bp008_shadowed_reserved(
     return findings
 
 
+# --- MOD-004: AxCadastro/Modelo2/Modelo3 (legacy) em vez de MVC ------------
+
+# Funções de UI legacy substituídas pelo padrão MVC moderno (FWMBrowse +
+# MenuDef + ModelDef + ViewDef). Detecção case-insensitive, exclui method
+# calls (`obj:Modelo3()`), strings, comentários e definições homônimas.
+_MOD004_LEGACY_FUNCS: frozenset[str] = frozenset({"AXCADASTRO", "MODELO2", "MODELO3"})
+
+_MOD004_CALL_RE = re.compile(
+    r"(?<![:.])"                                # not method or property access
+    r"\b(AxCadastro|Modelo2|Modelo3)\s*\(",     # function name + opening paren
+    re.IGNORECASE,
+)
+
+# Mensagem de migração específica por função legacy.
+_MOD004_MIGRATION_HINTS: dict[str, str] = {
+    "AXCADASTRO": (
+        "AxCadastro é Modelo 1 legacy. Migre para MVC: User Function chama "
+        "`FWMBrowse():New()` + `SetAlias` + `SetMenuDef`, e a rotina ganha "
+        "`MenuDef()`/`ModelDef()`/`ViewDef()` como Static Functions."
+    ),
+    "MODELO2": (
+        "Modelo2 é cadastro legacy de cabecalho + grid de itens. Migre para MVC: "
+        "ModelDef() com `oModel:AddFields(\"MASTER\", ...)` + `oModel:AddGrid(\"DETAIL\", \"MASTER\", ...)`. "
+        "ViewDef() monta tela com FwFormView + AddField/AddGrid."
+    ),
+    "MODELO3": (
+        "Modelo3 é cadastro legacy pai/filho (cabecalho + itens relacionados). "
+        "Migre para MVC: ModelDef() com `AddFields` (cabecalho) + `AddGrid` (itens) + "
+        "`SetRelation` ligando filho ao pai via chaves SX9. "
+        "Veja `[[advpl-mvc]]` para template completo."
+    ),
+}
+
+
+def _check_mod004_legacy_cadastro(
+    arquivo: str, parsed: dict[str, Any], content: str
+) -> list[dict[str, Any]]:
+    """MOD-004 (info): chamada a AxCadastro/Modelo2/Modelo3 — legacy, deve migrar pra MVC.
+
+    Detecta uso das funções de UI legacy substituídas pelo framework MVC moderno.
+    Cada finding sugere o padrão MVC correspondente (Modelo 1 → AxCadastro→FWMBrowse,
+    Modelo 2 → cabeçalho+grid, Modelo 3 → pai/filho). Skip strings, comments,
+    method calls (`obj:Modelo3()`) e definições homônimas (`User Function AxCadastro()`).
+    """
+    findings: list[dict[str, Any]] = []
+    stripped = strip_advpl(content, strip_strings=True)
+    funcoes = parsed.get("funcoes", []) or []
+    seen: set[tuple[int, str]] = set()  # dedup por (linha, fn)
+
+    for m in _MOD004_CALL_RE.finditer(stripped):
+        name = m.group(1)
+        upper = name.upper()
+        if upper not in _MOD004_LEGACY_FUNCS:
+            continue
+        # Skip definição: olha 50 chars antes — se tem "User Function|Static Function|Function" → é definição
+        prefix = stripped[max(0, m.start() - 50) : m.start()]
+        if _SEC005_DEFINITION_RE.search(prefix):
+            continue
+        linha = _line_at(stripped, m.start())
+        key = (linha, upper)
+        if key in seen:
+            continue
+        seen.add(key)
+        funcao = _funcao_at_line(funcoes, linha)
+        findings.append(
+            {
+                "arquivo": arquivo,
+                "funcao": funcao,
+                "linha": linha,
+                "regra_id": "MOD-004",
+                "severidade": "info",
+                "snippet": _snippet_at_line(content, linha),
+                "sugestao_fix": _MOD004_MIGRATION_HINTS[upper],
+            }
+        )
+    return findings
+
+
 # --- SEC-005: uso de função TOTVS restrita -------------------------------
 
 # Carrega lookup `funcoes_restritas` uma vez (lazy + lru_cache via module-level dict).
@@ -899,7 +977,7 @@ def _check_perf005_reccount_for_existence(
 
 
 def lint_source(parsed: dict[str, Any], content: str) -> list[dict[str, Any]]:
-    """Aplica as 16 regras single-file. Retorna list[Finding] ordenada por linha.
+    """Aplica as 17 regras single-file. Retorna list[Finding] ordenada por linha.
 
     Args:
         parsed: dict produzido por parse_source() (com funcoes, sql_embedado, etc.).
@@ -927,6 +1005,7 @@ def lint_source(parsed: dict[str, Any], content: str) -> list[dict[str, Any]]:
     findings.extend(_check_perf005_reccount_for_existence(arquivo, parsed, content))
     findings.extend(_check_mod001_conout_instead_fwlogmsg(arquivo, parsed, content))
     findings.extend(_check_mod002_public_declaration(arquivo, parsed, content))
+    findings.extend(_check_mod004_legacy_cadastro(arquivo, parsed, content))
 
     findings.sort(key=lambda f: (int(f["linha"]), str(f["regra_id"])))
     return findings

@@ -250,10 +250,11 @@
     "titulo": "Uso de AxCadastro/Modelo2/Modelo3 em vez de MVC",
     "severidade": "info",
     "categoria": "modernization",
-    "descricao": "`AxCadastro`, `Modelo2`, `Modelo3` são wrappers procedurais legados (R10/R11) que não plugam no framework MVC moderno (eventos, validações cruzadas, FWMVCRotAuto pra testes automatizados). Customizações novas em R12+ devem ser MVC.",
-    "fix_guidance": "Refatore para padrão MVC: `MenuDef()` + `ModelDef()` + `ViewDef()` + `FWMBrowse`. Veja `[[advpl-mvc]]` e `[[advpl-refactoring]]` padrão 4.",
+    "descricao": "`AxCadastro` (Modelo 1), `Modelo2` (cabeçalho + grid lote) e `Modelo3` (cabeçalho + itens pai/filho) são wrappers procedurais legados (R10/R11) que não plugam no framework MVC moderno (eventos via FWModelEvent/InstallEvent, validações cruzadas, FWMVCRotAuto pra testes automatizados, hierarquia pai/filho/neto). Customizações novas em R12+ devem ser MVC. Detecção case-insensitive, exclui method calls (`obj:Modelo3()`), strings, comentários e definições homônimas (`User Function AxCadastro()`).",
+    "fix_guidance": "Refatore para padrão MVC: `MenuDef()` + `ModelDef()` + `ViewDef()` + `FWMBrowse`. AxCadastro vira Modelo 1 MVC (FWMBrowse + AddFields). Modelo2 vira AddFields master + AddGrid detail. Modelo3 vira AddFields cabeçalho + AddGrid itens + SetRelation. Veja `[[advpl-mvc]]` e `[[advpl-refactoring]]` padrão 4. Sugestão de fix por função inclui hint de migração específico.",
     "detection_kind": "regex",
-    "status": "planned"
+    "status": "active",
+    "impl_function": "_check_mod004_legacy_cadastro"
   },
   {
     "regra_id": "SX-001",

@@ -817,3 +817,126 @@ class TestSEC005RestrictedFunctionCall:
         # StaticCall tem alternativa cadastrada
         assert any("User Function" in s["sugestao_fix"] or "TLPP" in s["sugestao_fix"]
                    for s in sec)
+
+
+# --- MOD-004: AxCadastro/Modelo2/Modelo3 em vez de MVC -----------------------
+
+
+class TestMOD004LegacyCadastro:
+    """MOD-004 (info): chamada a AxCadastro/Modelo2/Modelo3 (legacy, deve migrar pra MVC)."""
+
+    def test_positive_axcadastro(self) -> None:
+        src = (
+            "User Function ZCAD()\n"
+            "    AxCadastro('SA1', 'Cadastro')\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        mod = [f for f in findings if f["regra_id"] == "MOD-004"]
+        assert len(mod) == 1
+        assert mod[0]["severidade"] == "info"
+        assert "AxCadastro" in mod[0]["sugestao_fix"] or "MVC" in mod[0]["sugestao_fix"]
+
+    def test_positive_modelo2(self) -> None:
+        src = (
+            "User Function ZCAD2()\n"
+            "    Modelo2('Titulo', aCabec, aRodape, aGd, 3)\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        mod = [f for f in findings if f["regra_id"] == "MOD-004"]
+        assert len(mod) == 1
+        assert "Modelo2" in mod[0]["sugestao_fix"] or "MVC" in mod[0]["sugestao_fix"]
+
+    def test_positive_modelo3(self) -> None:
+        src = (
+            "User Function ZCAD3()\n"
+            "    Modelo3('Titulo', 'SC5', 'SC6', aCpoEnchoice, 'cLinOk', 'cTudOk', 3, 3, 'cFieldOk')\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "MOD-004" in _ids(findings)
+
+    def test_positive_case_insensitive(self) -> None:
+        src = (
+            "User Function ZCAD()\n"
+            "    AXCADASTRO('SA1', 'Cad')\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "MOD-004" in _ids(findings)
+
+    def test_positive_multiple_calls_separate_findings(self) -> None:
+        src = (
+            "User Function ZCAD()\n"
+            "    AxCadastro('SA1', 'A')\n"
+            "    Modelo2('B', a, b, c, 3)\n"
+            "    Modelo3('C', 'SC5', 'SC6', a, 'l', 't', 3, 3, 'f')\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        mod = [f for f in findings if f["regra_id"] == "MOD-004"]
+        assert len(mod) == 3
+
+    def test_negative_in_string(self) -> None:
+        src = (
+            "User Function ZGood()\n"
+            "    Local cMsg := 'Substituiu AxCadastro por MVC em 2024'\n"
+            "    ConOut(cMsg)\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "MOD-004" not in _ids(findings)
+
+    def test_negative_in_comment(self) -> None:
+        src = (
+            "User Function ZGood()\n"
+            "    // AxCadastro foi removido — agora usa MVC\n"
+            "    Return .T.\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "MOD-004" not in _ids(findings)
+
+    def test_negative_function_definition(self) -> None:
+        """User Function AxCadastro() definindo — não é uso, é definição própria."""
+        src = (
+            "User Function AxCadastro()\n"
+            "    Return .T.\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        # Definição da própria função — não conta como uso do legacy
+        assert "MOD-004" not in _ids(findings)
+
+    def test_negative_similar_name(self) -> None:
+        src = (
+            "User Function ZGood()\n"
+            "    Local x := AxCadastrox('arg')\n"
+            "    Local y := MyModelo2('arg')\n"
+            "    Local z := Modelo30('arg')\n"   # 30, not 3 — não match
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "MOD-004" not in _ids(findings)
+
+    def test_negative_method_call(self) -> None:
+        """oObj:AxCadastro() — method call, não chamada de função."""
+        src = (
+            "User Function ZGood()\n"
+            "    Local oObj := MyClass():New()\n"
+            "    oObj:Modelo3('arg')\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "MOD-004" not in _ids(findings)
+
+    def test_positive_reports_correct_line_and_function(self) -> None:
+        src = (
+            "User Function ZCAD()\n"      # 1
+            "    Local cTit := 'Test'\n"  # 2
+            "    AxCadastro('SA1', cTit)\n"   # 3
+            "Return\n"                    # 4
+        )
+        findings = lint_source(_parsed_for(src), src)
+        mod = [f for f in findings if f["regra_id"] == "MOD-004"]
+        assert len(mod) == 1
+        assert mod[0]["linha"] == 3

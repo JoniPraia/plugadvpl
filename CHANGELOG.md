@@ -4,6 +4,43 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.8] - 2026-05-13
+
+### Added
+- **`MOD-004` (info) implementado** — detector de chamadas a UI legacy
+  `AxCadastro` (Modelo 1), `Modelo2` (cabeçalho + grid lote) e `Modelo3`
+  (pai/filho cabeçalho + itens). Antes catalogada como `planned`. Pesquisa
+  contra TDN canônica confirmou as 3 assinaturas e o padrão de migração
+  pra MVC moderno (FWMBrowse + MenuDef + ModelDef + ViewDef).
+  
+  Detecção:
+  - Match `\b(AxCadastro|Modelo2|Modelo3)\s*\(` case-insensitive
+  - Negative lookbehind pra `:`/`.` — exclui method calls (`obj:Modelo3()`)
+  - Pula declarações de função homônima (`User Function AxCadastro()`)
+  - Pula matches em strings literais e comentários
+  - Pula nomes similares (`AxCadastrox`, `Modelo30`, `MyModelo2`)
+  - Dedup por (linha, função) — múltiplas chamadas iguais na mesma linha = 1
+  
+  Sugestão de fix específica por função:
+  - **AxCadastro**: migra pra Modelo 1 MVC com FWMBrowse + AddFields
+  - **Modelo2**: migra pra MVC com AddFields master + AddGrid detail
+  - **Modelo3**: migra pra MVC com AddFields cabeçalho + AddGrid itens + SetRelation pai/filho
+
+- **`tests/unit/test_lint.py::TestMOD004LegacyCadastro`** (11 asserts):
+  6 positives (cada uma das 3 funções, case-insensitive, múltiplas calls
+  separadas, linha correta) + 5 negatives (string, comentário, definição
+  homônima, similar-name, method call). Validado 11/11 PASS, 73/73 todos
+  lint tests sem regressão.
+
+### Changed
+- **Catálogo `lint_rules.json`**: MOD-004 promovido de `status="planned"`
+  para `status="active"` + `impl_function="_check_mod004_legacy_cadastro"`.
+  Total: **28 active + 7 planned = 35** (mantido).
+- **Skill `advpl-code-review`**: MOD-004 movida da tabela "planned" pra
+  "active" (17 single-file agora). Adicionado exemplo de fix com 2 cenários
+  completos de migração (AxCadastro→MVC Modelo 1, Modelo3→MVC pai/filho
+  com SetRelation).
+
 ## [0.3.7] - 2026-05-13
 
 ### Added

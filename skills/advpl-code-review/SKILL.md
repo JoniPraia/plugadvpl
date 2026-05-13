@@ -4,7 +4,7 @@ description: 24 regras de code review ADVPL/TLPP implementadas (13 single-file v
 
 # advpl-code-review — As regras de code review do plugadvpl
 
-`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **27 são efetivamente detectadas** (v0.3.7+): **16 single-file** via regex/AST/lookup sobre o conteúdo do fonte, e **11 cross-file `SX-*`** que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes). As outras 8 ficam **catalogadas como `status='planned'`** — sem detecção automática hoje, mas servem como roadmap + checklist mental.
+`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **28 são efetivamente detectadas** (v0.3.8+): **17 single-file** via regex/AST/lookup sobre o conteúdo do fonte, e **11 cross-file `SX-*`** que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes). As outras 7 ficam **catalogadas como `status='planned'`** — sem detecção automática hoje, mas servem como roadmap + checklist mental.
 
 > **Catálogo alinhado com a impl** desde v0.3.4. Antes (v0.3.0..v0.3.3), o
 > `lookups/lint_rules.json` tinha 25 itens em drift com `parsing/lint.py`
@@ -24,7 +24,7 @@ Rode `/plugadvpl:lint <arq>` para resultado de fato — esta skill é o **guia m
 
 ## As 24 regras detectadas — quick reference
 
-### Single-file (16) — `lint.py`, regex/AST/lookup sobre conteúdo
+### Single-file (17) — `lint.py`, regex/AST/lookup sobre conteúdo
 
 | ID         | Sev      | Comportamento real implementado                                                |
 |------------|----------|-------------------------------------------------------------------------------|
@@ -44,6 +44,7 @@ Rode `/plugadvpl:lint <arq>` para resultado de fato — esta skill é o **guia m
 | `PERF-005` | warning  | `RecCount() > 0` (e variantes) pra checar existência — use `!Eof()` — **novo em v0.3.6** |
 | `MOD-001`  | warning  | `ConOut(...)` em vez de `FwLogMsg(...)` (Code Analysis acusa)                  |
 | `MOD-002`  | warning  | Declaração `Public` (polui escopo global)                                      |
+| `MOD-004`  | info     | Chamada a `AxCadastro`/`Modelo2`/`Modelo3` (legacy) em vez de MVC — **novo em v0.3.8** |
 
 ### Cross-file SX (11) — `lint --cross-file`, requer `ingest-sx`
 
@@ -63,7 +64,7 @@ Disponíveis após `/plugadvpl:ingest-sx <pasta-csv>`. Acionadas com `--cross-fi
 | `SX-010`  | error    | Gatilho `X7_TIPO='P'` (Pesquisar) sem `X7_SEEK='S'` válido                      |
 | `SX-011`  | error    | `X3_F3` aponta pra alias SXB que não existe                                    |
 
-## As 8 regras catalogadas mas não detectadas (v0.3.7)
+## As 7 regras catalogadas mas não detectadas (v0.3.8)
 
 Aparecem em `lookups/lint_rules.json` com `status="planned"`. Use como checklist mental.
 
@@ -76,7 +77,6 @@ Aparecem em `lookups/lint_rules.json` com `status="planned"`. Use como checklist
 | `PERF-004` | warning  | Concatenação de string com `+`/`+=` em loop                                   |
 | `PERF-006` | info     | Query sem hint de índice ou ORDER BY não casando índice                       |
 | `MOD-003`  | info     | Grupos de funções com prefixo comum candidatas a classe                       |
-| `MOD-004`  | info     | Uso de `AxCadastro`/`Modelo2`/`Modelo3` em vez de MVC                         |
 
 ## Severidades — política de bloqueio
 
@@ -249,6 +249,57 @@ BeginSql Alias "QRY"
        AND SC5.%notDel%
 EndSql
 ```
+
+### MOD-004 — AxCadastro/Modelo2/Modelo3 → MVC
+
+```advpl
+// LEGACY 1: AxCadastro (Modelo 1) — cadastro simples
+User Function ZA1Cad()
+    AxCadastro("ZA1", "Cadastro de Conhecimento", "AllwaysTrue", "AllwaysTrue")
+Return
+
+// MIGRADO: MVC com FWMBrowse + MenuDef + ModelDef + ViewDef
+User Function ZA1Cad()
+    Local oBrw := FWMBrowse():New()
+    oBrw:SetAlias("ZA1")
+    oBrw:SetDescription("Cadastro de Conhecimento")
+    oBrw:Activate()
+Return
+
+Static Function MenuDef()
+    Return FWMVCMenu("ZA1Cad")
+End
+
+Static Function ModelDef()
+    Local oModel    := MPFormModel():New("ZA1MD")
+    Local oStruZA1  := FWFormStruct(1, "ZA1")
+    oModel:AddFields("ZA1MASTER", , oStruZA1)
+    oModel:GetModel("ZA1MASTER"):SetPrimaryKey({"ZA1_FILIAL", "ZA1_COD"})
+Return oModel
+
+// (ViewDef análogo, omitido — veja [[advpl-mvc]])
+
+// LEGACY 2: Modelo3 (cabeçalho + itens pai/filho)
+User Function ZPedCad()
+    Modelo3("Pedido", "ZP1", "ZP2", aCpoEnchoice, "AllwaysTrue", "AllwaysTrue", 3, 3, "")
+Return
+
+// MIGRADO: MVC com AddFields master + AddGrid detail + SetRelation
+Static Function ModelDef()
+    Local oModel    := MPFormModel():New("ZPEDMD")
+    Local oStruZP1  := FWFormStruct(1, "ZP1")
+    Local oStruZP2  := FWFormStruct(1, "ZP2")
+    oModel:AddFields("ZP1MASTER", , oStruZP1)
+    oModel:AddGrid("ZP2DETAIL", "ZP1MASTER", oStruZP2)
+    oModel:SetRelation("ZP2DETAIL", { ;
+        {"ZP2_FILIAL", "xFilial('ZP2')"}, ;
+        {"ZP2_NUMPED", "ZP1->ZP1_NUMPED"} ;
+    }, ZP2->(IndexKey(1)))
+    oModel:GetModel("ZP2DETAIL"):SetUniqueLine({"ZP2_ITEM"})
+Return oModel
+```
+
+Veja `[[advpl-refactoring]]` padrão 4 pra walkthrough completo + `[[advpl-mvc]]`/`[[advpl-mvc-avancado]]`.
 
 ### PERF-005 — RecCount() para checar existência
 
