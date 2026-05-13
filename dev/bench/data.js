@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778705569791,
+  "lastUpdate": 1778707562000,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -1393,6 +1393,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00019990555405280418",
             "extra": "mean: 13.917060692305174 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "27c7a6901ecfc5454f59421f78c49c06f87ebfdd",
+          "message": "release: v0.3.9 — implement PERF-004 (string concat in loop, O(n²))\n\nFifth planned rule graduates to active. Researched against NG Informática\ncanonical references:\n- advpl-performance-research/Escalando o AdvPL.md — confirms O(n²)\n  complexity, real production case 1+hour → 14-15s after optimization\n- string-builder-advpl repo — StringBuilder class achieving ~240x faster\n  than classic concat\n\nPattern detected: cVar += ... or cVar := cVar + ... inside While/For loops.\n\nImplementation strategy (2-pass):\n\n1. _perf004_loop_ranges() — stack-based parser of While/EndDo and For/Next\n   keywords. Returns list of (body_start, body_end) tuples. Supports nested\n   loops via stack-pop matching nearest opener.\n\n2. For each loop body region, two regex matches:\n   - _PERF004_COMPOUND_RE: \\bc[A-Za-z_]\\w*\\s*\\+= (compound assign)\n   - _PERF004_LONGFORM_RE: \\b(c[A-Za-z_]\\w*)\\s*:=\\s*\\1\\s*\\+ (long form\n     with backreference ensuring same var name on both sides)\n\nHungarian notation heuristic: only flag c-prefix vars (character/string).\nThis distinguishes from numeric accumulators (nTotal += 1, nSum += nVal)\nwhich are correct ADVPL idiom.\n\nTest coverage (11/11 PASS):\n\nPOSITIVES:\n- Compound assign cBuf += in While\n- Compound assign cMsg += in For\n- Long form cAcc := cAcc + ... in While\n- Nested loop (concat in inner For)\n- Multiple cVars in same loop = separate findings\n- Line number reported correctly\n\nNEGATIVES:\n- nTotal += 1 (numeric accumulator, n-prefix)\n- cVar += outside any loop (init code, single-shot)\n- \"cVar +=\" inside string literal (stripped)\n- // cVar += inside comment (stripped)\n- cBuf := cFoo + cBar (different vars, not accumulator pattern)\n\nSugestao_fix presents 3 alternatives:\n1. aAdd to array + FwArrayJoin (R26+) / Array2String / ArrTokStr / CenArr2Str\n2. FCreate('buffer.bin') + FWrite per iteration + MemoRead final\n3. StringBuilder class (NG Informática open source ~240x faster)\n\nCatalog state:\n- Active: 28 → 29 (PERF-004)\n- Planned: 7 → 6\n- Total: 35 unchanged\n\nTests:\n- TestPERF004StringConcatInLoop: 11/11 PASS\n- Regression: 84/84 todos lint tests PASS (era 73, +11)\n- Consistency: 7/7 PASS (catalog active=29 = impl=29)\n\nSkill advpl-code-review:\n- Single-file 17 → 18\n- PERF-004 active table\n- Example fix com 3 cenários (array+Join, FCreate buffer, StringBuilder)\n- Long-form note: backreference ensures same var name (cAcc := cAcc + ...)\n- Numeric accumulator note: nTotal += 1 NÃO é flagged (n-prefix)\n\nPróximas planned: SEC-004 (hardcoded creds, médio com FP risk),\nBP-002b (Private/Public que poderia ser Local), SEC-003 (PII em logs),\nBP-007 (sem Protheus.doc), MOD-003 (cross-function pattern), PERF-006\n(SIX index lookup).\n\nSources:\n- NG Informática advpl-performance-research:\n  https://github.com/nginformatica/advpl-performance-research\n- NG Informática string-builder-advpl:\n  https://github.com/nginformatica/string-builder-advpl\n- Manipulação de Strings ADVPL Parte III:\n  http://nasemanadaprova.blogspot.com/2013/07/manipulacao-de-strings-parte-iii.html\n- ArrTokStr / CenArr2Str - Maratona AdvPL TL++ 041:\n  https://terminaldeinformacao.com/2023/09/18/transformar-array-em-string-com-arrtokstr-e-cenarr2str-maratona-advpl-e-tl-041/\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-13T18:25:43-03:00",
+          "tree_id": "0dabdb82befdb04f99a4068c4237063001ccb909",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/27c7a6901ecfc5454f59421f78c49c06f87ebfdd"
+        },
+        "date": 1778707561290,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 20.070713324511857,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0005067669781967967",
+            "extra": "mean: 49.823839533332645 msec\nrounds: 15"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 71.31967568858946,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00035788849716286887",
+            "extra": "mean: 14.02137615384574 msec\nrounds: 13"
           }
         ]
       }
