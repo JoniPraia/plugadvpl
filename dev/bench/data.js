@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778707562000,
+  "lastUpdate": 1778709094581,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -1429,6 +1429,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00035788849716286887",
             "extra": "mean: 14.02137615384574 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "6d0bcf59912485b53eba129104508fa0343750ee",
+          "message": "release: v0.3.10 — audit pass on v0.3.4-v0.3.9 (4 gaps closed)\n\nAudit release without new rules. Item-by-item review of v0.3.4-v0.3.9 with\nTDN/casos reais research surfaced 4 gaps; all closed under TDD.\n\n- BP-008: covered reservadas 13 -> 20 (added dDataBase [CRITICAL — shadow\n  breaks all date/period logic], INCLUI, ALTERA, cFunBkp, cFunName,\n  lAutoErrNoFile, __Language). +4 positive tests.\n- PERF-005: now detects LastRec() in addition to RecCount() — TDN\n  documents both as functionally identical (full scan O(n)). +3 tests.\n- MOD-004: now detects MsNewGetDados (deprecated since 12.1.17 per TDN)\n  in addition to AxCadastro/Modelo2/Modelo3. +2 tests.\n- Test guard \"F6\": new test_all_check_functions_registered_in_orchestrator\n  ensures every _check_* function declared via docstring is wired into\n  lint_source() or _CROSS_FILE_RULES — closes silent-detector gap.\n\nDrive-by: fix 2 stale test_db.py asserts (schema_version \"2\" -> SCHEMA_VERSION\nconstant) — leftover from migration 003 bump in v0.3.4.\n\nCatalog: 24 active + 6 planned + 5 cross-file = 35 (unchanged; audit only\nexpanded coverage of 3 existing active rules). All 101 lint tests + 23 db\ntests green.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-13T18:51:08-03:00",
+          "tree_id": "aed6adcfa9a0fa0b30f939922124ceab68915f3e",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/6d0bcf59912485b53eba129104508fa0343750ee"
+        },
+        "date": 1778709093947,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 20.278312347513626,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00039528448606888483",
+            "extra": "mean: 49.31376846666495 msec\nrounds: 15"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 71.69276833997992,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0004650925986462022",
+            "extra": "mean: 13.948408230769124 msec\nrounds: 13"
           }
         ]
       }
