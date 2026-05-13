@@ -90,7 +90,7 @@
     "titulo": "Shadowing de variável reservada (cFilAnt, cEmpAnt, PARAMIXB, etc.)",
     "severidade": "critical",
     "categoria": "best-practice",
-    "descricao": "Declarar variável Local/Static/Private/Public com nome de Public reservada do framework Protheus faz shadowing — sua função enxerga `\"\"`/`Nil` em vez do valor real. Cobertas (case-insensitive): `cFilAnt`, `cEmpAnt`, `cUserName`, `cModulo`, `cTransac`, `nProgAnt`, `oMainWnd`, `__cInternet`, `nUsado`, `PARAMIXB`, `aRotina`, `lMsErroAuto`, `lMsHelpAuto`. Detecta também declarações multi-var (`Local cVar1, cFilAnt, cVar2`) e TLPP-typed (`Local cFilAnt as character`).",
+    "descricao": "Declarar variável Local/Static/Private/Public com nome de Public reservada do framework Protheus faz shadowing — sua função enxerga `\"\"`/`Nil` em vez do valor real. Cobertas (case-insensitive, 20 reservadas): `cFilAnt`, `cEmpAnt`, `cUserName`, `cModulo`, `cTransac`, `nProgAnt`, `oMainWnd`, `__cInternet`, `__Language`, `nUsado`, `dDataBase` (CRÍTICO — quebra toda lógica de data/competência se shadowed), `PARAMIXB`, `aRotina`, `lMsErroAuto`, `lMsHelpAuto`, `cFunBkp`, `cFunName`, `lAutoErrNoFile`, `INCLUI`, `ALTERA`. Detecta também declarações multi-var (`Local cVar1, cFilAnt, cVar2`) e TLPP-typed (`Local cFilAnt as character`).",
     "fix_guidance": "Renomeie a variável local pra algo distinto (prefixo cliente, ex: `cMinhaFilial`). NUNCA crie Local/Private/Public/Static com o mesmo nome de uma reservada framework — não há motivo legítimo de override em código custom.",
     "detection_kind": "regex",
     "status": "active",
@@ -195,11 +195,11 @@
   },
   {
     "regra_id": "PERF-005",
-    "titulo": "RecCount() para checar existência (use !Eof())",
+    "titulo": "RecCount()/LastRec() para checar existência (use !Eof())",
     "severidade": "warning",
     "categoria": "performance",
-    "descricao": "`RecCount()` força full scan do alias para contar todos os registros. Para apenas verificar se existe pelo menos 1 registro, `!Eof()` após `DbSeek`/`DbGoTop` é O(1). A regra detecta os padrões `RecCount() > 0`, `RecCount() >= 1`, `RecCount() != 0` e `RecCount() <> 0` (legacy), incluindo variante com alias-call `SA1->(RecCount()) > 0`. NÃO sinaliza limites de business reais (`RecCount() > 100`) nem armazenamento (`nTotal := RecCount()`).",
-    "fix_guidance": "Substitua `If RecCount() > 0` por `If !Eof()` ou `If !<alias>->(Eof())`. Em SQL embarcado, use `SELECT COUNT(*) FROM ... LIMIT 1` ou subquery `WHERE EXISTS (...)`.",
+    "descricao": "`RecCount()` (e seu alias `LastRec()` — segundo TDN são funcionalmente idênticas) força full scan do alias para contar todos os registros. Para apenas verificar se existe pelo menos 1 registro, `!Eof()` após `DbSeek`/`DbGoTop` é O(1). A regra detecta os padrões `RecCount() > 0`, `RecCount() >= 1`, `RecCount() != 0` e `RecCount() <> 0` (legacy), incluindo variante com alias-call `SA1->(RecCount()) > 0` e `SA1->(LastRec()) > 0`. NÃO sinaliza limites de business reais (`RecCount() > 100`) nem armazenamento (`nTotal := RecCount()`).",
+    "fix_guidance": "Substitua `If RecCount() > 0` (ou `LastRec() > 0`) por `If !Eof()` ou `If !<alias>->(Eof())`. Em SQL embarcado, use `SELECT COUNT(*) FROM ... LIMIT 1` ou subquery `WHERE EXISTS (...)`.",
     "detection_kind": "regex",
     "status": "active",
     "impl_function": "_check_perf005_reccount_for_existence"
@@ -248,11 +248,11 @@
   },
   {
     "regra_id": "MOD-004",
-    "titulo": "Uso de AxCadastro/Modelo2/Modelo3 em vez de MVC",
+    "titulo": "Uso de AxCadastro/Modelo2/Modelo3/MsNewGetDados em vez de MVC",
     "severidade": "info",
     "categoria": "modernization",
-    "descricao": "`AxCadastro` (Modelo 1), `Modelo2` (cabeçalho + grid lote) e `Modelo3` (cabeçalho + itens pai/filho) são wrappers procedurais legados (R10/R11) que não plugam no framework MVC moderno (eventos via FWModelEvent/InstallEvent, validações cruzadas, FWMVCRotAuto pra testes automatizados, hierarquia pai/filho/neto). Customizações novas em R12+ devem ser MVC. Detecção case-insensitive, exclui method calls (`obj:Modelo3()`), strings, comentários e definições homônimas (`User Function AxCadastro()`).",
-    "fix_guidance": "Refatore para padrão MVC: `MenuDef()` + `ModelDef()` + `ViewDef()` + `FWMBrowse`. AxCadastro vira Modelo 1 MVC (FWMBrowse + AddFields). Modelo2 vira AddFields master + AddGrid detail. Modelo3 vira AddFields cabeçalho + AddGrid itens + SetRelation. Veja `[[advpl-mvc]]` e `[[advpl-refactoring]]` padrão 4. Sugestão de fix por função inclui hint de migração específico.",
+    "descricao": "`AxCadastro` (Modelo 1), `Modelo2` (cabeçalho + grid lote), `Modelo3` (cabeçalho + itens pai/filho) e `MsNewGetDados` (grid editável standalone — deprecated desde 12.1.17 conforme TDN) são wrappers procedurais legados (R10/R11) que não plugam no framework MVC moderno (eventos via FWModelEvent/InstallEvent, validações cruzadas, FWMVCRotAuto pra testes automatizados, hierarquia pai/filho/neto). Customizações novas em R12+ devem ser MVC. Detecção case-insensitive, exclui method calls (`obj:Modelo3()`), strings, comentários e definições homônimas (`User Function AxCadastro()`).",
+    "fix_guidance": "Refatore para padrão MVC: `MenuDef()` + `ModelDef()` + `ViewDef()` + `FWMBrowse`. AxCadastro vira Modelo 1 MVC (FWMBrowse + AddFields). Modelo2 vira AddFields master + AddGrid detail. Modelo3 vira AddFields cabeçalho + AddGrid itens + SetRelation. MsNewGetDados vira AddGrid em ViewDef (ou FWFormBrowse + AddGrid pra MVC standalone). Veja `[[advpl-mvc]]` e `[[advpl-refactoring]]` padrão 4. Sugestão de fix por função inclui hint de migração específico.",
     "detection_kind": "regex",
     "status": "active",
     "impl_function": "_check_mod004_legacy_cadastro"

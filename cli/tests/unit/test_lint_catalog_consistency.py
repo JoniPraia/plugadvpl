@@ -156,3 +156,33 @@ def test_all_rules_have_required_fields(catalog: dict) -> None:
         assert rule["severidade"] in ("critical", "error", "warning", "info"), (
             f"regra {rid}: severidade='{rule['severidade']}' inválida"
         )
+
+
+def test_all_check_functions_registered_in_orchestrator(impl: dict) -> None:
+    """F6 (audit v0.3.10): toda `_check_*` função deve aparecer em `lint_source()`.
+
+    Evita o gap onde se cria um detector mas esquece de registrar no orchestrator —
+    catalog diz 'active', função existe, mas nunca dispara em runtime.
+
+    Verifica que para cada `_check_xxx` extraída de docstrings (impl dict), existe
+    uma chamada `findings.extend(_check_xxx(arquivo, parsed, content))` ou similar
+    no source de `parsing/lint.py`. Para cross-file SX-* a chamada está no loop
+    `_CROSS_FILE_RULES` em `lint_cross_file()`.
+    """
+    text = ir.files("plugadvpl").joinpath("parsing/lint.py").read_text(encoding="utf-8")
+    not_registered = []
+    for rid, data in impl.items():
+        fn = data["fn"]
+        # Single-file: aparece em lint_source() como `findings.extend(_check_xxx(...))`
+        # Cross-file SX-*: aparece em _CROSS_FILE_RULES tuple list
+        single_file_pattern = f"findings.extend({fn}("
+        cross_file_pattern = f"{fn}),"
+        if single_file_pattern not in text and cross_file_pattern not in text:
+            not_registered.append(
+                f"{rid}: função {fn} existe mas NÃO está registrada em "
+                f"lint_source() nem em _CROSS_FILE_RULES — adicione "
+                f"`findings.extend({fn}(arquivo, parsed, content))` ou entrada em _CROSS_FILE_RULES"
+            )
+    assert not not_registered, "Detectores não-registrados:\n  - " + "\n  - ".join(
+        not_registered
+    )

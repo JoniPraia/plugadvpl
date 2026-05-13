@@ -34,7 +34,7 @@ Rode `/plugadvpl:lint <arq>` para resultado de fato — esta skill é o **guia m
 | `BP-004`   | warning  | `Pergunte("GRUPO", .F.)` sem uso subsequente de `MV_PAR*`                      |
 | `BP-005`   | warning  | Função declarada com **mais de 6 parâmetros**                                  |
 | `BP-006`   | error    | Mistura `RecLock` + `dbAppend()`/`DbRLock` raw na mesma função                  |
-| `BP-008`   | critical | Shadowing de variável reservada framework (`cFilAnt`, `cEmpAnt`, `PARAMIXB`, `lMsErroAuto`, etc. — 13 reservadas cobertas) — **novo em v0.3.5** |
+| `BP-008`   | critical | Shadowing de variável reservada framework (`cFilAnt`, `cEmpAnt`, `dDataBase`, `PARAMIXB`, `lMsErroAuto`, `INCLUI`, etc. — **20 reservadas** cobertas) — novo em v0.3.5, expandido em v0.3.10 |
 | `SEC-001`  | critical | `RpcSetEnv` dentro de classe que herda de `WSRESTFUL`                          |
 | `SEC-002`  | warning  | `User Function` sem prefixo cliente (2-3 letras) ou nome de PE oficial         |
 | `SEC-005`  | critical | Chamada de função TOTVS restrita (lookup `funcoes_restritas`, ~194 entries) — **novo em v0.3.7** |
@@ -42,10 +42,10 @@ Rode `/plugadvpl:lint <arq>` para resultado de fato — esta skill é o **guia m
 | `PERF-002` | error    | SQL contra tabela Protheus **sem `%notDel%`** (traz registros deletados)       |
 | `PERF-003` | error    | SQL contra tabela Protheus **sem `%xfilial%`** (cross-filial data leak)        |
 | `PERF-004` | warning  | `cVar += ...` ou `cVar := cVar + ...` em loop While/For (O(n²)) — **novo em v0.3.9** |
-| `PERF-005` | warning  | `RecCount() > 0` (e variantes) pra checar existência — use `!Eof()` — **novo em v0.3.6** |
+| `PERF-005` | warning  | `RecCount() > 0` ou `LastRec() > 0` (e variantes) pra checar existência — use `!Eof()` — novo em v0.3.6, expandido em v0.3.10 |
 | `MOD-001`  | warning  | `ConOut(...)` em vez de `FwLogMsg(...)` (Code Analysis acusa)                  |
 | `MOD-002`  | warning  | Declaração `Public` (polui escopo global)                                      |
-| `MOD-004`  | info     | Chamada a `AxCadastro`/`Modelo2`/`Modelo3` (legacy) em vez de MVC — **novo em v0.3.8** |
+| `MOD-004`  | info     | Chamada a `AxCadastro`/`Modelo2`/`Modelo3`/`MsNewGetDados` (legacy) em vez de MVC — novo em v0.3.8, expandido em v0.3.10 |
 
 ### Cross-file SX (11) — `lint --cross-file`, requer `ingest-sx`
 
@@ -286,7 +286,7 @@ FErase('\system\buf.tmp')
 **Long form também detecta** (mesmo nome via backreference): `cAcc := cAcc + AllTrim(SA1->A1_NOME)` em loop.
 **Não detecta** accumulator numérico: `nTotal += 1` (n-prefix indica numeric, não string).
 
-### MOD-004 — AxCadastro/Modelo2/Modelo3 → MVC
+### MOD-004 — AxCadastro/Modelo2/Modelo3/MsNewGetDados → MVC
 
 ```advpl
 // LEGACY 1: AxCadastro (Modelo 1) — cadastro simples
@@ -320,6 +320,11 @@ User Function ZPedCad()
     Modelo3("Pedido", "ZP1", "ZP2", aCpoEnchoice, "AllwaysTrue", "AllwaysTrue", 3, 3, "")
 Return
 
+// LEGACY 3: MsNewGetDados (grid editavel standalone) — deprecated desde 12.1.17
+User Function ZItens()
+    Local oGrid := MsNewGetDados():New(0, 0, 200, 400, , , , , , , , , , , oDlg, aHeader, aCols)
+Return
+
 // MIGRADO: MVC com AddFields master + AddGrid detail + SetRelation
 Static Function ModelDef()
     Local oModel    := MPFormModel():New("ZPEDMD")
@@ -337,13 +342,18 @@ Return oModel
 
 Veja `[[advpl-refactoring]]` padrão 4 pra walkthrough completo + `[[advpl-mvc]]`/`[[advpl-mvc-avancado]]`.
 
-### PERF-005 — RecCount() para checar existência
+### PERF-005 — RecCount()/LastRec() para checar existência
 
 ```advpl
-// ERRADO — RecCount() força full scan da tabela inteira
+// ERRADO — RecCount() (ou LastRec(), identico per TDN) forca full scan da tabela inteira
 DbSelectArea("SA1")
 DbGoTop()
 If RecCount() > 0
+    ConOut("Tem cliente")
+EndIf
+
+// ERRADO tambem — LastRec eh alias de RecCount, mesmo problema
+If LastRec() > 0
     ConOut("Tem cliente")
 EndIf
 
@@ -372,7 +382,7 @@ QRY->(DbCloseArea())
 ```
 
 Padrões detectados (não confundir com limites de business como `RecCount() > 100`):
-`RecCount() > 0`, `RecCount() >= 1`, `RecCount() != 0`, `RecCount() <> 0`, e variantes com alias-call (`SA1->(RecCount()) > 0`).
+`RecCount() > 0`, `RecCount() >= 1`, `RecCount() != 0`, `RecCount() <> 0`, e variantes com alias-call (`SA1->(RecCount()) > 0`). Idem para `LastRec()` em qualquer dos formatos acima — TDN documenta `LastRec` como alias funcional de `RecCount`, então mesmo problema de full scan.
 
 ### BP-008 — Shadowing de variável reservada framework
 
@@ -398,8 +408,13 @@ User Function XYZGood2()
 Return
 ```
 
-Reservadas cobertas pela detecção (case-insensitive, 13 nomes):
-`cFilAnt`, `cEmpAnt`, `cUserName`, `cModulo`, `cTransac`, `nProgAnt`, `oMainWnd`, `__cInternet`, `nUsado`, `PARAMIXB`, `aRotina`, `lMsErroAuto`, `lMsHelpAuto`.
+Reservadas cobertas pela detecção (case-insensitive, **20 nomes**):
+- **Sessao/empresa:** `cFilAnt`, `cEmpAnt`, `cUserName`, `cModulo`, `cTransac`, `nProgAnt`, `oMainWnd`, `__cInternet`, `__Language`, `nUsado`.
+- **Data sistema (CRITICO — shadow quebra toda logica de competencia):** `dDataBase`.
+- **Pontos de entrada / state runtime:** `PARAMIXB`, `aRotina`, `lMsErroAuto`, `lMsHelpAuto`, `INCLUI`, `ALTERA`.
+- **Backup / introspecao:** `cFunBkp`, `cFunName`, `lAutoErrNoFile`.
+
+Quando voce shadow `dDataBase`, qualquer `MV_DATABASE` do Protheus passa a usar a sua data local — saldos, competencias e movimentacoes saem todas erradas e a falha eh silenciosa. `INCLUI`/`ALTERA` shadow quebra detecao de modo de operacao em rotinas de gatilho. `lMsErroAuto` shadow esconde erros de `MsExecAuto`.
 
 ### SX-005 — campo custom não-referenciado
 

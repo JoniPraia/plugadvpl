@@ -4,6 +4,72 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.10] - 2026-05-13
+
+### Audit release — sem regras novas; 4 gaps de qualidade identificados na revisão item-a-item de v0.3.4–v0.3.9 (com pesquisa em TDN/casos reais), todos corrigidos.
+
+### Added
+- **Test guard novo `test_all_check_functions_registered_in_orchestrator`**
+  (8º teste em `test_lint_catalog_consistency.py`) — verifica que toda
+  função `_check_*` extraída dos docstrings de `parsing/lint.py` aparece
+  registrada em `lint_source()` (single-file via
+  `findings.extend(_check_xxx(...))`) ou em `_CROSS_FILE_RULES` (cross-file
+  SX-*). Fecha gap "F6" da auditoria: catalog dizia `active`, função
+  existia no módulo, mas se ninguém chamasse no orchestrator a regra nunca
+  disparava em runtime e nenhum teste pegava.
+- **BP-008**: 7 reservadas adicionais cobertas (de 13 → **20**):
+  - `dDataBase` (CRÍTICO — shadow quebra toda lógica de competência/data
+    de movimento; achado mais grave da auditoria)
+  - `INCLUI`, `ALTERA` (modo de operação em pontos de entrada/gatilhos)
+  - `cFunBkp`, `cFunName` (introspecção de função corrente)
+  - `lAutoErrNoFile` (controle de erro em rotinas auto)
+  - `__Language` (idioma da sessão)
+
+  +4 testes positivos novos (`test_positive_dDataBase_shadow`,
+  `test_positive_INCLUI_ALTERA_shadow`, `test_positive_cFunName_cFunBkp_shadow`,
+  `test_positive_lAutoErrNoFile_shadow`).
+- **PERF-005**: detecta agora `LastRec()` além de `RecCount()`.
+  TDN documenta `LastRec` como funcionalmente idêntico a `RecCount`
+  (mesmo full-scan O(n)) — gap real da v0.3.6, qualquer codebase legacy
+  que usa `LastRec() > 0` (padrão CA-Clipper/xBase histórico) escapava
+  do detector. +3 testes (`test_positive_lastrec_for_existence`,
+  `test_positive_lastrec_alias_call`, `test_negative_lastrec_business_limit`).
+- **MOD-004**: detecta agora `MsNewGetDados` além de
+  `AxCadastro`/`Modelo2`/`Modelo3`. TDN marca `MsNewGetDados` como
+  **deprecated desde 12.1.17** — grid editável standalone substituído por
+  `AddGrid` em ViewDef (MVC) ou `FWFormBrowse + AddGrid`. +2 testes
+  (`test_positive_msnewgetdados_call`, `test_positive_msnewgetdados_assign`).
+
+### Changed
+- Catálogo `lookups/lint_rules.json`:
+  - `BP-008.descricao`: lista expandida das 20 reservadas, com `dDataBase`
+    explicitamente marcada como CRÍTICO.
+  - `PERF-005.titulo` + `descricao`: cita `LastRec()` como alias de
+    `RecCount()`.
+  - `MOD-004.titulo` + `descricao`: cita `MsNewGetDados` como deprecated
+    desde 12.1.17.
+- Skill `advpl-code-review`:
+  - Tabela "Single-file": entradas de BP-008/PERF-005/MOD-004 mencionam
+    expansão em v0.3.10.
+  - Sub-seção BP-008: lista das 20 reservadas agrupada por categoria
+    (sessão/data/PE-state/backup) + nota sobre por que `dDataBase` é o
+    shadow mais perigoso.
+  - Sub-seção PERF-005: exemplo errado adicional com `LastRec() > 0`.
+  - Sub-seção MOD-004: exemplo legacy adicional com `MsNewGetDados`.
+
+### Tests
+- 101 testes (era 93): 93 lint + 8 catalog consistency. Verde, zero
+  regressão. `test_active_count_matches_impl` continua dinâmico — nunca
+  precisa atualizar quando promove planned→active no futuro.
+
+### Notes
+- Catálogo continua em **24 active + 6 planned + 5 cross-file = 35**
+  (auditoria não promoveu novas regras, só expandiu cobertura interna
+  das 3 modificadas).
+- Auditoria seguiu metodologia: pesquisa web (TDN, github
+  nginformatica, Code Analysis docs) → identificação de gap real →
+  TDD (red test) → fix → green test → catalog/skill updates.
+
 ## [0.3.9] - 2026-05-13
 
 ### Added

@@ -574,6 +574,51 @@ class TestBP008ShadowedReserved:
         assert len(bp008) == 1
         assert bp008[0]["linha"] == 3
 
+    # --- v0.3.10 audit: novas reservadas adicionadas ---
+
+    def test_positive_dDataBase_shadow(self) -> None:
+        """dDataBase é a data sistema — shadowing dela quebra qualquer date logic."""
+        src = (
+            "User Function XYZBad()\n"
+            "    Local dDataBase := Date() + 30\n"   # shadow CRITICO
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-008" in _ids(findings)
+
+    def test_positive_INCLUI_ALTERA_shadow(self) -> None:
+        """INCLUI/ALTERA são flags MVC preenchidas pelo framework."""
+        src = (
+            "User Function XYZBad()\n"
+            "    Local INCLUI := .T.\n"
+            "    Local ALTERA := .F.\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        bp008 = [f for f in findings if f["regra_id"] == "BP-008"]
+        assert len(bp008) == 2
+
+    def test_positive_cFunName_cFunBkp_shadow(self) -> None:
+        """cFunName/cFunBkp — backup de FunName(), reservadas framework."""
+        src = (
+            "User Function XYZBad()\n"
+            "    Local cFunName := 'XYZ'\n"
+            "    Local cFunBkp := FunName()\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        bp008 = [f for f in findings if f["regra_id"] == "BP-008"]
+        assert len(bp008) == 2
+
+    def test_positive_lAutoErrNoFile_shadow(self) -> None:
+        src = (
+            "User Function XYZBad()\n"
+            "    Private lAutoErrNoFile := .T.\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-008" in _ids(findings)
+
 
 # --- PERF-005: RecCount() para checar existência ---------------------------
 
@@ -699,6 +744,39 @@ class TestPERF005ReccountForExistence:
         assert len(perf) == 1
         assert perf[0]["linha"] == 4
         assert "Eof" in perf[0]["sugestao_fix"]
+
+    # --- v0.3.10 audit: LastRec adicionada (idêntica a RecCount per TDN) ---
+
+    def test_positive_lastrec_gt_zero(self) -> None:
+        """LastRec é idêntica a RecCount, mesmo anti-pattern."""
+        src = (
+            "User Function XYZBad()\n"
+            "    If LastRec() > 0\n"
+            "    EndIf\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-005" in _ids(findings)
+
+    def test_positive_lastrec_alias_call(self) -> None:
+        src = (
+            "User Function XYZBad()\n"
+            "    If SA1->(LastRec()) > 0\n"
+            "    EndIf\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-005" in _ids(findings)
+
+    def test_negative_lastrec_assignment(self) -> None:
+        src = (
+            "User Function XYZGood()\n"
+            "    Local nUlt := LastRec()\n"
+            "    ConOut(cValToChar(nUlt))\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-005" not in _ids(findings)
 
 
 # --- SEC-005: uso de função TOTVS restrita -----------------------------------
@@ -940,6 +1018,30 @@ class TestMOD004LegacyCadastro:
         mod = [f for f in findings if f["regra_id"] == "MOD-004"]
         assert len(mod) == 1
         assert mod[0]["linha"] == 3
+
+    # --- v0.3.10 audit: MsNewGetDados deprecada desde 12.1.17 ---
+
+    def test_positive_msnewgetdados(self) -> None:
+        """MsNewGetDados — classe deprecada, TOTVS recomenda MVC AddGrid."""
+        src = (
+            "User Function ZGrid()\n"
+            "    Local oGrid := MsNewGetDados():New(0, 0, 200, 400, 0)\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        mod = [f for f in findings if f["regra_id"] == "MOD-004"]
+        assert len(mod) == 1
+        assert "MsNewGetDados" in mod[0]["sugestao_fix"] or "12.1.17" in mod[0]["sugestao_fix"]
+
+    def test_negative_msnewgetdados_in_string(self) -> None:
+        src = (
+            "User Function ZGood()\n"
+            "    Local cMsg := 'MsNewGetDados foi removida em 12.1.17'\n"
+            "    ConOut(cMsg)\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "MOD-004" not in _ids(findings)
 
 
 # --- PERF-004: string concat com +/+= em loop --------------------------------

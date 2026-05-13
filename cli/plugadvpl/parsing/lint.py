@@ -683,10 +683,16 @@ _BP008_RESERVED_VARS: frozenset[str] = frozenset(
     for name in (
         # Contexto de empresa/filial/usuario
         "cFilAnt", "cEmpAnt", "cUserName", "cModulo", "cTransac", "nProgAnt",
+        # Data sistema (CRITICA — shadowing dela quebra qualquer date logic)
+        "dDataBase",
+        # Funcao name tracking (FunName/SetFunName cache)
+        "cFunBkp", "cFunName",
         # Janela principal e flags de execucao
-        "oMainWnd", "__cInternet", "nUsado",
-        # PE / MVC / ExecAuto
-        "PARAMIXB", "aRotina", "lMsErroAuto", "lMsHelpAuto",
+        "oMainWnd", "__cInternet", "__Language", "nUsado",
+        # PE / MVC / ExecAuto / Helper
+        "PARAMIXB", "aRotina", "lMsErroAuto", "lMsHelpAuto", "lAutoErrNoFile",
+        # MVC operation flags (preenchidas pelo framework conforme acao do usuario)
+        "INCLUI", "ALTERA",
     )
 )
 
@@ -883,11 +889,13 @@ def _check_perf004_string_concat_in_loop(
 # Funções de UI legacy substituídas pelo padrão MVC moderno (FWMBrowse +
 # MenuDef + ModelDef + ViewDef). Detecção case-insensitive, exclui method
 # calls (`obj:Modelo3()`), strings, comentários e definições homônimas.
-_MOD004_LEGACY_FUNCS: frozenset[str] = frozenset({"AXCADASTRO", "MODELO2", "MODELO3"})
+_MOD004_LEGACY_FUNCS: frozenset[str] = frozenset({
+    "AXCADASTRO", "MODELO2", "MODELO3", "MSNEWGETDADOS",
+})
 
 _MOD004_CALL_RE = re.compile(
     r"(?<![:.])"                                # not method or property access
-    r"\b(AxCadastro|Modelo2|Modelo3)\s*\(",     # function name + opening paren
+    r"\b(AxCadastro|Modelo2|Modelo3|MsNewGetDados)\s*\(",    # function/class name + opening paren
     re.IGNORECASE,
 )
 
@@ -908,6 +916,11 @@ _MOD004_MIGRATION_HINTS: dict[str, str] = {
         "Migre para MVC: ModelDef() com `AddFields` (cabecalho) + `AddGrid` (itens) + "
         "`SetRelation` ligando filho ao pai via chaves SX9. "
         "Veja `[[advpl-mvc]]` para template completo."
+    ),
+    "MSNEWGETDADOS": (
+        "MsNewGetDados é classe deprecada desde Protheus 12.1.17 (não recebe mais updates "
+        "TOTVS) — TOTVS recomenda MVC. Para grid em tela MVC use `oModel:AddGrid(\"DETAIL\", \"MASTER\", oStruct)`. "
+        "Para grid ad-hoc fora de MVC, considere `FWBrowse` ou tabela temporária + AddGrid em mini-MVC."
     ),
 }
 
@@ -1057,13 +1070,14 @@ def _check_sec005_restricted_function_call(
 
 # --- PERF-005: RecCount() para checar existência ---------------------------
 
-# Detecta `RecCount() > 0`, `RecCount() >= 1`, `RecCount() != 0`, `RecCount() <> 0`
-# (com ou sem alias-call `SA1->(RecCount())`). NÃO detecta:
+# Detecta `RecCount() > 0` / `LastRec() > 0` (e variantes >=1, !=0, <>0)
+# com ou sem alias-call `SA1->(RecCount())`. TDN confirma que LastRec é
+# idêntica a RecCount e a substitui (RecCount é obsoleta, mantida só por compat).
+# NÃO detecta:
 # - `RecCount() > 100` (limite específico, intencional)
 # - `nTotal := RecCount()` (armazena, não checa)
-# Padrão de comparação: > 0, >= 1, != 0, <> 0 (case-insensitive operadores).
 _PERF005_RE = re.compile(
-    r"\bRecCount\s*\(\s*\)\s*\)?\s*"        # RecCount() possivelmente fechando alias->()
+    r"\b(?:RecCount|LastRec)\s*\(\s*\)\s*\)?\s*"   # RecCount() ou LastRec() poss. fechando alias->()
     r"(?:>\s*0(?!\d)|>=\s*1(?!\d)|!=\s*0(?!\d)|<>\s*0(?!\d))",
     re.IGNORECASE,
 )
@@ -1072,10 +1086,11 @@ _PERF005_RE = re.compile(
 def _check_perf005_reccount_for_existence(
     arquivo: str, parsed: dict[str, Any], content: str
 ) -> list[dict[str, Any]]:
-    """PERF-005 (warning): RecCount() > 0 / >= 1 / != 0 / <> 0 para checar existência.
+    """PERF-005 (warning): RecCount() ou LastRec() para checar existência (use !Eof()).
 
-    RecCount() força full scan do alias. Para apenas verificar se existe pelo
-    menos 1 registro, ``!Eof()`` após DbSeek/DbGoTop é O(1).
+    RecCount()/LastRec() forçam full scan do alias. Para apenas verificar se
+    existe pelo menos 1 registro, ``!Eof()`` após DbSeek/DbGoTop é O(1).
+    LastRec é idêntica a RecCount e a substitui (RecCount obsoleta, kept só por compat).
     """
     findings: list[dict[str, Any]] = []
     stripped = strip_advpl(content, strip_strings=True)
@@ -1093,8 +1108,10 @@ def _check_perf005_reccount_for_existence(
                 "severidade": "warning",
                 "snippet": _snippet_at_line(content, linha),
                 "sugestao_fix": (
-                    "RecCount() força full scan da tabela. Para checar existência, "
-                    "use !Eof() após DbSeek/DbGoTop (O(1)) ou subquery EXISTS em SQL."
+                    "RecCount()/LastRec() forçam full scan da tabela. Para checar "
+                    "existência, use !Eof() após DbSeek/DbGoTop (O(1)) ou subquery "
+                    "EXISTS em SQL. LastRec é idêntica a RecCount (a substitui — "
+                    "RecCount é obsoleta, kept por compat)."
                 ),
             }
         )
