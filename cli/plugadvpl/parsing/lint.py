@@ -750,6 +750,105 @@ def _check_bp008_shadowed_reserved(
     return findings
 
 
+# --- SEC-005: uso de função TOTVS restrita -------------------------------
+
+# Carrega lookup `funcoes_restritas` uma vez (lazy + lru_cache via module-level dict).
+# Estrutura: { uppercase_name: alternativa_str }
+_SEC005_RESTRICTED: dict[str, str] | None = None
+
+
+def _sec005_load_restricted() -> dict[str, str]:
+    global _SEC005_RESTRICTED
+    if _SEC005_RESTRICTED is None:
+        import json as _json
+        from importlib import resources as _ir
+        text = _ir.files("plugadvpl").joinpath("lookups/funcoes_restritas.json").read_text(
+            encoding="utf-8"
+        )
+        _SEC005_RESTRICTED = {
+            entry["nome"].upper(): entry.get("alternativa", "") or ""
+            for entry in _json.loads(text)
+        }
+    return _SEC005_RESTRICTED
+
+
+# Match `name(` precedido por algo que NÃO seja:
+#   - `:` ou `.` (method/property call: oObj:Name(), pkg.name())
+#   - palavras-chave de definição (Function, Method, Class, Procedure)
+# Negative lookbehind controla o caso `:`/`.`. Definitons são tratadas separadamente
+# checando se a linha antes do match começa com Function/Method/Class.
+_SEC005_CALL_RE = re.compile(
+    r"(?<![:.])"           # not after : or .
+    r"\b([A-Za-z_][A-Za-z0-9_]*)"   # identifier
+    r"\s*\(",                       # opening paren
+)
+
+# Padrão pra detectar contexto de declaração (não match em definição da própria fn).
+_SEC005_DEFINITION_RE = re.compile(
+    r"\b(?:User\s+Function|Static\s+Function|Function|Method|Class|Procedure)\s+\Z",
+    re.IGNORECASE,
+)
+
+
+def _check_sec005_restricted_function_call(
+    arquivo: str, parsed: dict[str, Any], content: str
+) -> list[dict[str, Any]]:
+    """SEC-005 (critical): chamada de função listada em funcoes_restritas (lookup TOTVS).
+
+    Funções TOTVS internas/restritas (~194 catalogadas) não devem aparecer em
+    código custom: não documentadas, não suportadas, podem ser removidas em
+    release-bump. Algumas com compilação bloqueada desde 12.1.33.
+
+    Estratégia:
+      1. Strip comentários + strings.
+      2. Encontra todo `<NAME>(` com lookbehind negativo pra `:`/`.` (não pega method calls).
+      3. Skip se precedida por keyword de definição (User Function NAME(...) é a própria fn).
+      4. Compara uppercase contra _SEC005_RESTRICTED.
+    """
+    findings: list[dict[str, Any]] = []
+    restricted = _sec005_load_restricted()
+    stripped = strip_advpl(content, strip_strings=True)
+    funcoes = parsed.get("funcoes", []) or []
+    seen: set[tuple[int, str]] = set()  # dedup por (linha, nome) — uma chamada repetida = 1 finding
+
+    for m in _SEC005_CALL_RE.finditer(stripped):
+        name = m.group(1)
+        upper = name.upper()
+        if upper not in restricted:
+            continue
+        # Skip definição: olha 50 chars antes do match pra ver se é Function/Method/Class
+        prefix = stripped[max(0, m.start() - 50) : m.start()]
+        if _SEC005_DEFINITION_RE.search(prefix):
+            continue
+        linha = _line_at(stripped, m.start())
+        key = (linha, upper)
+        if key in seen:
+            continue
+        seen.add(key)
+        funcao = _funcao_at_line(funcoes, linha)
+        alternativa = restricted[upper]
+        sugestao = (
+            f"Função `{name}` é TOTVS-restrita (catalogada em funcoes_restritas) — "
+            f"não documentada, não suportada, pode quebrar em release-bump."
+        )
+        if alternativa:
+            sugestao += f" Alternativa sugerida: {alternativa}."
+        else:
+            sugestao += " Substituta por equivalente público documentado em TDN."
+        findings.append(
+            {
+                "arquivo": arquivo,
+                "funcao": funcao,
+                "linha": linha,
+                "regra_id": "SEC-005",
+                "severidade": "critical",
+                "snippet": _snippet_at_line(content, linha),
+                "sugestao_fix": sugestao,
+            }
+        )
+    return findings
+
+
 # --- PERF-005: RecCount() para checar existência ---------------------------
 
 # Detecta `RecCount() > 0`, `RecCount() >= 1`, `RecCount() != 0`, `RecCount() <> 0`
@@ -800,7 +899,7 @@ def _check_perf005_reccount_for_existence(
 
 
 def lint_source(parsed: dict[str, Any], content: str) -> list[dict[str, Any]]:
-    """Aplica as 15 regras single-file. Retorna list[Finding] ordenada por linha.
+    """Aplica as 16 regras single-file. Retorna list[Finding] ordenada por linha.
 
     Args:
         parsed: dict produzido por parse_source() (com funcoes, sql_embedado, etc.).
@@ -821,6 +920,7 @@ def lint_source(parsed: dict[str, Any], content: str) -> list[dict[str, Any]]:
     findings.extend(_check_bp008_shadowed_reserved(arquivo, parsed, content))
     findings.extend(_check_sec001_rpcsetenv_in_restful(arquivo, parsed, content))
     findings.extend(_check_sec002_user_function_no_prefix(arquivo, parsed, content))
+    findings.extend(_check_sec005_restricted_function_call(arquivo, parsed, content))
     findings.extend(_check_perf001_select_star(arquivo, parsed, content))
     findings.extend(_check_perf002_no_notdel(arquivo, parsed, content))
     findings.extend(_check_perf003_no_xfilial(arquivo, parsed, content))

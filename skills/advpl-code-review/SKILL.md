@@ -4,7 +4,7 @@ description: 24 regras de code review ADVPL/TLPP implementadas (13 single-file v
 
 # advpl-code-review — As regras de code review do plugadvpl
 
-`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **26 são efetivamente detectadas** (v0.3.6+): **15 single-file** via regex/AST sobre o conteúdo do fonte, e **11 cross-file `SX-*`** que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes). As outras 9 ficam **catalogadas como `status='planned'`** — sem detecção automática hoje, mas servem como roadmap + checklist mental.
+`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **27 são efetivamente detectadas** (v0.3.7+): **16 single-file** via regex/AST/lookup sobre o conteúdo do fonte, e **11 cross-file `SX-*`** que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes). As outras 8 ficam **catalogadas como `status='planned'`** — sem detecção automática hoje, mas servem como roadmap + checklist mental.
 
 > **Catálogo alinhado com a impl** desde v0.3.4. Antes (v0.3.0..v0.3.3), o
 > `lookups/lint_rules.json` tinha 25 itens em drift com `parsing/lint.py`
@@ -24,7 +24,7 @@ Rode `/plugadvpl:lint <arq>` para resultado de fato — esta skill é o **guia m
 
 ## As 24 regras detectadas — quick reference
 
-### Single-file (15) — `lint.py`, regex/AST sobre conteúdo
+### Single-file (16) — `lint.py`, regex/AST/lookup sobre conteúdo
 
 | ID         | Sev      | Comportamento real implementado                                                |
 |------------|----------|-------------------------------------------------------------------------------|
@@ -37,6 +37,7 @@ Rode `/plugadvpl:lint <arq>` para resultado de fato — esta skill é o **guia m
 | `BP-008`   | critical | Shadowing de variável reservada framework (`cFilAnt`, `cEmpAnt`, `PARAMIXB`, `lMsErroAuto`, etc. — 13 reservadas cobertas) — **novo em v0.3.5** |
 | `SEC-001`  | critical | `RpcSetEnv` dentro de classe que herda de `WSRESTFUL`                          |
 | `SEC-002`  | warning  | `User Function` sem prefixo cliente (2-3 letras) ou nome de PE oficial         |
+| `SEC-005`  | critical | Chamada de função TOTVS restrita (lookup `funcoes_restritas`, ~194 entries) — **novo em v0.3.7** |
 | `PERF-001` | warning  | `SELECT *` em `BeginSql`/`TCQuery`                                             |
 | `PERF-002` | error    | SQL contra tabela Protheus **sem `%notDel%`** (traz registros deletados)       |
 | `PERF-003` | error    | SQL contra tabela Protheus **sem `%xfilial%`** (cross-filial data leak)        |
@@ -62,7 +63,7 @@ Disponíveis após `/plugadvpl:ingest-sx <pasta-csv>`. Acionadas com `--cross-fi
 | `SX-010`  | error    | Gatilho `X7_TIPO='P'` (Pesquisar) sem `X7_SEEK='S'` válido                      |
 | `SX-011`  | error    | `X3_F3` aponta pra alias SXB que não existe                                    |
 
-## As 9 regras catalogadas mas não detectadas (v0.3.6)
+## As 8 regras catalogadas mas não detectadas (v0.3.7)
 
 Aparecem em `lookups/lint_rules.json` com `status="planned"`. Use como checklist mental.
 
@@ -72,7 +73,6 @@ Aparecem em `lookups/lint_rules.json` com `status="planned"`. Use como checklist
 | `BP-007`   | info     | Função sem header Protheus.doc                                                |
 | `SEC-003`  | warning  | PII/credenciais em `ConOut`/`FwLogMsg`                                        |
 | `SEC-004`  | warning  | Credenciais hardcoded                                                         |
-| `SEC-005`  | critical | Uso de função TOTVS restrita/interna (lookup `funcoes_restritas`)             |
 | `PERF-004` | warning  | Concatenação de string com `+`/`+=` em loop                                   |
 | `PERF-006` | info     | Query sem hint de índice ou ORDER BY não casando índice                       |
 | `MOD-003`  | info     | Grupos de funções com prefixo comum candidatas a classe                       |
@@ -336,6 +336,7 @@ Decisão: **remover** do SX3 + script de delete, OU implementar uso pendente.
 - [ ] Todo `Begin Transaction` tem `End Transaction` pareado (`BP-002`).
 - [ ] Nenhuma reservada (`cFilAnt`/`cEmpAnt`/`PARAMIXB`/`lMsErroAuto`/etc.) declarada como Local/Static/Private/Public (`BP-008`).
 - [ ] Nenhum REST API tem `RpcSetEnv` (`SEC-001`) — use `PrepareIn`/`TenantId`.
+- [ ] Nenhuma chamada a função TOTVS restrita (`StaticCall`/`PTInternal`/etc.) (`SEC-005`) — substitua por equivalente público.
 
 ### Error
 

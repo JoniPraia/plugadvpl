@@ -143,10 +143,11 @@
     "titulo": "Uso de função TOTVS restrita/interna (lookup funcoes_restritas)",
     "severidade": "critical",
     "categoria": "security",
-    "descricao": "TOTVS mantém ~195 funções/classes/variáveis internas que NÃO devem ser usadas em customização: não documentadas, não suportadas, podem ser removidas/alteradas sem aviso. Algumas têm compilação bloqueada desde 12.1.33.",
-    "fix_guidance": "Substitua por equivalente público documentado em TDN. Consulte tabela `funcoes_restritas` (cataloga as 195 conhecidas). Use `/plugadvpl:find function <nome>` para checar se uma função é restrita.",
+    "descricao": "TOTVS mantém ~194 funções/classes/variáveis internas catalogadas em `funcoes_restritas` que NÃO devem ser usadas em customização: não documentadas, não suportadas, podem ser removidas/alteradas sem aviso. Algumas têm compilação bloqueada desde 12.1.33 (`StaticCall`, `PTInternal`, etc.). A regra detecta chamadas no formato `<NAME>(...)` (case-insensitive), excluindo: method calls (`obj:Name()`), property access (`pkg.Name()`), declarações de função homônima (`User Function StaticCall()`), strings literais e comentários.",
+    "fix_guidance": "Substitua por equivalente público documentado em TDN. Quando o catálogo `funcoes_restritas` tem `alternativa` cadastrada, a sugestão do lint cita ela. Use `/plugadvpl:find function <nome>` para checar se uma função é restrita.",
     "detection_kind": "lookup",
-    "status": "planned"
+    "status": "active",
+    "impl_function": "_check_sec005_restricted_function_call"
   },
   {
     "regra_id": "PERF-001",

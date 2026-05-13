@@ -699,3 +699,121 @@ class TestPERF005ReccountForExistence:
         assert len(perf) == 1
         assert perf[0]["linha"] == 4
         assert "Eof" in perf[0]["sugestao_fix"]
+
+
+# --- SEC-005: uso de função TOTVS restrita -----------------------------------
+
+
+class TestSEC005RestrictedFunctionCall:
+    """SEC-005 (critical): chamada a função catalogada em funcoes_restritas (lookup)."""
+
+    def test_positive_staticcall_blocked(self) -> None:
+        """StaticCall é bloqueada desde 12.1.33 — uso explícito é critical."""
+        src = (
+            "User Function XYZBad()\n"
+            "    StaticCall('SOMEFONTE', 'someFunc', 'arg')\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        sec = [f for f in findings if f["regra_id"] == "SEC-005"]
+        assert len(sec) == 1
+        assert sec[0]["severidade"] == "critical"
+        assert "StaticCall" in sec[0]["sugestao_fix"] or "StaticCall" in sec[0]["snippet"]
+
+    def test_positive_case_insensitive(self) -> None:
+        """ADVPL é case-insensitive — STATICCALL e staticcall match igual."""
+        src = (
+            "User Function XYZBad()\n"
+            "    STATICCALL('A', 'B')\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-005" in _ids(findings)
+
+    def test_positive_internal_function(self) -> None:
+        """PTInternal é uma das funções internas blocked."""
+        src = (
+            "User Function XYZBad()\n"
+            "    nVal := PTInternal(1, 2)\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-005" in _ids(findings)
+
+    def test_negative_user_function_call(self) -> None:
+        """Chamada U_XYZFoo() é custom, não restrita."""
+        src = (
+            "User Function XYZGood()\n"
+            "    U_XYZHelper('arg')\n"
+            "    Local x := MyFunction()\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-005" not in _ids(findings)
+
+    def test_negative_native_function(self) -> None:
+        """Função built-in TOTVS pública (DbSelectArea, AllTrim) NÃO é restrita."""
+        src = (
+            "User Function XYZGood()\n"
+            "    DbSelectArea('SA1')\n"
+            "    DbSetOrder(1)\n"
+            "    DbSeek(xFilial('SA1') + cCod)\n"
+            "    Local cNome := AllTrim(SA1->A1_NOME)\n"
+            "    ConOut(cNome)\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-005" not in _ids(findings)
+
+    def test_negative_function_definition(self) -> None:
+        """`User Function StaticCall()` definindo é a própria função custom — não match."""
+        src = (
+            "User Function StaticCall()\n"   # nome custom homônimo, não invoke
+            "    Return .T.\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        # No call to StaticCall here — só a definição; não deve disparar
+        assert "SEC-005" not in _ids(findings)
+
+    def test_negative_method_call(self) -> None:
+        """oObj:StaticCall() — method call em objeto, não chamada de função."""
+        src = (
+            "User Function XYZGood()\n"
+            "    Local oObj := MyClass():New()\n"
+            "    oObj:StaticCall()\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-005" not in _ids(findings)
+
+    def test_negative_in_string(self) -> None:
+        src = (
+            "User Function XYZGood()\n"
+            "    Local cMsg := 'Nao use StaticCall em codigo novo'\n"
+            "    ConOut(cMsg)\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-005" not in _ids(findings)
+
+    def test_negative_in_comment(self) -> None:
+        src = (
+            "User Function XYZGood()\n"
+            "    // StaticCall foi removido em 2024\n"
+            "    Return .T.\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-005" not in _ids(findings)
+
+    def test_positive_includes_alternative_in_fix(self) -> None:
+        """Se a entrada do catálogo tem `alternativa`, sugestao_fix deve mencionar."""
+        src = (
+            "User Function XYZBad()\n"
+            "    StaticCall('A', 'B', 'C')\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        sec = [f for f in findings if f["regra_id"] == "SEC-005"]
+        # StaticCall tem alternativa cadastrada
+        assert any("User Function" in s["sugestao_fix"] or "TLPP" in s["sugestao_fix"]
+                   for s in sec)

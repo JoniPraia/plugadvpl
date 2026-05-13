@@ -4,6 +4,37 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-05-13
+
+### Added
+- **`SEC-005` (critical) implementado** — detector de chamada de função
+  TOTVS restrita. Antes catalogada como `planned`. Carrega o lookup
+  `funcoes_restritas` (~194 entries: `StaticCall`, `PTInternal`, e ~192
+  internas categorizadas por módulo) e cruza com chamadas de função no
+  fonte. Detecção:
+  - Match `<NAME>(...)` case-insensitive (ADVPL não diferencia caso)
+  - Negative lookbehind pra `:`/`.` — exclui method calls (`obj:Name()`)
+    e property access TLPP
+  - Pula declarações de função homônima (`User Function StaticCall()`)
+  - Pula matches em strings literais e comentários
+  - Dedup por (linha, nome) — múltiplas chamadas iguais na mesma linha = 1 finding
+  
+  Sugestão de fix usa o campo `alternativa` do lookup quando disponível
+  (ex: StaticCall sugere "User Function pública ou TLPP namespaced").
+
+- **`tests/unit/test_lint.py::TestSEC005RestrictedFunctionCall`** (10 asserts):
+  4 positives (StaticCall direto, case-insensitive, PTInternal interna,
+  alternativa em sugestao_fix) + 6 negatives (User Function call, native
+  function, function definition homônima, method call, em string, em
+  comentário). Validado 10/10 PASS, 62/62 todos lint tests sem regressão.
+
+### Changed
+- **Catálogo `lint_rules.json`**: SEC-005 promovido de `status="planned"`
+  para `status="active"` + `impl_function="_check_sec005_restricted_function_call"`.
+  Total: **27 active + 8 planned = 35** (mantido).
+- **Skill `advpl-code-review`**: SEC-005 movida da tabela "planned" pra
+  "active" (16 single-file agora). Critical checklist inclui SEC-005.
+
 ## [0.3.6] - 2026-05-13
 
 ### Added
