@@ -193,13 +193,14 @@
   },
   {
     "regra_id": "PERF-005",
-    "titulo": "RecCount() > 0 para checar existência (use !Eof())",
+    "titulo": "RecCount() para checar existência (use !Eof())",
     "severidade": "warning",
     "categoria": "performance",
-    "descricao": "`RecCount()` força full scan do alias para contar todos os registros. Para apenas verificar se existe pelo menos 1 registro, `!Eof()` após `DbSeek` ou `DbGoTop` é O(1).",
-    "fix_guidance": "Substitua `If RecCount() > 0` por `If !Eof()` ou `If !<alias>->(Eof())`. Em SQL, use `SELECT COUNT(*) FROM ... LIMIT 1` ou subquery EXISTS.",
+    "descricao": "`RecCount()` força full scan do alias para contar todos os registros. Para apenas verificar se existe pelo menos 1 registro, `!Eof()` após `DbSeek`/`DbGoTop` é O(1). A regra detecta os padrões `RecCount() > 0`, `RecCount() >= 1`, `RecCount() != 0` e `RecCount() <> 0` (legacy), incluindo variante com alias-call `SA1->(RecCount()) > 0`. NÃO sinaliza limites de business reais (`RecCount() > 100`) nem armazenamento (`nTotal := RecCount()`).",
+    "fix_guidance": "Substitua `If RecCount() > 0` por `If !Eof()` ou `If !<alias>->(Eof())`. Em SQL embarcado, use `SELECT COUNT(*) FROM ... LIMIT 1` ou subquery `WHERE EXISTS (...)`.",
     "detection_kind": "regex",
-    "status": "planned"
+    "status": "active",
+    "impl_function": "_check_perf005_reccount_for_existence"
   },
   {
     "regra_id": "PERF-006",

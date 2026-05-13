@@ -750,11 +750,57 @@ def _check_bp008_shadowed_reserved(
     return findings
 
 
+# --- PERF-005: RecCount() para checar existência ---------------------------
+
+# Detecta `RecCount() > 0`, `RecCount() >= 1`, `RecCount() != 0`, `RecCount() <> 0`
+# (com ou sem alias-call `SA1->(RecCount())`). NÃO detecta:
+# - `RecCount() > 100` (limite específico, intencional)
+# - `nTotal := RecCount()` (armazena, não checa)
+# Padrão de comparação: > 0, >= 1, != 0, <> 0 (case-insensitive operadores).
+_PERF005_RE = re.compile(
+    r"\bRecCount\s*\(\s*\)\s*\)?\s*"        # RecCount() possivelmente fechando alias->()
+    r"(?:>\s*0(?!\d)|>=\s*1(?!\d)|!=\s*0(?!\d)|<>\s*0(?!\d))",
+    re.IGNORECASE,
+)
+
+
+def _check_perf005_reccount_for_existence(
+    arquivo: str, parsed: dict[str, Any], content: str
+) -> list[dict[str, Any]]:
+    """PERF-005 (warning): RecCount() > 0 / >= 1 / != 0 / <> 0 para checar existência.
+
+    RecCount() força full scan do alias. Para apenas verificar se existe pelo
+    menos 1 registro, ``!Eof()`` após DbSeek/DbGoTop é O(1).
+    """
+    findings: list[dict[str, Any]] = []
+    stripped = strip_advpl(content, strip_strings=True)
+    funcoes = parsed.get("funcoes", []) or []
+
+    for m in _PERF005_RE.finditer(stripped):
+        linha = _line_at(stripped, m.start())
+        funcao = _funcao_at_line(funcoes, linha)
+        findings.append(
+            {
+                "arquivo": arquivo,
+                "funcao": funcao,
+                "linha": linha,
+                "regra_id": "PERF-005",
+                "severidade": "warning",
+                "snippet": _snippet_at_line(content, linha),
+                "sugestao_fix": (
+                    "RecCount() força full scan da tabela. Para checar existência, "
+                    "use !Eof() após DbSeek/DbGoTop (O(1)) ou subquery EXISTS em SQL."
+                ),
+            }
+        )
+    return findings
+
+
 # --- Orchestrator -------------------------------------------------------------
 
 
 def lint_source(parsed: dict[str, Any], content: str) -> list[dict[str, Any]]:
-    """Aplica as 14 regras single-file. Retorna list[Finding] ordenada por linha.
+    """Aplica as 15 regras single-file. Retorna list[Finding] ordenada por linha.
 
     Args:
         parsed: dict produzido por parse_source() (com funcoes, sql_embedado, etc.).
@@ -778,6 +824,7 @@ def lint_source(parsed: dict[str, Any], content: str) -> list[dict[str, Any]]:
     findings.extend(_check_perf001_select_star(arquivo, parsed, content))
     findings.extend(_check_perf002_no_notdel(arquivo, parsed, content))
     findings.extend(_check_perf003_no_xfilial(arquivo, parsed, content))
+    findings.extend(_check_perf005_reccount_for_existence(arquivo, parsed, content))
     findings.extend(_check_mod001_conout_instead_fwlogmsg(arquivo, parsed, content))
     findings.extend(_check_mod002_public_declaration(arquivo, parsed, content))
 

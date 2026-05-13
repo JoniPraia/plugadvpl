@@ -573,3 +573,129 @@ class TestBP008ShadowedReserved:
         bp008 = [f for f in findings if f["regra_id"] == "BP-008"]
         assert len(bp008) == 1
         assert bp008[0]["linha"] == 3
+
+
+# --- PERF-005: RecCount() para checar existência ---------------------------
+
+
+class TestPERF005ReccountForExistence:
+    """PERF-005 (warning): RecCount() > 0 / >= 1 / != 0 / <> 0 — use !Eof()."""
+
+    def test_positive_reccount_gt_zero(self) -> None:
+        src = (
+            "User Function XYZBad()\n"
+            "    DbSelectArea('SA1')\n"
+            "    DbGoTop()\n"
+            "    If RecCount() > 0\n"   # full scan
+            "        ConOut('tem')\n"
+            "    EndIf\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        perf = [f for f in findings if f["regra_id"] == "PERF-005"]
+        assert len(perf) == 1
+        assert perf[0]["severidade"] == "warning"
+
+    def test_positive_reccount_gte_one(self) -> None:
+        src = (
+            "User Function XYZBad()\n"
+            "    If RecCount() >= 1\n"
+            "    EndIf\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-005" in _ids(findings)
+
+    def test_positive_reccount_neq_zero(self) -> None:
+        src = (
+            "User Function XYZBad()\n"
+            "    If RecCount() != 0\n"
+            "    EndIf\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-005" in _ids(findings)
+
+    def test_positive_reccount_diff_legacy(self) -> None:
+        """ADVPL legacy != é <> — também detecta."""
+        src = (
+            "User Function XYZBad()\n"
+            "    If RecCount() <> 0\n"
+            "    EndIf\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-005" in _ids(findings)
+
+    def test_positive_alias_call(self) -> None:
+        """SA1->(RecCount()) > 0 também é o anti-pattern."""
+        src = (
+            "User Function XYZBad()\n"
+            "    If SA1->(RecCount()) > 0\n"
+            "    EndIf\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-005" in _ids(findings)
+
+    def test_negative_reccount_specific_threshold(self) -> None:
+        """RecCount() > 100 (limite de business, intencional) NÃO é PERF-005."""
+        src = (
+            "User Function XYZGood()\n"
+            "    If RecCount() > 100\n"
+            "        ConOut('muitos')\n"
+            "    EndIf\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-005" not in _ids(findings)
+
+    def test_negative_reccount_assignment(self) -> None:
+        """nTotal := RecCount() — só armazena, não checa existência."""
+        src = (
+            "User Function XYZGood()\n"
+            "    Local nTotal := RecCount()\n"
+            "    ConOut(cValToChar(nTotal))\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-005" not in _ids(findings)
+
+    def test_negative_reccount_in_string(self) -> None:
+        """'RecCount() > 0' dentro de string não match."""
+        src = (
+            "User Function XYZGood()\n"
+            "    Local cMsg := 'Use RecCount() > 0 com cuidado'\n"
+            "    ConOut(cMsg)\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-005" not in _ids(findings)
+
+    def test_negative_reccount_in_comment(self) -> None:
+        """// RecCount() > 0 — comentário não match."""
+        src = (
+            "User Function XYZGood()\n"
+            "    // RecCount() > 0 era usado em codigo legado\n"
+            "    If !Eof()\n"
+            "        ConOut('tem')\n"
+            "    EndIf\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-005" not in _ids(findings)
+
+    def test_positive_reports_correct_line(self) -> None:
+        src = (
+            "User Function XYZBad()\n"   # 1
+            "    DbSelectArea('SA1')\n"  # 2
+            "    DbGoTop()\n"             # 3
+            "    If RecCount() > 0\n"     # 4 — match
+            "    EndIf\n"                 # 5
+            "Return\n"                    # 6
+        )
+        findings = lint_source(_parsed_for(src), src)
+        perf = [f for f in findings if f["regra_id"] == "PERF-005"]
+        assert len(perf) == 1
+        assert perf[0]["linha"] == 4
+        assert "Eof" in perf[0]["sugestao_fix"]

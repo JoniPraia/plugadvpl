@@ -4,7 +4,7 @@ description: 24 regras de code review ADVPL/TLPP implementadas (13 single-file v
 
 # advpl-code-review — As regras de code review do plugadvpl
 
-`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **25 são efetivamente detectadas** (v0.3.5+): **14 single-file** via regex/AST sobre o conteúdo do fonte, e **11 cross-file `SX-*`** que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes). As outras 10 ficam **catalogadas como `status='planned'`** — sem detecção automática hoje, mas servem como roadmap + checklist mental.
+`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **26 são efetivamente detectadas** (v0.3.6+): **15 single-file** via regex/AST sobre o conteúdo do fonte, e **11 cross-file `SX-*`** que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes). As outras 9 ficam **catalogadas como `status='planned'`** — sem detecção automática hoje, mas servem como roadmap + checklist mental.
 
 > **Catálogo alinhado com a impl** desde v0.3.4. Antes (v0.3.0..v0.3.3), o
 > `lookups/lint_rules.json` tinha 25 itens em drift com `parsing/lint.py`
@@ -24,7 +24,7 @@ Rode `/plugadvpl:lint <arq>` para resultado de fato — esta skill é o **guia m
 
 ## As 24 regras detectadas — quick reference
 
-### Single-file (14) — `lint.py`, regex/AST sobre conteúdo
+### Single-file (15) — `lint.py`, regex/AST sobre conteúdo
 
 | ID         | Sev      | Comportamento real implementado                                                |
 |------------|----------|-------------------------------------------------------------------------------|
@@ -40,6 +40,7 @@ Rode `/plugadvpl:lint <arq>` para resultado de fato — esta skill é o **guia m
 | `PERF-001` | warning  | `SELECT *` em `BeginSql`/`TCQuery`                                             |
 | `PERF-002` | error    | SQL contra tabela Protheus **sem `%notDel%`** (traz registros deletados)       |
 | `PERF-003` | error    | SQL contra tabela Protheus **sem `%xfilial%`** (cross-filial data leak)        |
+| `PERF-005` | warning  | `RecCount() > 0` (e variantes) pra checar existência — use `!Eof()` — **novo em v0.3.6** |
 | `MOD-001`  | warning  | `ConOut(...)` em vez de `FwLogMsg(...)` (Code Analysis acusa)                  |
 | `MOD-002`  | warning  | Declaração `Public` (polui escopo global)                                      |
 
@@ -61,7 +62,7 @@ Disponíveis após `/plugadvpl:ingest-sx <pasta-csv>`. Acionadas com `--cross-fi
 | `SX-010`  | error    | Gatilho `X7_TIPO='P'` (Pesquisar) sem `X7_SEEK='S'` válido                      |
 | `SX-011`  | error    | `X3_F3` aponta pra alias SXB que não existe                                    |
 
-## As 10 regras catalogadas mas não detectadas (v0.3.5)
+## As 9 regras catalogadas mas não detectadas (v0.3.6)
 
 Aparecem em `lookups/lint_rules.json` com `status="planned"`. Use como checklist mental.
 
@@ -73,7 +74,6 @@ Aparecem em `lookups/lint_rules.json` com `status="planned"`. Use como checklist
 | `SEC-004`  | warning  | Credenciais hardcoded                                                         |
 | `SEC-005`  | critical | Uso de função TOTVS restrita/interna (lookup `funcoes_restritas`)             |
 | `PERF-004` | warning  | Concatenação de string com `+`/`+=` em loop                                   |
-| `PERF-005` | warning  | `RecCount() > 0` para checar existência (use `!Eof()`)                        |
 | `PERF-006` | info     | Query sem hint de índice ou ORDER BY não casando índice                       |
 | `MOD-003`  | info     | Grupos de funções com prefixo comum candidatas a classe                       |
 | `MOD-004`  | info     | Uso de `AxCadastro`/`Modelo2`/`Modelo3` em vez de MVC                         |
@@ -249,6 +249,43 @@ BeginSql Alias "QRY"
        AND SC5.%notDel%
 EndSql
 ```
+
+### PERF-005 — RecCount() para checar existência
+
+```advpl
+// ERRADO — RecCount() força full scan da tabela inteira
+DbSelectArea("SA1")
+DbGoTop()
+If RecCount() > 0
+    ConOut("Tem cliente")
+EndIf
+
+// CORRETO — !Eof() é O(1) após DbGoTop/DbSeek
+DbSelectArea("SA1")
+DbGoTop()
+If !Eof()
+    ConOut("Tem cliente")
+EndIf
+
+// CORRETO em alias-call
+If !SA1->(Eof())
+    ConOut("Tem cliente")
+EndIf
+
+// Em SQL embarcado, EXISTS é melhor que COUNT(*)
+BeginSql Alias "QRY"
+    SELECT 1 FROM %table:SA1% SA1
+     WHERE SA1.A1_FILIAL = %xfilial:SA1%
+       AND SA1.%notDel%
+EndSql
+If !QRY->(Eof())
+    // tem pelo menos 1 cliente
+EndIf
+QRY->(DbCloseArea())
+```
+
+Padrões detectados (não confundir com limites de business como `RecCount() > 100`):
+`RecCount() > 0`, `RecCount() >= 1`, `RecCount() != 0`, `RecCount() <> 0`, e variantes com alias-call (`SA1->(RecCount()) > 0`).
 
 ### BP-008 — Shadowing de variável reservada framework
 

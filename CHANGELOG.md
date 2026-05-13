@@ -4,6 +4,36 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-05-13
+
+### Added
+- **`PERF-005` (warning) implementado** — detector de `RecCount()` usado pra
+  checar existência. Antes catalogada como `planned`. Detecta os padrões
+  comuns: `RecCount() > 0`, `RecCount() >= 1`, `RecCount() != 0`,
+  `RecCount() <> 0` (ADVPL legacy), incluindo variantes com alias-call
+  (`SA1->(RecCount()) > 0`). NÃO sinaliza:
+  - `RecCount() > 100` (limite de business intencional)
+  - `nTotal := RecCount()` (apenas armazena, não checa existência)
+  - `RecCount() > 0` dentro de string ou comentário
+  
+  Bug protegido: `RecCount()` força full scan da tabela inteira para contar
+  todos os registros, mesmo quando você só quer saber se existe 1. Substituir
+  por `!Eof()` após `DbSeek`/`DbGoTop` é O(1). Em SQL embarcado, `EXISTS`
+  é melhor que `SELECT COUNT(*)`.
+  
+- **`tests/unit/test_lint.py::TestPERF005ReccountForExistence`** (10 asserts,
+  TDD): 6 positives (gt-zero, gte-one, neq-zero, <>-legacy, alias-call,
+  linha correta) + 4 negatives (limite real, atribuição, string, comentário).
+  Validado 10/10 PASS, sem regressão (52/52 todos lint tests).
+
+### Changed
+- **Catálogo `lint_rules.json`**: PERF-005 promovido de `status="planned"`
+  para `status="active"` + `impl_function="_check_perf005_reccount_for_existence"`.
+  Total: **26 active + 9 planned = 35** (mantido).
+- **Skill `advpl-code-review`**: PERF-005 movida da tabela "planned" pra
+  "active" (15 single-file agora). Adicionado exemplo de fix com 4 cenários
+  (errado, !Eof() simples, !alias->(Eof()), EXISTS em SQL).
+
 ## [0.3.5] - 2026-05-12
 
 ### Added
