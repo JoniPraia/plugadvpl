@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778705054626,
+  "lastUpdate": 1778705569791,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -1357,6 +1357,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00032069342130963924",
             "extra": "mean: 13.903558384616698 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "cf209e2b57e4d8381c106c9facd0cbbb8f0ce7d8",
+          "message": "release: v0.3.8 — implement MOD-004 (legacy AxCadastro/Modelo2/Modelo3)\n\nFourth planned rule graduates to active. Researched against TDN\ncanonical sources (TOTVS Central, Terminal de Informação, Six IT) to\nnail the three legacy function signatures:\n\n- AxCadastro(cAlias, cTitle, cDel, cOk, aRotAdic, bPre, bOK, bTTS, ...)\n  → Modelo 1, browse padrão simples (CRUD direto sobre 1 tabela)\n- Modelo2(cTitulo, aCabec, aRodape, aGd, nOp, cLOk, cTOk, ...)\n  → cabeçalho + grid de itens (lote)\n- Modelo3(cTitulo, cAliasEnchoice, cAliasGetD, aCpoEnchoice, cLinOk, ...)\n  → pai/filho (cabeçalho + itens relacionados, ex: pedido + itens)\n\nDetection:\n\n- Single regex _MOD004_CALL_RE: \\b(AxCadastro|Modelo2|Modelo3)\\s*\\(\n  case-insensitive\n- Negative lookbehind (?<![:.]) — exclude obj:Modelo3() method calls and\n  pkg.Modelo3() property access\n- Definition skip via _SEC005_DEFINITION_RE (50-char prefix lookback for\n  User Function|Static Function|Function|Method|Class|Procedure) — avoids\n  flagging \"User Function AxCadastro()\" defining own homônima function\n- Strip comments + strings before matching (strip_advpl(strip_strings=True))\n- Dedup por (linha, função uppercase)\n\nSugestao_fix specific per function via _MOD004_MIGRATION_HINTS dict:\n- AxCadastro hint: FWMBrowse + AddFields, MenuDef/ModelDef/ViewDef as\n  Static Functions\n- Modelo2 hint: AddFields master + AddGrid detail\n- Modelo3 hint: AddFields cabeçalho + AddGrid itens + SetRelation pai/filho\n\nFalse positives controlled (5 negative tests):\n\n- 'AxCadastro foi removido' string → strip ignores\n- // AxCadastro comment → strip ignores\n- User Function AxCadastro() definition → definition skip\n- AxCadastrox / Modelo30 / MyModelo2 → \\b boundary required\n- oObj:Modelo3() method call → negative lookbehind\n\nTests:\n\n- TestMOD004LegacyCadastro: 11/11 PASS (6 positives + 5 negatives)\n- Regression: 73/73 todos lint tests PASS (era 62, +11)\n- Consistency: 7/7 PASS (catalog active=28 = impl=28)\n\nCatalog state:\n- Active: 27 → 28 (added MOD-004)\n- Planned: 8 → 7\n- Total: 35 unchanged\n\nSkill advpl-code-review:\n- Single-file 16 → 17\n- MOD-004 active table\n- New example fix com 2 cenários completos: AxCadastro→MVC Modelo 1,\n  Modelo3→MVC pai/filho com SetRelation\n- Planned table → 7 rules\n\nPróximas candidatas planned: PERF-004 (string concat em loop, baixo\nesforço), SEC-004 (hardcoded credentials, médio), BP-002b (Private\nwhere Local would do, médio com risco de FP).\n\nSources researched:\n- AxCadastro - TDN: https://tdn.totvs.com/display/public/framework/AxCadastro\n- Função Modelo2 - TOTVS Central\n- Modelo3 sintaxe - Six IT\n- Migração Modelo→MVC - Terminal de Informação Maratonas 020/025\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-13T17:52:35-03:00",
+          "tree_id": "35a3c7022699172e4202a9d39e6223234560ea79",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/cf209e2b57e4d8381c106c9facd0cbbb8f0ce7d8"
+        },
+        "date": 1778705569576,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 19.88619480709169,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00036714259199177715",
+            "extra": "mean: 50.286141199993985 msec\nrounds: 15"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 71.8542529999101,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00019990555405280418",
+            "extra": "mean: 13.917060692305174 msec\nrounds: 13"
           }
         ]
       }
