@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778624361181,
+  "lastUpdate": 1778702449599,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -1285,6 +1285,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00033445091751445864",
             "extra": "mean: 13.299588333317539 msec\nrounds: 15"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "48a64381583606ead423cf62b8b408213c2eb610",
+          "message": "release: v0.3.6 — implement PERF-005 (RecCount for existence check)\n\nSecond of the 11 planned rules graduates to active. PERF-005 detects\nthe common Protheus performance bug where developers use RecCount() > 0\n(or >=1, != 0, <> 0 legacy) to check if at least 1 record exists in an\nalias — but RecCount() forces a full table scan to count all rows, when\n!Eof() after DbSeek/DbGoTop is O(1).\n\nImplementation:\n\n- _check_perf005_reccount_for_existence em parsing/lint.py\n- Single regex _PERF005_RE matches RecCount()<comparison> (>=1, >0,\n  !=0, <>0, all case-insensitive on operators).\n- Stripped content (strip_strings=True) — comments + strings not flagged.\n- Alias-call variant `SA1->(RecCount()) > 0` works due to optional `)?`\n  after RecCount() in the regex.\n- Sugestao_fix specific: !Eof() para tabela aberta, EXISTS em SQL embarcado.\n\nFalse positives avoided:\n\n- RecCount() > 100 — business threshold, intentional\n- nTotal := RecCount() — assignment, not existence check\n- RecCount() inside string literal\n- RecCount() inside // comment\n\n(All 4 negative tests pass — regex tight enough.)\n\nTests:\n\n- TestPERF005ReccountForExistence: 10/10 PASS (6 positives + 4 negatives).\n- Regression check: 52/52 all lint tests PASS (was 42 in v0.3.5; +10 new).\n- Consistency test: 7/7 PASS (catalog active=26 == impl=26).\n\nCatalog state:\n- Active rules: 25 → 26 (added PERF-005)\n- Planned: 10 → 9\n- Total: 35 unchanged\n\nSkill advpl-code-review updated:\n- Single-file count 14 → 15\n- PERF-005 moved from \"planned\" table to \"active\" table\n- Adicionado exemplo de fix com 4 cenários (RecCount errado, !Eof simples,\n  !alias->(Eof()) com alias-call, SELECT 1 + !Eof em SQL embarcado)\n- Planned table shrunk to 9 rules\n\nPróximas candidatas pra v0.3.7+: SEC-005 (TOTVS restricted via lookup\nfuncoes_restritas), PERF-004 (string concat em loop), MOD-004 (AxCadastro\nem vez de MVC).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-13T17:00:26-03:00",
+          "tree_id": "5cb1e2d2dad92b8ca758d349afc5706bc6dec1aa",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/48a64381583606ead423cf62b8b408213c2eb610"
+        },
+        "date": 1778702449333,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 22.476908509597305,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0004737177169761674",
+            "extra": "mean: 44.49010412499632 msec\nrounds: 16"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 72.58861203161372,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00043273152223037234",
+            "extra": "mean: 13.776265615389933 msec\nrounds: 13"
           }
         ]
       }
