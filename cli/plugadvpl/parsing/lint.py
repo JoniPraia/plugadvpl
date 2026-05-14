@@ -98,17 +98,31 @@ _SEC004_BASIC_AUTH_RE = re.compile(
     re.IGNORECASE,
 )
 
-# SEC-003 (v0.3.19): PII / dados sensiveis em logs (LGPD).
+# SEC-003 (v0.3.19, ajustado v0.3.20 #1 do QA round 2): PII em logs (LGPD).
 # Funcoes de log que mandam pro console.log do AppServer (visivel a quem tem
-# acesso ao servidor). MsgInfo/MsgBox/Aviso sao UI (nao log) — fora do escopo.
+# acesso ao servidor). MsgInfo/MsgBox/Aviso/Help sao UI (nao log) — fora do
+# escopo. Help() em particular eh dialogo modal universal em MVC; em validacao
+# de campo (X3_VLDUSER, X7_REGRA) Help() concatena nome do cliente o tempo todo.
 _SEC003_LOG_FUNCS_RE = re.compile(
-    r"\b(?:ConOut|FwLogMsg|MsgLog|LogMsg|UserException|Help)\s*\(",
+    r"\b(?:ConOut|FwLogMsg|MsgLog|LogMsg|UserException)\s*\(",
     re.IGNORECASE,
 )
-# Variaveis com nome semanticamente PII. Hungarian opcional (`c` ou nada).
+# Variaveis com nome semanticamente PII (v0.3.20 #2 do QA round 2):
+#   - Formas LONGAS sao matched diretamente (low FP risk):
+#     Cpf, Cnpj, Senha, Password, Token, Cartao, Cvv, ApiKey, Api_Key, Secret
+#   - Formas CURTAS ambiguas em PT-BR (Pass/Pin/Card/Pwd/Rg) so casam com
+#     prefixo Hungarian estrito `c` literal e end-of-token: cPwd, cRg, cPin,
+#     cCard, cPass — evita falso positivo em `cPassagem`/`cPintar`/`cCardapio`/
+#     `cArgumento`/etc. Quem usar `nPin` num projeto nao vai ser flaggado, OK
+#     (preferimos missar do que gritar massivamente).
 _SEC003_PII_VAR_RE = re.compile(
-    r"\b[a-z]?(?:Cpf|Cnpj|Senha|Pwd|Pass|Password|Token|Cartao|Card|Cvv|Pin|"
-    r"ApiKey|Api_Key|Secret|Rg)\w*\b",
+    # Forma longa: prefixo opcional + termo PII completo + sufixo opcional.
+    r"\b[a-z]?(?:"
+    r"Cpf|Cnpj|Senha|Password|Token|Cartao|Cvv|ApiKey|Api_Key|Secret"
+    r")\w*\b"
+    r"|"
+    # Forma curta: exige `c` literal + termo curto + boundary (sem sufixo).
+    r"\bc(?:Pwd|Rg|Pin|Card|Pass)\b",
     re.IGNORECASE,
 )
 # Campos SX3 conhecidos como PII (clientes/funcionarios). Lista conservadora —

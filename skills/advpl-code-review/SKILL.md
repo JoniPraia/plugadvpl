@@ -1,10 +1,10 @@
 ---
-description: 24 regras de code review ADVPL/TLPP implementadas (13 single-file via regex + 11 cross-file SX que requerem ingest-sx). Mais 11 regras catalogadas porém ainda não detectadas. Use após gerar/editar fonte ADVPL, antes de marcar tarefa como concluída, ou quando o usuário pede "revise este código".
+description: 31 regras de code review ADVPL/TLPP implementadas (20 single-file via regex + 11 cross-file SX que requerem ingest-sx). Mais 4 regras catalogadas porém ainda não detectadas. Use após gerar/editar fonte ADVPL, antes de marcar tarefa como concluída, ou quando o usuário pede "revise este código".
 ---
 
 # advpl-code-review — As regras de code review do plugadvpl
 
-`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **29 são efetivamente detectadas** (v0.3.9+): **18 single-file** via regex/AST/lookup sobre o conteúdo do fonte, e **11 cross-file `SX-*`** que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes). As outras 6 ficam **catalogadas como `status='planned'`** — sem detecção automática hoje, mas servem como roadmap + checklist mental.
+`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **31 são efetivamente detectadas** (v0.3.19+): **20 single-file** via regex/AST/lookup sobre o conteúdo do fonte, e **11 cross-file `SX-*`** que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes). As outras 4 ficam **catalogadas como `status='planned'`** — sem detecção automática hoje, mas servem como roadmap + checklist mental.
 
 > **Catálogo alinhado com a impl** desde v0.3.4. Antes (v0.3.0..v0.3.3), o
 > `lookups/lint_rules.json` tinha 25 itens em drift com `parsing/lint.py`
@@ -24,7 +24,7 @@ Rode `/plugadvpl:lint <arq>` para resultado de fato — esta skill é o **guia m
 
 ## As 24 regras detectadas — quick reference
 
-### Single-file (18) — `lint.py`, regex/AST/lookup sobre conteúdo
+### Single-file (20) — `lint.py`, regex/AST/lookup sobre conteúdo
 
 | ID         | Sev      | Comportamento real implementado                                                |
 |------------|----------|-------------------------------------------------------------------------------|
@@ -92,7 +92,7 @@ Aparecem em `lookups/lint_rules.json` com `status="planned"`. Use como checklist
 ### Single-file
 
 1. Termine de editar o fonte.
-2. `/plugadvpl:lint <arquivo>` — roda as 13 regras single-file.
+2. `/plugadvpl:lint <arquivo>` — roda as 20 regras single-file.
 3. Filtre por severidade pra triagem rápida: `/plugadvpl:lint <arq> --severity critical,error`.
 4. Pra cada `critical`/`error`: corrija **antes** de prosseguir.
 5. Pra `warning`: corrija; justifique se não der (comentar no PR).
@@ -456,17 +456,14 @@ Decisão: **remover** do SX3 + script de delete, OU implementar uso pendente.
 - [ ] `ConOut` substituído por `FwLogMsg` em código novo (`MOD-001`).
 - [ ] Sem declaração `Public` (`MOD-002`).
 
-### Info / Checklist mental (não detectadas automaticamente)
+### Info / Checklist mental (apenas regras `planned` — sem detector automático)
 
-- [ ] Notação húngara em todas as variáveis (`BP-006` catalog).
+Os 4 itens abaixo NÃO têm detector — só checklist humano. Os outros (PII, hardcoded creds, shadowing, restritas, RecCount, legacy cadastros) são automatizados em v0.3.19+ — `lint <arq>` pega.
+
 - [ ] Header Protheus.doc em todas as funções (`BP-007`).
-- [ ] Sem shadowing de reservadas — `cFilAnt`/`cEmpAnt`/`PARAMIXB`/etc. (`BP-008`).
-- [ ] Sem PII/senha em logs (`SEC-003`).
-- [ ] Sem credenciais hardcoded (`SEC-004`).
-- [ ] Sem função restrita TOTVS (`SEC-005`) — checar via `/plugadvpl:find function`.
-- [ ] String concat em loop usa array + `FwArrayJoin` (`PERF-004`) — veja `[[advpl-refactoring]]`.
-- [ ] Existência testada com `!Eof()`, não `RecCount() > 0` (`PERF-005`).
-- [ ] Sem `AxCadastro`/`Modelo2`/`Modelo3` em código novo — usar MVC (`MOD-004`).
+- [ ] Sem `Private`/`Public` quando `Local` resolve (`BP-002b`).
+- [ ] Static Functions com prefixo comum + dados compartilhados → considerar `Class` (`MOD-003`).
+- [ ] WHERE/ORDER BY em coluna que está em índice SIX (`PERF-006`) — `tables <T>` mostra índices.
 
 ## Anti-padrões gerais
 
@@ -490,7 +487,7 @@ Decisão: **remover** do SX3 + script de delete, OU implementar uso pendente.
 
 ## Comandos plugadvpl relacionados
 
-- `/plugadvpl:lint <arq>` — roda as 13 regras single-file no arquivo.
+- `/plugadvpl:lint <arq>` — roda as 20 regras single-file no arquivo.
 - `/plugadvpl:lint` (sem arg) — roda no projeto inteiro.
 - `/plugadvpl:lint --cross-file` — roda as 11 regras SX-001..SX-011 (requer `ingest-sx`).
 - `/plugadvpl:lint <arq> --severity critical,error` — filtro por severidade.

@@ -21,7 +21,7 @@ Mostra status do indice plugadvpl no projeto atual.
 ## Execucao
 
 ```bash
-uvx plugadvpl@0.3.19 --format md status $ARGUMENTS
+uvx plugadvpl@0.3.20 --format md status $ARGUMENTS
 ```
 
 ## Saida
@@ -68,5 +68,8 @@ Tres caminhos validos, cada um responde uma pergunta diferente:
 ## Proximos passos sugeridos
 
 - Se houver arquivos stale, rode `/plugadvpl:ingest` (incremental) ou `/plugadvpl:reindex <arquivo>`
-- Se `runtime_version != plugadvpl_version`, rode `/plugadvpl:ingest --incremental` para refletir o binario novo
+- Se `runtime_version != plugadvpl_version`, rode `/plugadvpl:ingest --no-incremental`
+  para reaplicar regras/parsers da versao nova em TODO o codebase. (`--incremental`
+  pula arquivos cujo mtime nao mudou, entao regras novas nao re-avaliam — vide
+  "Pegadinha do --incremental" no skill `ingest`.)
 - `/plugadvpl:doctor` — diagnostico do ambiente

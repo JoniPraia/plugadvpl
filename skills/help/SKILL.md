@@ -17,25 +17,34 @@ Mostra a lista de comandos plugadvpl disponiveis e suas opcoes globais.
 ## Execucao
 
 ```bash
-uvx plugadvpl@0.3.19 --help
+uvx plugadvpl@0.3.20 --help
 ```
 
 ## Saida
 
-Lista os 13 subcomandos com descricao curta:
-- `init` — inicializa indice no projeto
-- `ingest` — indexa fontes
-- `reindex` — re-indexa um arquivo
-- `status` — status do indice
-- `find` — pesquisa simbolos
-- `callers` — quem chama uma funcao
-- `callees` — o que uma funcao chama
-- `tables` — usos de uma tabela ERP
-- `param` — usos de um MV_
-- `arch` — visao arquitetural (comando-chefe)
-- `lint` — lint de um arquivo
-- `doctor` — diagnostico do ambiente
-- `grep` — busca texto/FTS no conteudo
+Lista os 19 subcomandos com descricao curta.
+
+**Universo 1 — fontes (14 cmds):**
+- `version` — imprime versao do binario (mesmo de `--version` global)
+- `init` — inicializa indice no projeto + injeta fragment em CLAUDE.md
+- `ingest` — indexa fontes (`--workers`/`--no-incremental`/`--no-content`/`--redact-secrets`)
+- `reindex <arq>` — re-indexa um arquivo apos editar
+- `status` — versoes (runtime + indice), counters, opcoes `--check-stale`
+- `find <termo>` — busca simbolo (exato/prefixo/FTS)
+- `callers <fn>` — quem chama (cada row tem `is_self_call` v0.3.18+)
+- `callees <fn>` — o que chama (resolve fn-pai via chunks v0.3.15+)
+- `tables <T>` — usos da tabela ERP (`--mode read|write|reclock`)
+- `param <MV_*>` — usos de parametro
+- `arch <arq>` — visao arquitetural (comando-chefe; flag `tabelas_via_execauto` v0.3.18+)
+- `lint [arq]` — 20 regras single-file (`--severity`, `--regra`, `--cross-file` p/ SX-*)
+- `doctor` — diagnostico do indice (encoding/orfaos/FTS sync)
+- `grep <termo>` — texto/FTS no conteudo (`-m fts|literal|identifier`)
+
+**Universo 2 — Dicionario SX (5 cmds, v0.3.0+):**
+- `ingest-sx <pasta-csv>` — indexa SX1..SXG do dump CSV
+- `sx-status` — counts por tabela SX
+- `impacto <campo>` — cruza referencias campo em fontes ↔ SX3 ↔ SX7 ↔ SX1 (v0.3.17+ word boundary)
+- `gatilho <campo> [--depth N]` — cadeia SX7 (origem OU destino, v0.3.15+)
 
 Alem de flags globais (definidas no callback, **vem antes do subcomando**):
 

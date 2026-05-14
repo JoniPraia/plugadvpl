@@ -1383,3 +1383,69 @@ class TestSEC003PIIInLogs:
         )
         findings = lint_source(_parsed_for(src), src)
         assert "SEC-003" not in _ids(findings)
+
+    def test_negative_help_is_ui_not_log(self) -> None:
+        """v0.3.20 — Bug #1 do QA round 2: Help() em ADVPL eh dialogo modal de
+        erro/validacao (igual MsgInfo), NAO log do servidor. Universal em MVC
+        para validacao de campo (X3_VLDUSER, X7_REGRA). Antes do fix, qualquer
+        Help( ,, 'Erro',, 'Cliente ' + cNome, 1, 0) disparava SEC-003."""
+        src = (
+            "User Function ZVld()\n"
+            "    Local cCpf := M->A1_CGC\n"
+            '    Help(,,"Erro",,"CPF invalido para " + cCpf, 1, 0)\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-003" not in _ids(findings), (
+            "Help() eh UI modal, nao log — nao deve disparar SEC-003"
+        )
+
+    def test_negative_var_passagem_not_password(self) -> None:
+        """v0.3.20 — Bug #2 do QA round 2: regex `Pass\\w*` casava palavras
+        comuns PT-BR como `cPassagem`, `cPasso`. Falso positivo massivo em
+        projetos de turismo/TMS."""
+        src = (
+            "User Function ZTms()\n"
+            "    Local cPassagem := 'BSB-GRU'\n"
+            '    ConOut("Bilhete: " + cPassagem)\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-003" not in _ids(findings), (
+            "cPassagem nao eh password — regex curto Pass\\w* eh ambiguo demais"
+        )
+
+    def test_negative_var_pintar_not_pin(self) -> None:
+        """`cPintar`, `cPintor` (verbo/profissao PT-BR) nao eh PIN."""
+        src = (
+            "User Function ZArt()\n"
+            "    Local cPintar := 'paredes'\n"
+            '    ConOut("Atividade: " + cPintar)\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-003" not in _ids(findings)
+
+    def test_negative_var_cardapio_not_card(self) -> None:
+        """`cCardapio` (food-service PT-BR) nao eh credit card."""
+        src = (
+            "User Function ZRest()\n"
+            "    Local cCardapio := 'Menu Almoco'\n"
+            '    ConOut("Item: " + cCardapio)\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-003" not in _ids(findings)
+
+    def test_positive_password_long_form_still_works(self) -> None:
+        """Garantia que apertar a regra de Pass nao quebra cPassword (forma longa)."""
+        src = (
+            "User Function ZAuth()\n"
+            "    Local cPassword := 'admin123'\n"
+            '    ConOut("Pwd=" + cPassword)\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-003" in _ids(findings), (
+            "cPassword (forma longa) ainda deve disparar SEC-003"
+        )

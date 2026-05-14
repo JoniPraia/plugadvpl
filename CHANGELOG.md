@@ -4,6 +4,66 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.20] - 2026-05-14
+
+### SEC-003 false positives + skill drift sync — fecha os 5 itens de maior prioridade do `gaps/PLUGADVPL_QA_REPORT_V2.md` (round 2 do QA externo). Trinca crítica: `Help` interpretado como log + regex de variável PII casando palavras PT-BR comuns + skills com contagens/recomendações desatualizadas.
+
+### Fixed
+- **#1 (alta) — `Help` removido de `_SEC003_LOG_FUNCS_RE`**. `Help()` em
+  ADVPL é diálogo modal universal (validação de campo X3_VLDUSER, X7_REGRA),
+  equivalente a `MsgInfo` que já era excluída. As próprias skills do plugin
+  documentam Help como UI. Antes do fix, qualquer fonte MVC real com
+  `Help( ,, 'Erro',, 'Cliente ' + cNome, 1, 0)` disparava SEC-003 — false
+  positive massivo. +1 teste negativo `test_negative_help_is_ui_not_log`.
+- **#2 (alta) — `_SEC003_PII_VAR_RE` não casa mais palavras PT-BR comuns**.
+  As variantes curtas `Pass`/`Pin`/`Card`/`Pwd`/`Rg` casavam `cPassagem`
+  (turismo), `cPintar` (manufatura), `cCardapio` (food-service), etc.
+  Reescrita em duas alternations:
+  - **Forma longa** (low FP): `Cpf|Cnpj|Senha|Password|Token|Cartao|Cvv|ApiKey|Api_Key|Secret`
+    — match com prefixo Hungarian opcional + sufixo livre.
+  - **Forma curta** (alta ambiguidade PT-BR): `cPwd|cRg|cPin|cCard|cPass`
+    — exige prefixo `c` literal + boundary final (sem sufixo). Trade-off:
+    `nPin` num projeto não dispara, mas preferimos miss a gritar massivamente.
+  
+  +3 testes negativos (`test_negative_var_passagem_not_password`,
+  `test_negative_var_pintar_not_pin`, `test_negative_var_cardapio_not_card`)
+  + 1 positivo de regressão (`test_positive_password_long_form_still_works`).
+
+### Changed
+- **#9 — Skill `advpl-code-review` sincronizada com v0.3.19**:
+  - Frontmatter: `24 → 31` regras, `13 → 20` single-file.
+  - Linha 7: `29 são detectadas → 31 são detectadas`.
+  - Header tabela "Single-file (18) → (20)".
+  - "lint roda as 13 → 20 regras single-file" (2 ocorrências).
+  - Bloco "Info / Checklist mental (não detectadas automaticamente)" reescrito:
+    estava listando 9 itens, mas 8 deles têm detector ativo (BP-006, BP-008,
+    SEC-003, SEC-004, SEC-005, PERF-004, PERF-005, MOD-004). Reduzido para
+    apenas os 4 genuinamente `planned` (BP-007, BP-002b, MOD-003, PERF-006)
+    + nota explícita que os outros são automatizados pelo linter.
+- **#10 — Skill `help` lista os 19 subcomandos** (antes listava 13).
+  Reorganizada em "Universo 1 — fontes (14 cmds)" + "Universo 2 — Dicionário
+  SX (5 cmds, v0.3.0+)". Cada subcomando ganha tag das features novas
+  (`is_self_call` v0.3.18+, `tabelas_via_execauto` v0.3.18+, `--cross-file`,
+  word boundary v0.3.17+, etc.).
+- **#12 — Skill `status` recomenda `--no-incremental` pós-upgrade**, não
+  `--incremental`. Estava conflitando diretamente com a "Pegadinha do
+  --incremental" da skill `ingest`. Adicionada referência cruzada.
+- 18 skills bumpadas `@0.3.19` → `@0.3.20`.
+
+### Tests
+- 5 testes novos em `TestSEC003PIIInLogs` (4 negativos + 1 positivo de
+  regressão). Suite total: 336 verde (era 331).
+
+### Notes
+- **Backlog QA round 2**: ficaram 15 itens menores (severidade baixa-média)
+  pra v0.3.21+. Top entre esses: #4 (RpcSetEnv com variável nos slots emp/fil),
+  #6 (gatilho upstream traversal), #15 (ingest-sx per_table inflado),
+  #13/#14 (WSRESTFUL verb-only não vira `funcoes`).
+- **Para usuários existentes**: `plugadvpl ingest --no-incremental` recomendado
+  pra reprocessar com SEC-003 ajustado. `lookup_bundle_hash` mudou (descrição
+  do JSON inalterada mas regex do detector mudou — não dispara warning
+  automático da v0.3.13). Re-ingest manual elimina FPs de `Help`/PT-BR words.
+
 ## [0.3.19] - 2026-05-14
 
 ### Security pack — fecha a categoria SEC. Implementa as 2 ultimas regras `planned` da categoria security: SEC-003 (PII em logs, LGPD) + SEC-004 (credenciais hardcoded). Pesquisa-first contra TDN + comunidade ADVPL (Terminal de Informação, BlackTDN, MasterAdvPL) confirmou padrões antes do detector — evita shipping de regra ruidosa.
