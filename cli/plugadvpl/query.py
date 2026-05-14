@@ -17,6 +17,7 @@ Convenções:
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from typing import Any
 
@@ -462,6 +463,18 @@ def _truncate(text: str | None, max_len: int = 80) -> str:
 _WRITE_KEYWORDS = ("RECLOCK", "REPLACE", "UPDATE ", "INSERT ", "MSEXECAUTO")
 
 
+def _word_boundary_re(termo: str) -> re.Pattern[str]:
+    """Regex `\\b<TERMO>\\b` case-insensitive — boundary ADVPL-aware.
+
+    Em ADVPL nomes de campo são tipo `A1_COD`, `BA1_CODEMP`. `\\b` em Python
+    não trata `_` como boundary (`_` é `\\w`), então `\\bA1_COD\\b` NÃO casa
+    em `BA1_COD` (B+A1_COD = continuação \\w) nem em `A1_CODFAT` (CO+DF =
+    continuação \\w). Exatamente o comportamento desejado pra eliminar falsos
+    positivos do `impacto` (v0.3.17 #3 do QA report).
+    """
+    return re.compile(r"\b" + re.escape(termo) + r"\b", re.IGNORECASE)
+
+
 def _impacto_fontes(
     conn: sqlite3.Connection, campo_up: str, max_rows: int
 ) -> list[dict[str, Any]]:
@@ -510,6 +523,8 @@ def _impacto_sx3(
                 "severidade": "warning",
             }
         )
+    # SQL faz prefiltro com LIKE (cheap, narrows candidates). Boundary check
+    # acontece em Python pra eliminar falsos positivos de substring (v0.3.17 #3).
     sx3_refs = conn.execute(
         """
         SELECT tabela, campo, validacao, vlduser, when_expr, inicializador
@@ -522,18 +537,23 @@ def _impacto_sx3(
         """,
         (campo_up, campo_up, campo_up, campo_up, max_rows),
     ).fetchall()
+    boundary = _word_boundary_re(campo_up)
     for tabela, c, valid, vld, wh, init in sx3_refs:
         if c.upper() == campo_up:
             continue
         bits: list[str] = []
-        if campo_up in (valid or "").upper():
+        if valid and boundary.search(valid):
             bits.append(f"VALID={_truncate(valid, 40)}")
-        if campo_up in (vld or "").upper():
+        if vld and boundary.search(vld):
             bits.append(f"VLDUSER={_truncate(vld, 40)}")
-        if campo_up in (wh or "").upper():
+        if wh and boundary.search(wh):
             bits.append(f"WHEN={_truncate(wh, 40)}")
-        if campo_up in (init or "").upper():
+        if init and boundary.search(init):
             bits.append(f"INIT={_truncate(init, 40)}")
+        if not bits:
+            # SQL casou via substring mas nenhum campo tem o termo com boundary —
+            # falso positivo, pular.
+            continue
         out.append(
             {
                 "tipo": "SX3",
@@ -552,6 +572,9 @@ def _impacto_sx7_chain(
     out: list[dict[str, Any]] = []
     visited: set[str] = {campo_up}
     frontier: list[str] = [campo_up]
+    # SQL prefiltra via LIKE (cheap); Python re-valida boundary pra eliminar
+    # falsos positivos como BA1_CODEMP/A1_CODFAT batendo em busca de A1_COD
+    # (v0.3.17 #3 do QA report — caso real: >100KB de output em campo curto).
     for level in range(1, max(1, min(depth, 3)) + 1):
         next_frontier: list[str] = []
         for orig in frontier:
@@ -566,7 +589,15 @@ def _impacto_sx7_chain(
                 """,
                 (orig, orig, orig, max_per_kind),
             ).fetchall()
+            boundary = _word_boundary_re(orig)
             for co, seq, cd, regra, cond, tp in sx7_rows:
+                # Aceita se: origem eh exatamente o termo (match SQL exato),
+                # OU regra/cond contem o termo com word boundary.
+                origem_match = (co or "").upper() == orig
+                regra_match = bool(regra and boundary.search(regra))
+                cond_match = bool(cond and boundary.search(cond))
+                if not (origem_match or regra_match or cond_match):
+                    continue
                 ctx_parts = [f"depth={level}", f"tipo={tp or '?'}"]
                 if regra:
                     ctx_parts.append(f"regra={_truncate(regra, 30)}")
@@ -604,12 +635,15 @@ def _impacto_sx1(
         """,
         (campo_up, campo_up, max_rows),
     ).fetchall()
+    boundary = _word_boundary_re(campo_up)
     for grupo, ordem, perg, val, cont in rows:
         bits: list[str] = []
-        if campo_up in (val or "").upper():
+        if val and boundary.search(val):
             bits.append(f"VALID={_truncate(val, 40)}")
-        if campo_up in (cont or "").upper():
+        if cont and boundary.search(cont):
             bits.append(f"DEF={_truncate(cont, 40)}")
+        if not bits:
+            continue  # SQL casou via substring mas sem boundary — falso positivo.
         out.append(
             {
                 "tipo": "SX1",

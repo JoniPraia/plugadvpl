@@ -4,6 +4,46 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.17] - 2026-05-14
+
+### Impacto preciso — fix #3 do `gaps/PLUGADVPL_QA_REPORT.md`. `plugadvpl impacto A1_COD` retornava >100KB de output em campo curto/comum, com gatilhos de campos cujo nome apenas CONTEM 'A1_COD' como substring (`BA1_CODEMP`, `BA1_CODINT`, `DA1_CODPRO`, `A1_CODSEG`, etc.). Para campos de tabelas standard (SA1, SB1, SC5...) o comando ficava praticamente inutilizavel — caso real reportado: `A1_COD` retornava ~150 resultados, ~95% falsos positivos.
+
+### Fixed
+- **#3 — `impacto` agora usa word boundary (`\\b<termo>\\b`)**. SQL continua
+  fazendo prefiltro com `LIKE '%X%'` (cheap, narrows candidates) e Python
+  re-valida cada match com regex `\\b<TERMO>\\b` antes de devolver. Falsos
+  positivos sao silenciosamente descartados.
+  - **ADVPL-aware**: `\\b` no Python NAO trata `_` como boundary (`_` eh
+    `\\w`), entao `\\bA1_COD\\b` NAO casa em `BA1_COD` (B+A1 = continuacao
+    `\\w`) nem em `A1_CODFAT` (CO+DF = continuacao `\\w`). Comportamento
+    exato pra nomes de campo Protheus tipo `A1_COD`.
+  - Aplicado em 3 lugares de `query.py`:
+    - `_impacto_sx3` — campos com VALID/VLDUSER/WHEN/INIT referenciando o termo.
+    - `_impacto_sx7_chain` — gatilhos com REGRA/CONDICAO referenciando o termo.
+    - `_impacto_sx1` — perguntas com VALIDACAO/CONTEUDO_PADRAO referenciando.
+  - Match exato em `campo_origem` SX7 (origem literal) continua aceito sempre.
+- Helper novo `_word_boundary_re(termo)` em `query.py` — centraliza a logica
+  pra uso futuro (qualquer query que precise de match exato em texto).
+
+### Tests
+- `tests/integration/test_ingest_sx.py::TestImpactoCommand::test_impacto_uses_word_boundary_no_substring_false_positives`
+  (RED→GREEN). Fixture com 3 gatilhos: 1 real (`A1_COD->A1_NREDUZ`) +
+  2 substring-fakes (`BA1_CODEMP`, `A1_CODFAT`). Antes do fix: os 3
+  apareciam. Depois: so o real.
+- 312 testes verde (era 311).
+
+### Notes
+- **Impacto em fontes (`fonte_chunks.content`) NAO foi alterado** — busca
+  em codigo eh diferente: voce TAMBEM quer pegar `A1_COD` quando aparece
+  como parte de uma string maior tipo `"SA1->A1_COD"`. Limitar a busca em
+  conteudo de fonte com boundary derrubaria matches legitimos. So eh
+  problema em campos textuais SX (regra/validacao/init), onde o termo eh
+  um nome de campo e o boundary preserva a semantica esperada.
+- **Backlog do QA report ainda restando**:
+  - #9 `lint` retorna findings duplicados (UNIQUE constraint).
+  - #11 flag `tabelas_via_execauto` quando `EXEC_AUTO_CALLER` set.
+  - #12 flag `is_self_call` em `callers`.
+
 ## [0.3.16] - 2026-05-14
 
 ### Parser heuristics — fixes #5/#7 + #6/#10 do `gaps/PLUGADVPL_QA_REPORT.md`. WSRESTFUL classico nao virava webservice; PE canonico TOTVS (ANCTB102GR) nao era detectado. Ambos sao misclassificacoes silenciosas — usuario/IA que filtrasse "todos os webservices" ou "todos os PEs" perdia esses casos.

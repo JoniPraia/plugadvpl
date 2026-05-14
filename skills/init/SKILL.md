@@ -17,7 +17,7 @@ Inicializa o indice plugadvpl no projeto atual.
 ## Execucao
 
 ```bash
-uvx plugadvpl@0.3.16 init
+uvx plugadvpl@0.3.17 init
 ```
 
 ## O que faz

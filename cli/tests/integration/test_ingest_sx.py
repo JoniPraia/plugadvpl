@@ -320,6 +320,75 @@ class TestImpactoCommand:
         assert "SX7" in tipos
         assert "SX3" in tipos
 
+    def test_impacto_uses_word_boundary_no_substring_false_positives(
+        self,
+        sx_project: Path,
+        tmp_path: Path,
+        runner: CliRunner,
+    ) -> None:
+        """v0.3.17 — Bug #3 do QA report: `impacto A1_COD` retornava >100KB
+        de output com gatilhos de campos `BA1_CODEMP`, `DA1_CODPRO`, etc.
+        cujo nome apenas CONTEM 'A1_COD' como substring. SQL usa
+        `LIKE '%A1_COD%'` sem boundary. Fix: re-validar cada match em Python
+        com regex `\\bA1_COD\\b` antes de devolver.
+
+        Fixture: SX7 com 3 gatilhos:
+          - A1_COD->A1_NREDUZ (regra=SA1->A1_NREDUZ) — match REAL (campo eh A1_COD)
+          - BA1_CODEMP->X (regra=SBA->BA1_CODEMP) — substring fake
+          - A1_CODFAT->Y (origem=A1_CODFAT, A1_COD eh prefixo) — fake
+        Esperado: impacto('A1_COD') so retorna o primeiro."""
+        from plugadvpl.ingest_sx import ingest_sx
+
+        csv_dir = tmp_path / "csv"
+        csv_dir.mkdir()
+        # SX3 minimal pra ter pelo menos 1 row no banco.
+        (csv_dir / "sx3.csv").write_text(
+            '"X3_ARQUIVO","X3_CAMPO","X3_TIPO","X3_TAMANHO","X3_DECIMAL",'
+            '"X3_TITULO","X3_DESCRIC","X3_VALID","X3_VLDUSER","X3_WHEN",'
+            '"X3_INIT","D_E_L_E_T_"\n'
+            '"SA1","A1_COD","C",6,0,"Codigo","","","","","",""\n',
+            encoding="cp1252",
+        )
+        # SX7 com 3 gatilhos: 1 real + 2 substring-fake.
+        (csv_dir / "sx7.csv").write_text(
+            '"X7_CAMPO","X7_SEQUENC","X7_CDOMIN","X7_REGRA","X7_TIPO",'
+            '"X7_ALIAS","X7_CONDIC","X7_PROPRI","X7_SEEK","X7_ORDEM","X7_CHAVE","D_E_L_E_T_"\n'
+            # REAL: origem eh A1_COD literal
+            '"A1_COD","01","A1_NREDUZ","SA1->A1_NREDUZ","P","SA1","","S","S","1","",""\n'
+            # FAKE 1: origem eh BA1_CODEMP, regra contem "A1_COD" como substring
+            '"BA1_CODEMP","01","BA1_VALOR","SBA->BA1_CODEMP","P","","","U","","","",""\n'
+            # FAKE 2: origem eh A1_CODFAT (A1_COD eh prefixo), regra contem A1_CODFAT
+            '"A1_CODFAT","01","A1_TIPO","M->A1_CODFAT","P","","","U","","","",""\n',
+            encoding="cp1252",
+        )
+        runner.invoke(app, ["--root", str(sx_project), "init"])
+        db = sx_project / ".plugadvpl" / "index.db"
+        ingest_sx(csv_dir, db)
+
+        result = runner.invoke(
+            app,
+            [
+                "--root", str(sx_project),
+                "--format", "json",
+                "impacto", "A1_COD",
+            ],
+        )
+        assert result.exit_code == 0, result.stderr
+        payload = json.loads(result.stdout)
+        sx7_locals = [r["local"] for r in payload["rows"] if r["tipo"] == "SX7"]
+        # SO o gatilho REAL deve aparecer.
+        assert any("A1_COD#" in loc and "BA1_CODEMP" not in loc and "A1_CODFAT" not in loc
+                   for loc in sx7_locals), (
+            f"Gatilho real A1_COD->A1_NREDUZ deveria aparecer. SX7 locals: {sx7_locals}"
+        )
+        # FAKES nao devem aparecer.
+        assert not any("BA1_CODEMP" in loc for loc in sx7_locals), (
+            f"FALSE POSITIVE: BA1_CODEMP nao eh A1_COD (substring). SX7 locals: {sx7_locals}"
+        )
+        assert not any("A1_CODFAT" in loc for loc in sx7_locals), (
+            f"FALSE POSITIVE: A1_CODFAT nao eh A1_COD (prefixo). SX7 locals: {sx7_locals}"
+        )
+
     def test_impacto_depth_2_follows_chain(
         self, indexed_with_sx: Path, runner: CliRunner
     ) -> None:
