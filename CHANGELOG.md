@@ -4,6 +4,59 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.16] - 2026-05-14
+
+### Parser heuristics — fixes #5/#7 + #6/#10 do `gaps/PLUGADVPL_QA_REPORT.md`. WSRESTFUL classico nao virava webservice; PE canonico TOTVS (ANCTB102GR) nao era detectado. Ambos sao misclassificacoes silenciosas — usuario/IA que filtrasse "todos os webservices" ou "todos os PEs" perdia esses casos.
+
+### Fixed
+- **#5/#7 — WSRESTFUL classico classificado como webservice**: o parser
+  capturava `WSSERVICE <Name>` mas nao `WSRESTFUL <Name>`. Classes
+  REST puras (com `WSMETHOD GET WSSERVICE <Class>` em vez de
+  `WSMETHOD GET <name> WSSERVICE <Class>`) caiam pra
+  `source_type=user_function` e capability `WS-REST` ficava ausente.
+  Agora:
+  - Novo regex `_WSRESTFUL_HEADER_RE` captura `WSRESTFUL <Name>` e
+    popula `ws_structures.ws_restfuls` (lista paralela a `ws_services`).
+  - Novo regex `_WSMETHOD_REST_BARE_RE` captura `WSMETHOD <verb>
+    WSSERVICE <Class>` (verb-only, padrao tipico de impl WSRESTFUL)
+    e adiciona como `rest_endpoint` com `annotation_style='wsmethod_restful'`.
+  - `_derive_capabilities` adiciona `WS-REST` quando `ws_restfuls` ou
+    style `wsmethod_restful` aparece.
+  - `_derive_source_type` agora considera `ws_restfuls` na decisao
+    "eh webservice?".
+
+- **#6/#10 — PE canonico TOTVS detectado via PARAMIXB**: o regex
+  `_PE_NAME_RE` (`^[A-Z]{2,4}\\d{2,4}[A-Z_]{2,}$`) catura `MT100GRV`
+  / `MA440PGN` mas nao `ANCTB102GR` (estrutura letras-letras-digitos-
+  letras). Heuristica nova: User Function cujo corpo usa `PARAMIXB[N]`
+  eh PE — independente do nome. PE Protheus recebe parametros via
+  `PARAMIXB` (array global), entao falso-positivo eh minimo.
+  - Novo helper `_derive_pontos_entrada(funcoes, content_lines)` em
+    `parser.py` combina os 2 sinais (regex de nome + body scan).
+  - `parse_source` agora popula `result["pontos_entrada"]` direto
+    (antes vivia so em `ingest.py`).
+  - `ingest.py` consome `parsed["pontos_entrada"]` em vez de recomputar.
+  - `_derive_capabilities` usa `pontos_entrada` pra decidir capability
+    `PE`; mantem fallback regex pra back-compat de callers que passem
+    parsed dict sem `pontos_entrada` populado.
+
+### Tests
+- `tests/unit/test_parser.py::TestParseSource::test_wsrestful_classic_classified_as_webservice` (#5/#7 RED→GREEN).
+- `tests/unit/test_parser.py::TestParseSource::test_pe_canonical_paramixb_detected` (#6/#10 RED→GREEN).
+- Fixtures novos: `cli/tests/fixtures/synthetic/ws_restful_classic.prw` (WSRESTFUL com 2 endpoints) + `pe_paramixb.prw` (ANCTB102GR canonico usando PARAMIXB[1..5]).
+- 311 testes verde (era 309).
+
+### Notes
+- **Nao incluido neste release** (ainda no backlog do QA report):
+  - #3 `impacto` substring sem boundary.
+  - #9 `lint` retorna findings duplicados.
+  - #11 flag `tabelas_via_execauto`.
+  - #12 flag `is_self_call` em callers.
+- Usuarios existentes precisam re-rodar `plugadvpl ingest --no-incremental`
+  para que `pontos_entrada` e `capabilities`/`source_type` sejam recalculados
+  nos arquivos ja indexados (lookup_bundle_hash nao mudou — mudanca eh so
+  no codigo, entao warning automatico da v0.3.13 nao dispara).
+
 ## [0.3.15] - 2026-05-14
 
 ### Correctness pack — 5 fixes derivados do `gaps/PLUGADVPL_QA_REPORT.md` (relatorio QA exploratorio rodado num projeto real Marfrig com 1.992 fontes + dicionario SX completo, 421k registros). Foco nos achados de severidade alta/critica que **bugs reais** com fix surgical (parser heuristicas e melhorias de UX maiores ficam pra v0.3.16+).

@@ -709,6 +709,49 @@ class TestParseSource:
         f2.write_bytes(b"User Function B()\nReturn")
         assert parse_source(f1)["hash"] != parse_source(f2)["hash"]
 
+    def test_pe_canonical_paramixb_detected(self) -> None:
+        """v0.3.16 — Bug #6/#10 do QA report: nome canonico TOTVS como
+        ANCTB102GR nao casa o regex `_PE_NAME_RE` (que exige <letras><digitos>
+        <letras>; ANCTB102GR tem letras-letras-digitos-letras). Heuristica nova:
+        se o corpo da funcao usa PARAMIXB[N], eh PE — independente do nome.
+        Pega o caso canonico Protheus + qualquer PE custom escrito sem padrao
+        de nome obvio."""
+        from plugadvpl.parsing.parser import parse_source
+        fixture = (
+            Path(__file__).parent.parent
+            / "fixtures" / "synthetic" / "pe_paramixb.prw"
+        )
+        result = parse_source(fixture)
+        assert "PE" in result["capabilities"], (
+            f"PE deveria estar em capabilities (PARAMIXB usado), "
+            f"tem {result['capabilities']}"
+        )
+        assert "ANCTB102GR" in result["pontos_entrada"], (
+            f"ANCTB102GR deveria estar em pontos_entrada, "
+            f"tem {result['pontos_entrada']}"
+        )
+
+    def test_wsrestful_classic_classified_as_webservice(self) -> None:
+        """v0.3.16 — Bug #5/#7 do QA report: classes WSRESTFUL clássicas
+        (com `WSMETHOD GET WSSERVICE <Class>` em vez de `WSMETHOD GET <name>
+        WSSERVICE <Class>`) caíam pra `source_type=user_function` em vez de
+        `webservice`, e capability `WS-REST` ficava ausente. Detector novo
+        captura `WSRESTFUL <Name>` como ws_service + style 'wsrestful'."""
+        from plugadvpl.parsing.parser import parse_source
+        fixture = (
+            Path(__file__).parent.parent
+            / "fixtures" / "synthetic" / "ws_restful_classic.prw"
+        )
+        result = parse_source(fixture)
+        assert result["source_type"] == "webservice", (
+            f"WSRESTFUL deveria virar webservice, virou {result['source_type']!r}"
+        )
+        assert "WS-REST" in result["capabilities"], (
+            f"capabilities deveria incluir WS-REST, tem {result['capabilities']}"
+        )
+        # WSSERVICE não deve aparecer aqui (é WSRESTFUL puro).
+        assert "WS-SOAP" not in result["capabilities"]
+
     def test_parse_source_includes_advanced_extractors(self, tmp_path: Path) -> None:
         from plugadvpl.parsing.parser import parse_source
         f = tmp_path / "MVCExemplo.prw"

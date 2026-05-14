@@ -135,6 +135,21 @@ _WSSTRUCT_HEADER_RE = re.compile(r"^[ \t]*WSSTRUCT[ \t]+(\w+)", re.IGNORECASE | 
 _WSSERVICE_HEADER_RE = re.compile(
     r"^[ \t]*WSSERVICE[ \t]+(\w+)", re.IGNORECASE | re.MULTILINE
 )
+# v0.3.16 (#5/#7 do QA report): WSRESTFUL é a versão REST do WSSERVICE.
+# Antes nem aparecia no parser → REST classes "puras" (com WSMETHOD GET WSSERVICE,
+# sem WSMETHOD GET <name> WSSERVICE) caíam pra source_type=user_function.
+_WSRESTFUL_HEADER_RE = re.compile(
+    r"^[ \t]*WSRESTFUL[ \t]+(\w+)", re.IGNORECASE | re.MULTILINE
+)
+_END_WSRESTFUL_RE = re.compile(
+    r"^[ \t]*(?:ENDWSRESTFUL|END[ \t]+WSRESTFUL)", re.IGNORECASE | re.MULTILINE
+)
+# WSMETHOD GET WSSERVICE <Class> (verb-only, padrão de implementação REST clássica
+# em fontes WSRESTFUL — sem o <name> entre o verbo e WSSERVICE).
+_WSMETHOD_REST_BARE_RE = re.compile(
+    r"^[ \t]*WSMETHOD[ \t]+(GET|POST|PUT|DELETE|PATCH)[ \t]+WSSERVICE[ \t]+(\w+)",
+    re.IGNORECASE | re.MULTILINE,
+)
 _WSDATA_FIELD_RE = re.compile(
     r"^[ \t]*WSDATA[ \t]+(\w+)[ \t]+AS[ \t]+(\w+)", re.IGNORECASE | re.MULTILINE
 )
@@ -606,9 +621,11 @@ def extract_calls_method(content: str) -> list[dict[str, Any]]:
 def _extract_rest_endpoints_from_stripped(
     stripped_keep_strings: str,
 ) -> list[dict[str, Any]]:
-    """Core: extrai REST endpoints (WSMETHOD clássico + @Get/@Post TLPP)."""
+    """Core: extrai REST endpoints (WSMETHOD clássico + @Get/@Post TLPP +
+    v0.3.16: WSMETHOD <verb> WSSERVICE <Class> sem <name> intermediário,
+    padrão típico de implementação dentro de classes WSRESTFUL)."""
     result: list[dict[str, Any]] = []
-    # WSMETHOD clássico
+    # WSMETHOD clássico (com <name>)
     for m in _WSMETHOD_REST_RE.finditer(stripped_keep_strings):
         result.append(
             {
@@ -618,6 +635,25 @@ def _extract_rest_endpoints_from_stripped(
                 "path": "",
                 "annotation_style": "wsmethod_classico",
                 "linha": _line_at(stripped_keep_strings, m.start()),
+            }
+        )
+    # WSMETHOD verb-only (WSRESTFUL) — só conta se NÃO casou com o padrão clássico.
+    # O regex bare casa um superset; deduplicamos por (classe, verbo, linha).
+    seen = {(r["classe"], r["verbo"], r["linha"]) for r in result}
+    for m in _WSMETHOD_REST_BARE_RE.finditer(stripped_keep_strings):
+        verbo = m.group(1).upper()
+        classe = m.group(2)
+        linha = _line_at(stripped_keep_strings, m.start())
+        if (classe, verbo, linha) in seen:
+            continue
+        result.append(
+            {
+                "classe": classe,
+                "funcao": "",
+                "verbo": verbo,
+                "path": "",
+                "annotation_style": "wsmethod_restful",
+                "linha": linha,
             }
         )
     # Anotação TLPP
@@ -964,6 +1000,23 @@ def _extract_ws_structures_from_stripped(
         ]
         result["ws_services"].append({"nome": name, "metodos": metodos, "dados": dados})
 
+    # v0.3.16: WSRESTFUL blocks. Mesma forma do WSSERVICE mas vai pra `ws_restfuls`
+    # (lista separada — usada por _derive_source_type/_derive_capabilities pra
+    # adicionar WS-REST e classificar como webservice).
+    result["ws_restfuls"] = []
+    for m in _WSRESTFUL_HEADER_RE.finditer(stripped_keep_strings):
+        name = m.group(1)
+        if name.upper() in _WS_RESERVED:
+            continue
+        end = _next_end_offset(stripped_keep_strings, m.end(), _END_WSRESTFUL_RE)
+        body = stripped_keep_strings[m.end() : end]
+        metodos = [mm.group(1) for mm in _WSMETHOD_BARE_RE.finditer(body)]
+        dados = [
+            {"nome": dm.group(1), "tipo": dm.group(2)}
+            for dm in _WSDATA_FIELD_RE.finditer(body)
+        ]
+        result["ws_restfuls"].append({"nome": name, "metodos": metodos, "dados": dados})
+
     # WSMETHOD com full signature (receive/send/service)
     for m in _WSMETHOD_FULL_RE.finditer(stripped_keep_strings):
         result["ws_methods"].append(
@@ -1097,7 +1150,47 @@ def extract_sql_embedado(content: str) -> list[dict[str, Any]]:
 # campos transitórios no dict parsed.
 
 # Protheus PE pattern: ^[A-Z]{2,4}\d{2,4}[A-Z_]{2,}$ — User Functions Point of Entry.
+# Catches MT100GRV, MA440PGN style. NÃO captura ANCTB102GR (letras-letras-digitos-
+# letras) — pra esse caso usamos PARAMIXB body scan (v0.3.16 #6/#10).
 _PE_NAME_RE = re.compile(r"^[A-Z]{2,4}\d{2,4}[A-Z_]{2,}$")
+# v0.3.16 (#6/#10): PARAMIXB[N] no corpo da função é sinal forte de PE. PE
+# Protheus recebe parâmetros via `PARAMIXB` (array global) — função custom
+# raramente usa essa convenção, então o falso-positivo é mínimo.
+_PARAMIXB_USAGE_RE = re.compile(r"\bPARAMIXB\s*\[", re.IGNORECASE)
+
+
+def _derive_pontos_entrada(
+    funcoes: list[dict[str, Any]], content_lines: list[str]
+) -> list[str]:
+    """Detecta User Functions que sao Pontos de Entrada Protheus.
+
+    Sinais (basta um):
+      1. Nome bate `_PE_NAME_RE` (estilo MT100GRV).
+      2. Corpo da funcao usa `PARAMIXB[N]` (estilo ANCTB102GR ou PE custom
+         que nao segue convencao de nome obvia).
+
+    Returns sorted list of unique names.
+    """
+    result: set[str] = set()
+    for f in funcoes:
+        if f.get("kind") != "user_function":
+            continue
+        nome = f.get("nome", "")
+        if not nome:
+            continue
+        nome_up = nome.upper()
+        if _PE_NAME_RE.match(nome_up):
+            result.add(nome)
+            continue
+        # Corpo da funcao: linhas [linha_inicio, linha_fim] (1-indexed).
+        ini = int(f.get("linha_inicio", 0))
+        fim = int(f.get("linha_fim", ini))
+        if ini <= 0 or fim < ini:
+            continue
+        body = "\n".join(content_lines[ini - 1 : fim])
+        if _PARAMIXB_USAGE_RE.search(body):
+            result.add(nome)
+    return sorted(result)
 _COMPATIB_NAME_RE = re.compile(r"^U_UPD", re.IGNORECASE)
 _TESTE_UNIT_ANNOTATION_RE = re.compile(r"@Test\b", re.IGNORECASE)
 _FW_BROWSE_RE = re.compile(r"\b(?:FWFormBrowse|FWBrowse)\b", re.IGNORECASE)
@@ -1180,21 +1273,28 @@ def _derive_capabilities(parsed: dict[str, Any], content: str) -> list[str]:  # 
     # WS-REST / WS-SOAP
     for ep in rest_endpoints:
         style = ep.get("annotation_style", "")
-        if style == "@verb_tlpp":
+        if style in ("@verb_tlpp", "wsmethod_restful"):
             caps.add("WS-REST")
         elif style == "wsmethod_classico":
             caps.add("WS-SOAP")
     if ws_structures.get("ws_services"):
         caps.add("WS-SOAP")
+    if ws_structures.get("ws_restfuls"):
+        caps.add("WS-REST")
 
-    # PE: User Functions com nome em padrão Protheus PE
-    for f in funcoes:
-        if f.get("kind") != "user_function":
-            continue
-        nome = f.get("nome", "").upper()
-        if _PE_NAME_RE.match(nome):
-            caps.add("PE")
-            break
+    # PE: User Functions detectadas via nome OU PARAMIXB no corpo (v0.3.16).
+    # Fallback para regex direto quando `pontos_entrada` não está populado
+    # (caller passou parsed dict sintético sem pre-derivar — back-compat).
+    if parsed.get("pontos_entrada"):
+        caps.add("PE")
+    else:
+        for f in funcoes:
+            if f.get("kind") != "user_function":
+                continue
+            nome = f.get("nome", "").upper()
+            if _PE_NAME_RE.match(nome):
+                caps.add("PE")
+                break
 
     # SCHEDULE
     if _SCHEDULE_RE.search(content):
@@ -1290,7 +1390,11 @@ def _derive_source_type(parsed: dict[str, Any]) -> str:  # noqa: PLR0911
     rest_endpoints: list[dict[str, Any]] = parsed.get("rest_endpoints", []) or []
     ws_structures: dict[str, Any] = parsed.get("ws_structures") or {}
 
-    if rest_endpoints or ws_structures.get("ws_services"):
+    if (
+        rest_endpoints
+        or ws_structures.get("ws_services")
+        or ws_structures.get("ws_restfuls")
+    ):
         return "webservice"
     if "MVC" in capabilities:
         return "mvc"
@@ -1403,6 +1507,10 @@ def parse_source(file_path: Path) -> dict[str, Any]:
         # SHA-1 não é uso criptográfico — apenas content-addressed hash para stale detection.
         "hash": hashlib.sha1(raw).hexdigest() if raw else "",
     }
+    # v0.3.16: pontos_entrada calculado aqui (antes vivia em ingest.py via
+    # regex de nome só). Agora combina nome + PARAMIXB body scan, e ingest
+    # consome direto.
+    result["pontos_entrada"] = _derive_pontos_entrada(funcs, content.splitlines())
     # capabilities e source_type derivados a partir dos campos já extraídos +
     # conteúdo stripped (passado explicitamente, sem mutar o result dict).
     result["capabilities"] = _derive_capabilities(result, stripped_keep_strings)

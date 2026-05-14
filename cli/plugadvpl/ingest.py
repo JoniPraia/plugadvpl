@@ -197,15 +197,10 @@ def _write_parsed(  # noqa: PLR0912, PLR0915 — escrita verbosa: 12 tabelas dep
         {f["nome"] for f in funcoes_list if f.get("kind") == "user_function"}
     )
 
-    # Pontos de entrada — User Functions com nome em padrão PE.
-    # Reusa _PE_NAME_RE do parser (importado em top-level).
-    pontos_entrada = sorted(
-        {
-            f["nome"]
-            for f in funcoes_list
-            if f.get("kind") == "user_function" and _PE_NAME_RE.match(f.get("nome", "").upper())
-        }
-    )
+    # v0.3.16: pontos_entrada agora vem do parser (combina regex de nome +
+    # PARAMIXB body scan, fix #6/#10 do QA report). Antes era recomputado
+    # aqui só com regex.
+    pontos_entrada = parsed.get("pontos_entrada", []) or []
 
     # Calls auxiliares para fontes.calls_u / calls_execblock
     chamadas_list = parsed.get("chamadas", []) or []
