@@ -692,15 +692,18 @@ def gatilho_query(
     for level in range(1, max(1, min(depth, 3)) + 1):
         next_frontier: list[tuple[str, str]] = []
         for origem, parent in frontier:
+            # v0.3.15 (#4 do QA report): help diz "originados/destinados" mas a
+            # query so casava origem. Agora cobre ambos os lados — campos que
+            # apenas RECEBEM gatilhos (chaves geradas, p.ex.) ficavam invisiveis.
             rows = conn.execute(
                 """
                 SELECT campo_origem, sequencia, campo_destino, regra, condicao,
                        tipo, alias, seek
                 FROM gatilhos
-                WHERE upper(campo_origem) = ?
+                WHERE upper(campo_origem) = ? OR upper(campo_destino) = ?
                 ORDER BY sequencia
                 """,
-                (origem,),
+                (origem, origem),
             ).fetchall()
             for co, seq, cd, regra, cond, tp, alias, seek in rows:
                 if len(out) >= max_rows:

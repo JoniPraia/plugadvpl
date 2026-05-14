@@ -332,17 +332,45 @@ def _write_parsed(  # noqa: PLR0912, PLR0915 — escrita verbosa: 12 tabelas dep
         )
 
     # chamadas_funcao
+    # v0.3.15 (#8 do QA report): resolver `funcao_origem` via lookup nos chunks.
+    # Antes ficava string vazia em todos os 30k+ registros, quebrando `callees`.
+    # Range list ordenada por linha_inicio; pra cada call, escolhemos o chunk
+    # MAIS INTERNO (menor range) que contém linha_origem — handle de nested
+    # methods/static functions dentro de Class.
+    chunk_ranges: list[tuple[int, int, str]] = sorted(
+        (
+            int(f.get("linha_inicio", 1)),
+            int(f.get("linha_fim", int(f.get("linha_inicio", 1)))),
+            f.get("nome", ""),
+        )
+        for f in funcoes_list
+        if f.get("kind", "function") not in _NON_CHUNK_KINDS
+    )
+
+    def _resolve_funcao_origem(linha: int) -> str:
+        """Acha a função que contém ``linha`` (chunk mais interno). '' se nenhuma."""
+        if linha <= 0:
+            return ""
+        best: tuple[int, str] | None = None  # (range_size, nome)
+        for ini, fim, nome in chunk_ranges:
+            if ini <= linha <= fim:
+                size = fim - ini
+                if best is None or size < best[0]:
+                    best = (size, nome)
+        return best[1] if best else ""
+
     cf_rows: list[tuple[Any, ...]] = []
     for c in chamadas_list:
         destino = c.get("destino", "")
         contexto = c.get("contexto", "") or ""
         if redact_secrets and contexto:
             contexto = _redact(contexto)
+        linha_origem = int(c.get("linha_origem", 0))
         cf_rows.append(
             (
                 arquivo,
-                "",  # funcao_origem (best-effort vazio no MVP)
-                int(c.get("linha_origem", 0)),
+                _resolve_funcao_origem(linha_origem),
+                linha_origem,
                 c.get("tipo", ""),
                 destino,
                 _normalize_destino(destino),

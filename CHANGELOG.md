@@ -4,6 +4,68 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.15] - 2026-05-14
+
+### Correctness pack — 5 fixes derivados do `gaps/PLUGADVPL_QA_REPORT.md` (relatorio QA exploratorio rodado num projeto real Marfrig com 1.992 fontes + dicionario SX completo, 421k registros). Foco nos achados de severidade alta/critica que **bugs reais** com fix surgical (parser heuristicas e melhorias de UX maiores ficam pra v0.3.16+).
+
+### Fixed
+- **#8 (CRITICO) — `callees` totalmente quebrado**: `chamadas_funcao.funcao_origem`
+  estava sendo gravado como `""` em TODOS os 30k+ registros (`# best-effort vazio
+  no MVP` esquecido). Resultado: `plugadvpl callees <funcao>` retornava vazio
+  pra qualquer nome de funcao. Agora resolvemos via lookup nos chunks
+  (linha_origem está dentro de quais [linha_inicio, linha_fim]?), escolhendo o
+  chunk MAIS INTERNO em caso de nesting (Class > Method > Static).
+- **#4 — `gatilho` ignorava destinos**: query era `WHERE upper(campo_origem) = ?`
+  mas o help diz "originados/destinados". Campos que apenas RECEBEM gatilhos
+  (chaves geradas) ficavam invisiveis. Agora `WHERE upper(campo_origem) = ?
+  OR upper(campo_destino) = ?`.
+- **#13 — `ingest-sx` sobrescrevia `project_root`**: chamava
+  `init_meta(project_root=str(csv_dir))` que upsertava o slot do `project_root`
+  com o `csv_dir`. Sintoma observado: status mostrava `project_root=D:\...\CSV`
+  em vez da raiz do projeto. Agora so chama `init_meta` se `project_root`
+  ainda nao existir (caso usuario rode `ingest-sx` antes de `init`); caso
+  contrario so atualiza `cli_version`. `sx_csv_dir` continua indo pro slot
+  proprio.
+
+### Added
+- **#2 — Hint amigavel para flag global misplaced**: `plugadvpl status --limit 20`
+  retornava `No such option: --limit` sem indicar que `--limit` eh global e
+  precisa vir antes do subcomando. Agora `main()` detecta o caso heuristicamente
+  (token em `_GLOBAL_FLAGS` apos o subcomando) e imprime apos o erro do click:
+  ```
+  Dica: '--limit' eh uma flag GLOBAL — vem ANTES do subcomando.
+    Errado:  plugadvpl status --limit ...
+    Correto: plugadvpl --limit ... status
+  ```
+- Set `_GLOBAL_FLAGS` em cli.py com as 12 flags do callback.
+
+### Changed
+- **#1 — Fragment `CLAUDE.md` desatualizado**: tabela de decisao listava modos
+  do `grep` como `--fts`/`--literal`/`--identifier` (flags inexistentes — o
+  correto eh `-m fts|literal|identifier`). Atualizado. Projetos novos veem
+  versao certa via `plugadvpl init`; projetos existentes podem regenerar
+  manualmente ou aguardar proximo init.
+
+### Tests
+- `tests/unit/test_query.py::TestCallees::test_callees_by_function_name_works` (#8 RED→GREEN).
+- `tests/integration/test_ingest_sx.py::TestGatilhoCommand::test_gatilho_includes_destination_matches` (#4 RED→GREEN).
+- `tests/integration/test_ingest_sx.py::TestIngestSx::test_ingest_sx_preserves_project_root` (#13 RED→GREEN).
+- `tests/integration/test_cli.py::TestGlobalFlagPositioning::test_misplaced_global_flag_shows_helpful_hint` (#2 RED→GREEN).
+- 309 testes verde (era 305).
+
+### Notes
+- **Nao incluido neste release** (planejado v0.3.16+):
+  - #3 `impacto` substring sem boundary (false positives massivos com `A1_COD`).
+  - #5/#7 WSRESTFUL nao classifica como `source_type=webservice`.
+  - #6/#10 PE canonico (ANCTB102GR) nao detectado.
+  - #9 `lint` retorna findings duplicados.
+  - #11 flag `tabelas_via_execauto` quando `EXEC_AUTO_CALLER`.
+  - #12 flag `is_self_call` em callers.
+- **Dados existentes**: usuarios precisam re-rodar `plugadvpl ingest --no-incremental`
+  para que `funcao_origem` seja populado nos registros existentes (warning
+  da v0.3.13 ja avisa quando lookups mudam — neste caso lookups nao mudaram,
+  so o codigo, entao precisa reingest manual).
+
 ## [0.3.14] - 2026-05-14
 
 ### SXB consultas — PK fix + dedup transparency. Quarta rodada do mesmo feedback de IA externa: dump real do cliente com 58.796 linhas em `sxb.csv` virava 46.669 no DB (perda de 20,6%) silenciosamente. Pesquisa contra TDN oficial confirmou: SXB tem 6 tipos (XB_TIPO 1-6: header/indice/permissao/coluna/retorno/filtro) e a PK natural inclui XB_TIPO.

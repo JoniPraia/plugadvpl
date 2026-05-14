@@ -212,6 +212,50 @@ class TestIngestSx:
         assert "duplicad" not in captured.err.lower()
         assert "deduplicados" not in captured.err.lower()
 
+    def test_ingest_sx_preserves_project_root(
+        self,
+        sx_project: Path,
+        sx_csv_dir: Path,
+        runner: CliRunner,
+    ) -> None:
+        """v0.3.15 — Bug #13 do QA report: `ingest-sx` chamava
+        `init_meta(project_root=str(csv_dir))` que sobrescrevia o
+        `project_root` original (raiz do projeto) com o caminho do CSV dir.
+        Sintoma observado: apos `ingest-sx D:\\...\\CSV`, status mostrava
+        `project_root=D:\\...\\CSV` em vez da raiz do projeto."""
+        # Step 1: init grava project_root = sx_project.
+        runner.invoke(app, ["--root", str(sx_project), "init"])
+        db = sx_project / ".plugadvpl" / "index.db"
+        conn = _connect(db)
+        try:
+            row = conn.execute(
+                "SELECT valor FROM meta WHERE chave='project_root'"
+            ).fetchone()
+            project_root_before = row[0]
+        finally:
+            conn.close()
+        assert project_root_before == str(sx_project)
+
+        # Step 2: ingest-sx com csv_dir != project_root.
+        ingest_sx(sx_csv_dir, db)
+
+        # Step 3: project_root deve continuar igual; sx_csv_dir vai pra slot proprio.
+        conn = _connect(db)
+        try:
+            project_root_after = conn.execute(
+                "SELECT valor FROM meta WHERE chave='project_root'"
+            ).fetchone()[0]
+            sx_csv_dir_meta = conn.execute(
+                "SELECT valor FROM meta WHERE chave='sx_csv_dir'"
+            ).fetchone()[0]
+        finally:
+            conn.close()
+        assert project_root_after == project_root_before, (
+            f"project_root sobrescrito! antes={project_root_before!r}, "
+            f"depois={project_root_after!r}"
+        )
+        assert sx_csv_dir_meta == str(sx_csv_dir.resolve())
+
     def test_sxg_mislabel_emits_warning(
         self,
         sx_project: Path,
@@ -316,6 +360,36 @@ class TestGatilhoCommand:
         # Deve ter rows com nivel=2.
         niveis = {r["nivel"] for r in payload["rows"]}
         assert 2 in niveis
+
+    def test_gatilho_includes_destination_matches(
+        self, indexed_with_sx: Path, runner: CliRunner
+    ) -> None:
+        """v0.3.15 — Bug #4 do QA report: help diz `originados/destinados`
+        mas query so casava `WHERE upper(campo_origem) = ?`. Agora deve achar
+        gatilhos onde o campo aparece como destino.
+
+        Fixture tem: A1_COD->A1_NREDUZ, A1_COD->A1_FANTASMA, A1_NREDUZ->A1_XCUSTOM.
+        Query por A1_NREDUZ deve retornar AMBOS (origem A1_COD, e A1_NREDUZ
+        como origem indo pra A1_XCUSTOM)."""
+        result = runner.invoke(
+            app,
+            [
+                "--root", str(indexed_with_sx),
+                "--format", "json",
+                "gatilho", "A1_NREDUZ", "--depth", "1",
+            ],
+        )
+        assert result.exit_code == 0, result.stderr
+        payload = json.loads(result.stdout)
+        # Origem A1_NREDUZ → destino A1_XCUSTOM (gatilho onde A1_NREDUZ é origem).
+        # Origem A1_COD → destino A1_NREDUZ (gatilho onde A1_NREDUZ é destino).
+        origens = {r["origem"] for r in payload["rows"]}
+        destinos = {r["destino"] for r in payload["rows"]}
+        assert "A1_NREDUZ" in origens, "campo como origem deve aparecer"
+        assert "A1_NREDUZ" in destinos, (
+            f"campo como destino deveria aparecer (gatilho A1_COD->A1_NREDUZ). "
+            f"destinos={destinos}"
+        )
 
 
 class TestSxStatusCommand:

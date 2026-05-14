@@ -80,6 +80,33 @@ class TestVersion:
         assert __version__ in result.stdout
 
 
+class TestGlobalFlagPositioning:
+    def test_misplaced_global_flag_shows_helpful_hint(
+        self, indexed_project: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """v0.3.15 — Bug #2 do QA report: usuario rodava
+        `plugadvpl status --limit 20` e recebia "No such option: --limit"
+        sem indicacao de que a flag eh global e precisa vir antes do
+        subcomando. Agora `main()` detecta o caso comum e adiciona hint
+        amarelo em stderr APOS o erro do click.
+
+        Testamos via main() (nao runner.invoke) porque o wrapper da hint
+        vive em main(), nao em app — o runner bypassa main()."""
+        from plugadvpl.cli import main as cli_main
+
+        monkeypatch.setattr(
+            "sys.argv",
+            ["plugadvpl", "--root", str(indexed_project), "status", "--limit", "20"],
+        )
+        with pytest.raises(SystemExit) as exc_info:
+            cli_main()
+        assert exc_info.value.code != 0
+        captured = capsys.readouterr()
+        # Hint vai pra stderr APOS o erro nativo do click.
+        assert "--limit" in captured.err
+        assert "global" in captured.err.lower() or "antes" in captured.err.lower()
+
+
 class TestHelp:
     def test_help_lists_all_subcommands(self, runner: CliRunner) -> None:
         result = runner.invoke(app, ["--help"])

@@ -31,7 +31,7 @@ Requer `/plugadvpl:ingest-sx` rodado antes.
 ## Execucao
 
 ```bash
-uvx plugadvpl@0.3.14 gatilho $ARGUMENTS
+uvx plugadvpl@0.3.15 gatilho $ARGUMENTS
 ```
 
 ## Exemplos

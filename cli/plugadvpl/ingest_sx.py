@@ -23,6 +23,7 @@ from plugadvpl import __version__ as _cli_version
 from plugadvpl.db import (
     apply_migrations,
     close_db,
+    get_meta,
     init_meta,
     open_db,
     seed_lookups,
@@ -219,9 +220,16 @@ def ingest_sx(
     conn = open_db(db_path)
     try:
         apply_migrations(conn)
-        # Garante baseline de meta + lookups (idempotente). project_root aqui é o
-        # csv_dir — usuário pode ter rodado ingest-sx antes/depois de ingest.
-        init_meta(conn, project_root=str(csv_dir), cli_version=_cli_version)
+        # v0.3.15 (#13 do QA report): NAO chamar init_meta(project_root=csv_dir)
+        # aqui — sobrescrevia o project_root real (raiz do projeto) com o csv_dir.
+        # Em vez disso, so escrevemos project_root como fallback quando ainda
+        # nao existe (caso usuario rode `ingest-sx` antes de `init`/`ingest`).
+        # cli_version e sempre atualizada (consistente com `ingest`).
+        existing_root = get_meta(conn, "project_root")
+        if not existing_root:
+            init_meta(conn, project_root=str(csv_dir), cli_version=_cli_version)
+        else:
+            set_meta(conn, "cli_version", _cli_version)
         seed_lookups(conn)
 
         for csv_name, table, columns in _SX_INGEST_PLAN:

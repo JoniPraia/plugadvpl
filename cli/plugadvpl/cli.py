@@ -282,7 +282,7 @@ o `arch` retorna).
 | "o que X chama por dentro?" / "quais dependências de X?"    | `plugadvpl callees <funcao>`                   |
 | "quem mexe na tabela SA1?" / "quem grava em SC5?"           | `plugadvpl tables SA1` (ou `--write/--reclock`)|
 | "quais parâmetros MV_* X usa?" / "onde MV_LOCALIZA é usado?"| `plugadvpl param MV_LOCALIZA`                  |
-| "achar fonte com 'RecLock' / 'BeginSql' / etc"              | `plugadvpl grep <termo>` (modos `--fts`/`--literal`/`--identifier`) |
+| "achar fonte com 'RecLock' / 'BeginSql' / etc"              | `plugadvpl grep <termo>` (modos `-m fts\\|literal\\|identifier`)      |
 | "tem problemas / boas práticas neste fonte?"                | `plugadvpl lint [arq] [--severity critical]`   |
 | "essa função é nativa do Protheus?"                         | `plugadvpl native <nome>`                      |
 | "posso usar StaticCall / função X?"                         | `plugadvpl restricted <nome>`                  |
@@ -1037,6 +1037,12 @@ def sx_status_cmd(ctx: typer.Context) -> None:
 # ---------------------------------------------------------------------------
 
 
+_GLOBAL_FLAGS = {
+    "--root", "-r", "--db", "--format", "-f", "--limit", "--offset",
+    "--compact", "--quiet", "-q", "--no-next-steps", "--version", "-V",
+}
+
+
 def main() -> None:
     """Entry point para console_script ``plugadvpl``."""
     # Defense layer: força stdout/stderr para UTF-8 em Windows. Sem isto, qualquer
@@ -1049,7 +1055,56 @@ def main() -> None:
                 stream.reconfigure(encoding="utf-8", errors="replace")
             except (AttributeError, ValueError, io.UnsupportedOperation):
                 pass
-    app()
+
+    # v0.3.15 (#2 do QA report): hint quando usuário põe flag global APÓS
+    # subcomando. Click reporta "No such option: --limit" sem dica de que a
+    # flag existe mas no escopo errado. Detectamos a chamada misplaced e
+    # adicionamos uma linha amarela orientando posicionamento correto.
+    misplaced = _detect_misplaced_global_flag(sys.argv[1:])
+    try:
+        app()
+    except SystemExit as exit_:
+        if misplaced and exit_.code not in (0, None):
+            flag, subcmd = misplaced
+            typer.secho(
+                f"\nDica: '{flag}' eh uma flag GLOBAL — vem ANTES do subcomando.\n"
+                f"  Errado:  plugadvpl {subcmd} {flag} ...\n"
+                f"  Correto: plugadvpl {flag} ... {subcmd}",
+                fg=typer.colors.YELLOW,
+                err=True,
+            )
+        raise
+
+
+def _detect_misplaced_global_flag(argv: list[str]) -> tuple[str, str] | None:
+    """Retorna (flag, subcomando) se uma flag global aparece DEPOIS do subcomando.
+
+    Heurística simples: o primeiro token sem '-' é o subcomando; qualquer token
+    em :data:`_GLOBAL_FLAGS` que apareça depois disso indica posicionamento
+    errado. Ignora valores de opções (heurística básica: token logo após uma
+    flag global é tratado como valor).
+    """
+    subcmd: str | None = None
+    skip_next = False
+    for tok in argv:
+        if skip_next:
+            skip_next = False
+            continue
+        if subcmd is None:
+            if tok.startswith("-"):
+                # Pode ser flag global no escopo certo (antes do subcmd) que
+                # aceita valor. Pula o próximo token se a flag tipicamente o exige.
+                if tok in _GLOBAL_FLAGS and tok not in {
+                    "--compact", "--quiet", "-q", "--no-next-steps",
+                    "--version", "-V",
+                }:
+                    skip_next = True
+                continue
+            subcmd = tok
+            continue
+        if tok in _GLOBAL_FLAGS:
+            return (tok, subcmd)
+    return None
 
 
 if __name__ == "__main__":

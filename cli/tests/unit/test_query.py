@@ -117,6 +117,25 @@ class TestCallees:
         destinos = {r["destino"] for r in rows}
         assert "FATA050" in destinos
 
+    def test_callees_by_function_name_works(
+        self, db_with_three_sources: tuple[Path, sqlite3.Connection]
+    ) -> None:
+        """v0.3.15 — Bug #8 do QA report: ingest deixava funcao_origem='' em
+        TODOS os 30k+ registros, então `callees <nome_funcao>` retornava vazio
+        sempre. A função-pai deve ser resolvida via lookup em fonte_chunks
+        (qual chunk contém linha_origem).
+
+        Fixture: MATA010 contém uma função MATA010 que chama FATA050. Buscar
+        callees de MATA010 (por nome de função, NÃO por basename) deve retornar
+        FATA050."""
+        _, conn = db_with_three_sources
+        rows = callees(conn, "MATA010")  # nome da função, sem .prw
+        destinos = {r["destino"] for r in rows}
+        assert "FATA050" in destinos, (
+            f"callees('MATA010') deveria achar FATA050. "
+            f"Encontrou: {destinos}. Provavelmente funcao_origem ainda esta vazio."
+        )
+
 
 class TestTablesQuery:
     def test_query_table_sc5_returns_fata050(
