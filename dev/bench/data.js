@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778709094581,
+  "lastUpdate": 1778755713951,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -1465,6 +1465,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0004650925986462022",
             "extra": "mean: 13.948408230769124 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "b5f5e63dfa91b701154cd550f39e415c7dcbba1d",
+          "message": "release: v0.3.11 — UX/docs fix from external AI feedback\n\nOutra IA usando o plugin reportou 3 fricções: (1) truncamento Rich na\nsaida default em terminal estreito; (2) tentou --json (nao existe, eh\n--format json); (3) misturou syntax PS/Bash em workaround com $env:COLUMNS.\n\nSem mudanca de codigo de producao — apenas discoverability + maintenance:\n\n- Bump 18 skills de @0.3.1 → @0.3.10 (estavam congeladas; usuarios do\n  marketplace puxavam sem regras BP-008/PERF-005/MOD-004/PERF-004/SEC-005).\n- skills/plugadvpl-index-usage: nova secao \"Output format\" com tabela\n  table/md/json + lista de anti-padroes vistos em sessoes reais.\n- skills/{arch,find,lint,tables,callees,callers}: callout no topo +\n  exemplo ja com --format md pra induzir copia correta.\n- skills/help: documentacao completa das 8 flags globais com aviso\n  \"--json/--vertical/--wide nao existem; use --format json|md\".\n- CLAUDE.md fragment (cli.py): nova secao \"Output format\" pra projetos\n  novos terem a guidance baked in via /plugadvpl:init.\n\nDecisao: nao adicionar flags novas (--vertical, --wide, --no-truncate).\n--format md ja resolve truncamento e eh mais legivel pra LLM. Mantem\nAPI CLI enxuta.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-14T07:48:14-03:00",
+          "tree_id": "f93c2eba45d2206e316a9500600e1f14f13549b8",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/b5f5e63dfa91b701154cd550f39e415c7dcbba1d"
+        },
+        "date": 1778755713714,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 20.133909261393114,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0005579519243595175",
+            "extra": "mean: 49.667453399996475 msec\nrounds: 15"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 70.84608387997665,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00037377011798587676",
+            "extra": "mean: 14.115106230771236 msec\nrounds: 13"
           }
         ]
       }
