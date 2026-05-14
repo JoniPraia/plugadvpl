@@ -122,6 +122,17 @@ Antes de confiar em consultas, em sessao nova rode `/plugadvpl:status` para conf
 
 Para checar integridade do indice (encoding, orfaos, FTS dessincronizado): `/plugadvpl:doctor`.
 
+## Versao do plugin — `runtime` vs `indice`
+
+O `status` mostra **duas versoes** desde v0.3.12:
+
+- `runtime_version` = binario rodando AGORA (== `plugadvpl --version`)
+- `plugadvpl_version` = binario que **gravou o indice** (frozen no init/ingest)
+
+Quando divergirem (ex: `uv tool upgrade plugadvpl` deixou o binario em 0.3.12 mas o indice continua marcado como 0.2.0), o `status` imprime aviso amarelo em stderr: `Indice criado com plugadvpl 0.2.0, binario atual e 0.3.12. Rode 'plugadvpl ingest --incremental'`. Acao correta: rodar `ingest --incremental` para puxar regras/parsers da versao nova.
+
+Para checar so a versao do binario, sem ler o indice: `plugadvpl --version` (ou `-V`).
+
 ## Anti-padroes
 
 - **Ler `.prw` cru "para entender o contexto"** — proibido. Exemplo concreto: `Read MATA461.prw` (12k tokens) versus `/plugadvpl:arch MATA461.prw` (600 tokens). 20x mais barato, resposta mais estruturada.

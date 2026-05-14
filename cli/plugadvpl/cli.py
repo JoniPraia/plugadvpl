@@ -113,9 +113,26 @@ class TableMode(StrEnum):
 # ---------------------------------------------------------------------------
 
 
+def _version_callback(value: bool) -> None:
+    """Eager callback de ``--version``/`-V`: imprime e sai antes de exigir subcomando."""
+    if value:
+        typer.echo(f"plugadvpl {__version__}")
+        raise typer.Exit()
+
+
 @app.callback()
 def main_callback(
     ctx: typer.Context,
+    version: Annotated[
+        bool,
+        typer.Option(
+            "--version",
+            "-V",
+            callback=_version_callback,
+            is_eager=True,
+            help="Mostra a versão do binário e sai.",
+        ),
+    ] = False,
     root: Annotated[
         Path,
         typer.Option("--root", "-r", help="Raiz do projeto cliente."),
@@ -555,8 +572,22 @@ def status(
 ) -> None:
     """Mostra estado do índice (versões, contadores, opcionalmente arquivos stale)."""
     root: Path = ctx.obj["root"]
-    rows = _with_ro_db(ctx, lambda c: q_status(c, str(root)))
+    rows = _with_ro_db(ctx, lambda c: q_status(c, str(root), __version__))
     _render_from_ctx(ctx, rows, title="Status do índice")
+
+    # Aviso de divergência runtime ↔ índice — fecha o gap "binário foi atualizado
+    # via uv tool upgrade mas o status ainda mostra a versão antiga gravada".
+    if rows and not ctx.obj["quiet"]:
+        runtime = rows[0].get("runtime_version")
+        stored = rows[0].get("plugadvpl_version")
+        if runtime and stored and runtime != stored:
+            typer.secho(
+                f"\n⚠ Índice criado com plugadvpl {stored}, binário atual é {runtime}.\n"
+                f"  Rode 'plugadvpl ingest --incremental' para atualizar o índice "
+                f"com regras/parsers da versão nova.",
+                fg=typer.colors.YELLOW,
+                err=True,
+            )
 
     if check_stale:
         try:

@@ -192,6 +192,35 @@ class TestStatus:
         assert s["plugadvpl_version"]
         assert s["total_arquivos"] == "3"
 
+    def test_status_runtime_version_field_when_passed(
+        self, db_with_three_sources: tuple[Path, sqlite3.Connection]
+    ) -> None:
+        """v0.3.12: status expõe runtime_version (binário rodando AGORA) — chave
+        sempre presente quando o caller passa, e fica `None` se não passar (back-compat)."""
+        src, conn = db_with_three_sources
+        rows_with = status(conn, str(src), runtime_version="0.3.12")
+        assert rows_with[0]["runtime_version"] == "0.3.12"
+        rows_without = status(conn, str(src))
+        assert "runtime_version" in rows_without[0]
+        assert rows_without[0]["runtime_version"] is None
+
+    def test_status_runtime_version_diverges_from_stored(
+        self, db_with_three_sources: tuple[Path, sqlite3.Connection]
+    ) -> None:
+        """Caso real do feedback: índice gravado em 0.2.0, binário atual 0.3.11.
+        O query devolve os dois lados — o aviso amarelo é responsabilidade da CLI."""
+        src, conn = db_with_three_sources
+        # db_with_three_sources grava plugadvpl_version via init_meta — vamos forçar
+        # algo antigo pra simular upgrade do binário sem reingest.
+        from plugadvpl.db import set_meta
+        set_meta(conn, "plugadvpl_version", "0.2.0")
+        rows = status(conn, str(src), runtime_version="0.3.11")
+        s = rows[0]
+        assert s["plugadvpl_version"] == "0.2.0"
+        assert s["runtime_version"] == "0.3.11"
+        # Divergência detectável pelo caller via comparação simples.
+        assert s["runtime_version"] != s["plugadvpl_version"]
+
 
 class TestStaleFiles:
     def test_stale_detection(

@@ -4,6 +4,60 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.12] - 2026-05-14
+
+### Version-confusion fix — IA externa (mesmo feedback da v0.3.11) tinha rodado `uv tool upgrade` e ficou perdida porque `plugadvpl status` continuava mostrando a versão antiga (frozen no índice). Padrão git/hatch/dvc: mostrar **runtime + stored** lado a lado e avisar quando divergem.
+
+### Added
+- **`plugadvpl --version` / `-V`** (eager flag global no callback) — imprime
+  versão do binário e sai. Padrão UNIX consagrado; antes só existia o
+  subcomando `plugadvpl version`. Agora ambos funcionam.
+- **`status` expõe `runtime_version`** — nova chave no output do query
+  `plugadvpl.query.status()`, populada com `plugadvpl.__version__` do
+  binário rodando AGORA. Convive com `plugadvpl_version` (frozen no
+  init/ingest) e `cli_version` (frozen no último ingest).
+- **Aviso de divergência** — quando `runtime_version != plugadvpl_version`,
+  o `status` imprime em **stderr** (amarelo): `⚠ Índice criado com
+  plugadvpl X.Y.Z, binário atual é A.B.C. Rode 'plugadvpl ingest
+  --incremental' para atualizar o índice com regras/parsers da versão
+  nova.` Suprimível com `--quiet`.
+
+### Changed
+- `plugadvpl.query.status(conn, project_root, runtime_version=None)` —
+  novo parâmetro keyword opcional `runtime_version` (back-compat: chave
+  vira `None` quando não passado, comportamento preservado).
+- Skill `status`: tabela de campos do output, seção "Para descobrir qual
+  versão está instalada" com 4 caminhos (`--version`, `version`, `status`,
+  `uv tool list`) e o que cada um responde.
+- Skill `help`: documenta `--version`/`-V` no topo das flags globais +
+  seção "Qual versão está instalada?" com 3 caminhos.
+- Skill `plugadvpl-index-usage`: nova seção "Versão do plugin — runtime
+  vs índice" explicando o cenário do `uv tool upgrade` sem reingest.
+- 18 skills bumpadas `@0.3.10`/`@0.3.11` → `@0.3.12`.
+
+### Tests
+- `tests/unit/test_query.py::TestStatus`: +2 testes
+  (`test_status_runtime_version_field_when_passed`,
+  `test_status_runtime_version_diverges_from_stored`).
+- `tests/integration/test_cli.py::TestVersion`: +2 testes
+  (`test_version_global_flag_long`, `test_version_global_flag_short`).
+- `tests/integration/test_cli.py::TestStatus`: +4 testes
+  (`test_status_includes_runtime_version`,
+  `test_status_warns_when_binary_diverges_from_index`,
+  `test_status_no_warning_when_versions_match`,
+  `test_status_warning_suppressed_by_quiet`).
+- 297 tests verde (eram 252+45 = 297; 8 novos compensam o que estava
+  faltando vs o agregado anterior).
+
+### Notes
+- Decisão deliberada: NÃO reescrever `meta.plugadvpl_version` no
+  `status` — manter como "versão que tocou o DB pela última vez" (resposta
+  semântica da pergunta "esse índice é compatível?"). O `runtime_version`
+  é a resposta complementar.
+- Comportamento back-compat: caller que chame `status(conn, root)` sem
+  passar `runtime_version` continua recebendo `runtime_version: None` na
+  saída — testado em `test_status_runtime_version_field_when_passed`.
+
 ## [0.3.11] - 2026-05-14
 
 ### UX/docs release — feedback de outra IA usando o plugin revelou 2 fricções de discoverability + 1 maintenance gap. Sem mudança de código de produção.

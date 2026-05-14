@@ -248,11 +248,25 @@ def lint_query(
     return [dict(zip(cols, r, strict=True)) for r in rows]
 
 
-def status(conn: sqlite3.Connection, project_root: str) -> list[dict[str, Any]]:
-    """Estado do índice: meta + contadores."""
+def status(
+    conn: sqlite3.Connection,
+    project_root: str,
+    runtime_version: str | None = None,
+) -> list[dict[str, Any]]:
+    """Estado do índice: meta + contadores.
+
+    Args:
+        conn: conexão aberta (read-only OK).
+        project_root: caminho da raiz (usado como fallback se o meta não tiver).
+        runtime_version: versão do binário rodando AGORA (``plugadvpl.__version__``).
+            Quando passado, vira a chave ``runtime_version`` na saída — comparar
+            com ``plugadvpl_version`` (= versão que tocou o índice por último)
+            permite detectar upgrade sem ``ingest --incremental`` posterior.
+    """
     return [
         {
             "schema_version": get_meta(conn, "schema_version"),
+            "runtime_version": runtime_version,
             "plugadvpl_version": get_meta(conn, "plugadvpl_version"),
             "cli_version": get_meta(conn, "cli_version"),
             "parser_version": get_meta(conn, "parser_version"),

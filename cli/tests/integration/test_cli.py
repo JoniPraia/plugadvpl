@@ -7,6 +7,7 @@ diretório temporário com 3 fontes ADVPL sintéticos. Cada teste cobre
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -63,6 +64,18 @@ def indexed_project(synthetic_project: Path, runner: CliRunner) -> Path:
 class TestVersion:
     def test_version_subcommand(self, runner: CliRunner) -> None:
         result = runner.invoke(app, ["version"])
+        assert result.exit_code == 0
+        assert __version__ in result.stdout
+
+    def test_version_global_flag_long(self, runner: CliRunner) -> None:
+        """v0.3.12: `plugadvpl --version` (eager, padrão UNIX) — funciona sem subcomando."""
+        result = runner.invoke(app, ["--version"])
+        assert result.exit_code == 0
+        assert __version__ in result.stdout
+
+    def test_version_global_flag_short(self, runner: CliRunner) -> None:
+        """v0.3.12: short `-V` também (não conflita com `-v` se algum subcomando usar)."""
+        result = runner.invoke(app, ["-V"])
         assert result.exit_code == 0
         assert __version__ in result.stdout
 
@@ -220,6 +233,68 @@ class TestStatus:
         assert result.exit_code == 0, result.stderr
         payload = json.loads(result.stdout)
         assert payload["rows"][0]["total_arquivos"] == "3"
+
+    def test_status_includes_runtime_version(
+        self, indexed_project: Path, runner: CliRunner
+    ) -> None:
+        """v0.3.12: status sempre traz `runtime_version` = __version__ do binário."""
+        result = runner.invoke(
+            app, ["--root", str(indexed_project), "--format", "json", "status"]
+        )
+        assert result.exit_code == 0, result.stderr
+        payload = json.loads(result.stdout)
+        assert payload["rows"][0]["runtime_version"] == __version__
+
+    def test_status_warns_when_binary_diverges_from_index(
+        self, indexed_project: Path, runner: CliRunner
+    ) -> None:
+        """v0.3.12: feedback real (índice 0.2.0, binário 0.3.11) → aviso amarelo
+        em stderr orientando `ingest --incremental`. Simulamos forçando um valor
+        antigo em meta.plugadvpl_version."""
+        # Adultera o meta direto via sqlite — simula índice criado em versão antiga.
+        db = indexed_project / ".plugadvpl" / "index.db"
+        conn = sqlite3.connect(db)
+        try:
+            conn.execute(
+                "UPDATE meta SET valor='0.0.1-old' WHERE chave='plugadvpl_version'"
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        result = runner.invoke(app, ["--root", str(indexed_project), "status"])
+        assert result.exit_code == 0
+        # Aviso vai pra stderr (não polui stdout JSON quando rodado com --format json).
+        assert "0.0.1-old" in result.stderr
+        assert "ingest --incremental" in result.stderr
+
+    def test_status_no_warning_when_versions_match(
+        self, indexed_project: Path, runner: CliRunner
+    ) -> None:
+        """Sem divergência: nenhum aviso amarelo poluindo stderr."""
+        result = runner.invoke(app, ["--root", str(indexed_project), "status"])
+        assert result.exit_code == 0
+        assert "ingest --incremental" not in result.stderr
+
+    def test_status_warning_suppressed_by_quiet(
+        self, indexed_project: Path, runner: CliRunner
+    ) -> None:
+        """`--quiet` suprime o aviso (consistente com a política das outras decorações)."""
+        db = indexed_project / ".plugadvpl" / "index.db"
+        conn = sqlite3.connect(db)
+        try:
+            conn.execute(
+                "UPDATE meta SET valor='0.0.1-old' WHERE chave='plugadvpl_version'"
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        result = runner.invoke(
+            app, ["--root", str(indexed_project), "--quiet", "status"]
+        )
+        assert result.exit_code == 0
+        assert "0.0.1-old" not in result.stderr
 
 
 class TestDoctor:
