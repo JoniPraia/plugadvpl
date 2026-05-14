@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778758197961,
+  "lastUpdate": 1778767574696,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -1573,6 +1573,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0003004763487911011",
             "extra": "mean: 13.722246538461146 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "fc30db2ba3b6493622e2dd3b6206ddaab8545338",
+          "message": "release: v0.3.14 — SXB PK fix + dedup transparency\n\nQuarta rodada do mesmo feedback de IA externa: dump real com 58.796 linhas\nem sxb.csv virava 46.669 no DB (perda de 20,6%) silenciosamente.\n\nCausa: PK de `consultas` era (alias, sequencia, coluna) mas SXB no Protheus\ntem 6 tipos (XB_TIPO 1-6: header/indice/permissao/coluna/retorno/filtro)\nque coexistem para mesmo (alias, seq, coluna). Pesquisa contra TDN oficial\n(paginas 22479685-22479707) confirmou que a PK natural inclui XB_TIPO.\n\nFix:\n- Migration 004 recria consultas com PK (alias, tipo, sequencia, coluna).\n  SCHEMA_VERSION 3 -> 4.\n- parse_sxg agora avisa em stderr quando detecta dump SX3 disfarcado\n  (header X3_* em vez de XG_*) — antes era silent skip.\n- ingest_sx conta PKs distintas ANTES de INSERT OR REPLACE e loga aviso\n  por tabela com diff > 0, mostrando quantas linhas colidiram em qual PK.\n  Transparencia da dedup que antes era invisivel.\n- _PK_COLS_BY_TABLE mapa novo (espelha migrations 001+002+004).\n\nTests: +4 integration. Suite total 305 verde. Fixture sxb_with_collisions.csv\n(6 linhas USRGRP, 1 por XB_TIPO) prova o bug e o fix.\n\nUsuarios existentes precisam re-rodar `ingest-sx` apos upgrade.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-14T11:05:52-03:00",
+          "tree_id": "ef954825671ea6aac1b1ad9be7d185f137766d68",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/fc30db2ba3b6493622e2dd3b6206ddaab8545338"
+        },
+        "date": 1778767574458,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 19.501143042783937,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0007776937592452233",
+            "extra": "mean: 51.27904542857209 msec\nrounds: 14"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 68.12525421201579,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000687948568170226",
+            "extra": "mean: 14.67884430769026 msec\nrounds: 13"
           }
         ]
       }
