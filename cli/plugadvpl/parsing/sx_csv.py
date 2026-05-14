@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import csv
 import re
+import sys
 from typing import TYPE_CHECKING, Any
 
 import chardet
@@ -479,7 +480,17 @@ def parse_sxg(file_path: Path) -> list[dict[str, Any]]:
         first_line = f.readline()
     first_col = first_line.split(delimiter)[0].strip().strip('"').strip()
     if not first_col.upper().startswith("XG_"):
-        # Não é um SXG canonical — provavelmente dump SX3 de grupo. Skip.
+        # v0.3.14: feedback de IA externa mostrou que o silent skip aqui virava
+        # mistério "por que grupos_campo=0?". Logamos pra deixar claro o que aconteceu.
+        upper = first_col.upper()
+        suspect = "SX3" if upper.startswith("X3_") else f"header={first_col!r}"
+        print(
+            f"WARN: '{file_path.name}' nao parece SXG (1a coluna={first_col!r}, "
+            f"esperado XG_*) — provavelmente dump {suspect} disfarcado. "
+            "Tabela grupos_campo ficara vazia. Solicite o SXG correto ao DBA "
+            "(deve ter colunas XG_GRUPO/XG_DESCRIC/XG_TAMANHO).",
+            file=sys.stderr,
+        )
         return []
     rows = _read_csv(file_path)
     result: list[dict[str, Any]] = []

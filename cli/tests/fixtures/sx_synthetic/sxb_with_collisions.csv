@@ -1,0 +1,7 @@
+"XB_ALIAS","XB_TIPO","XB_SEQ","XB_COLUNA","XB_DESCRI","XB_CONTEM","D_E_L_E_T_"
+"USRGRP","1","01","DB","Header","Tabela alvo",""
+"USRGRP","2","01","","Indice","XX_FILIAL+XX_USER",""
+"USRGRP","3","01","","Permissao","",""
+"USRGRP","4","01","","Coluna",".T.",""
+"USRGRP","5","01","","Retorno","SUSR->XX_USER",""
+"USRGRP","6","01","","Filtro","",""

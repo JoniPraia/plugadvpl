@@ -110,6 +110,45 @@ class TestIngestSx:
         finally:
             conn.close()
 
+    def test_sxb_consultas_preserves_all_tipos(
+        self, sx_project: Path, tmp_path: Path, runner: CliRunner
+    ) -> None:
+        """v0.3.14 — SXB tem 6 tipos (header/indice/permissao/coluna/retorno/filtro)
+        que coexistem para um mesmo (alias, seq, coluna). Sem `tipo` no PK, eles
+        se sobrescrevem mutuamente — bug real reportado em dump 58k → 46k consultas.
+
+        Fixture: 1 alias 'USRGRP' com 6 linhas, 1 por tipo, todas (seq='01', coluna='').
+        Esperado: 6 rows distintas em `consultas` após ingest.
+        """
+        csv_dir = tmp_path / "csv"
+        csv_dir.mkdir()
+        (csv_dir / "sxb.csv").write_bytes(
+            (SX_FIXTURES / "sxb_with_collisions.csv").read_bytes()
+        )
+        runner.invoke(app, ["--root", str(sx_project), "init"])
+        db = sx_project / ".plugadvpl" / "index.db"
+        counters = ingest_sx(csv_dir, db)
+        assert counters["per_table"]["consultas"] == 6, (
+            "parser leu as 6 linhas do CSV (cada uma com tipo distinto)"
+        )
+        conn = _connect(db)
+        try:
+            n = conn.execute("SELECT COUNT(*) FROM consultas").fetchone()[0]
+            assert n == 6, (
+                f"DB deveria ter 6 rows (uma por tipo), mas tem {n}. "
+                "PK (alias, seq, coluna) sem `tipo` faz colidir as 6 paginas SXB."
+            )
+            tipos = {
+                row[0] for row in conn.execute(
+                    "SELECT tipo FROM consultas WHERE alias='USRGRP'"
+                )
+            }
+            assert tipos == {"1", "2", "3", "4", "5", "6"}, (
+                f"Esperado {{'1'..'6'}}, recebido {tipos}"
+            )
+        finally:
+            conn.close()
+
     def test_ingest_sx_skips_deleted_rows(
         self, sx_project: Path, tmp_path: Path, runner: CliRunner
     ) -> None:
@@ -126,6 +165,76 @@ class TestIngestSx:
         db = sx_project / ".plugadvpl" / "index.db"
         counters = ingest_sx(csv_dir, db)
         assert counters["per_table"]["tabelas"] == 1  # 'DEL' filtrado
+
+    def test_ingest_sx_warns_when_dedup_lost_rows(
+        self,
+        sx_project: Path,
+        tmp_path: Path,
+        runner: CliRunner,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """v0.3.14 — transparencia de deduplicacao. CSV com 3 rows que colidem
+        em (alias, ordem) deve avisar quanto sumiu apos INSERT OR REPLACE."""
+        csv_dir = tmp_path / "csv"
+        csv_dir.mkdir()
+        # 3 rows pra alias=SA1, ordem=01 → vira 1 row no DB (perda = 2/3 = 66%)
+        (csv_dir / "sxa.csv").write_text(
+            '"XA_ALIAS","XA_ORDEM","XA_DESCRIC","XA_AGRUP","XA_PROPRI","D_E_L_E_T_"\n'
+            '"SA1","01","Geral","","",""\n'
+            '"SA1","01","Outro","","",""\n'
+            '"SA1","01","Mais um","","",""\n',
+            encoding="cp1252",
+        )
+        runner.invoke(app, ["--root", str(sx_project), "init"])
+        db = sx_project / ".plugadvpl" / "index.db"
+        ingest_sx(csv_dir, db)
+        captured = capsys.readouterr()
+        # Aviso deve citar a tabela 'pastas', quantos foram perdidos e o motivo.
+        assert "pastas" in captured.err.lower()
+        assert "2" in captured.err  # 2 rows perdidos
+        # Pista pra IA/usuario entender o que aconteceu.
+        assert "duplicad" in captured.err.lower() or "pk" in captured.err.lower()
+
+    def test_ingest_sx_no_dedup_warning_when_clean(
+        self,
+        sx_project: Path,
+        sx_csv_dir: Path,
+        runner: CliRunner,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Sem colisoes nos fixtures sinteticos limpos — nao deve poluir stderr."""
+        runner.invoke(app, ["--root", str(sx_project), "init"])
+        db = sx_project / ".plugadvpl" / "index.db"
+        ingest_sx(sx_csv_dir, db)
+        captured = capsys.readouterr()
+        # Sem aviso de dedup (pode haver outras coisas em stderr — ex: SXG mislabel
+        # se o fixture tiver header X3_*; checamos especificamente o de dedup).
+        assert "duplicad" not in captured.err.lower()
+        assert "deduplicados" not in captured.err.lower()
+
+    def test_sxg_mislabel_emits_warning(
+        self,
+        sx_project: Path,
+        tmp_path: Path,
+        runner: CliRunner,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """v0.3.14 — quando `sxg.csv` eh na verdade um dump SX3 (header X3_*),
+        `parse_sxg` historicamente retornava `[]` silenciosamente. Agora avisa
+        em stderr pra IA/usuario nao ficar adivinhando por que grupos_campo=0."""
+        csv_dir = tmp_path / "csv"
+        csv_dir.mkdir()
+        (csv_dir / "sxg.csv").write_text(
+            '"X3_ARQUIVO","X3_ORDEM","X3_CAMPO","D_E_L_E_T_"\n'
+            '"A02","01","A02_FILIAL",""\n',
+            encoding="cp1252",
+        )
+        runner.invoke(app, ["--root", str(sx_project), "init"])
+        db = sx_project / ".plugadvpl" / "index.db"
+        ingest_sx(csv_dir, db)
+        captured = capsys.readouterr()
+        assert "sxg" in captured.err.lower()
+        assert "SX3" in captured.err or "sx3" in captured.err.lower()
 
     def test_ingest_sx_writes_meta(
         self, sx_project: Path, sx_csv_dir: Path, runner: CliRunner

@@ -92,6 +92,23 @@ _PARSER_BY_FILE: dict[str, Callable[[Path], list[dict[str, Any]]]] = {
 
 _BATCH_SIZE = 1000
 
+# Mapa tabela → colunas PK (espelha as migrations 001 + 002 + 004). Usado pra
+# detectar dedup silencioso (linhas do CSV que colidem na PK e são sobrescritas
+# por INSERT OR REPLACE). v0.3.14.
+_PK_COLS_BY_TABLE: dict[str, tuple[str, ...]] = {
+    "tabelas":            ("codigo",),
+    "campos":             ("tabela", "campo"),
+    "indices":            ("tabela", "ordem"),
+    "gatilhos":           ("campo_origem", "sequencia"),
+    "parametros":         ("filial", "variavel"),
+    "perguntas":          ("grupo", "ordem"),
+    "tabelas_genericas":  ("filial", "tabela", "chave"),
+    "relacionamentos":    ("tabela_origem", "identificador", "tabela_destino"),
+    "pastas":             ("alias", "ordem"),
+    "consultas":          ("alias", "tipo", "sequencia", "coluna"),  # v0.3.14: +tipo
+    "grupos_campo":       ("grupo",),
+}
+
 # Mapa CSV → meta.* counter (apenas para os que importam para o usuário/skill).
 _META_KEY_BY_TABLE: dict[str, str] = {
     "tabelas":            "total_sx_tabelas",
@@ -218,6 +235,16 @@ def ingest_sx(
             parser = _PARSER_BY_FILE[csv_name]
             try:
                 rows = parser(file_path)
+                # v0.3.14: contar PKs distintas ANTES do bulk_insert. Quando
+                # `distinct < len(rows)`, sabemos exatamente quantas linhas o
+                # INSERT OR REPLACE silenciosamente sobrescreveu (sintoma do
+                # bug da SXB com PK incompleta; agora detectado pra qualquer
+                # tabela cujo dump tenha duplicatas).
+                pk_cols = _PK_COLS_BY_TABLE.get(table, ())
+                distinct = (
+                    len({tuple(r.get(c, "") for c in pk_cols) for r in rows})
+                    if pk_cols else len(rows)
+                )
                 inserted = _bulk_insert(conn, table, columns, rows)
                 conn.commit()
                 counters["per_table"][table] = inserted
@@ -225,6 +252,17 @@ def ingest_sx(
                 counters["csvs_ok"] += 1
                 if progress_callback is not None:
                     progress_callback(csv_name, inserted)
+                # Aviso de dedup quando linhas do CSV colidiram na PK. Limite de 1
+                # linha pra evitar ruído em diffs minúsculos (1 dup em 60k = ok),
+                # mas com info suficiente pra IA/usuário investigar.
+                lost = inserted - distinct
+                if lost > 0:
+                    print(
+                        f"WARN: tabela '{table}': {inserted} linhas CSV "
+                        f"→ {distinct} distintas após PK dedup "
+                        f"({lost} duplicada(s) na PK {pk_cols} foram sobrescrita(s)).",
+                        file=sys.stderr,
+                    )
             except Exception as exc:  # boundary: erro em 1 CSV não derruba o batch
                 counters["csvs_failed"] += 1
                 counters["per_table"][table] = 0

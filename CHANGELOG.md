@@ -4,6 +4,64 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.14] - 2026-05-14
+
+### SXB consultas — PK fix + dedup transparency. Quarta rodada do mesmo feedback de IA externa: dump real do cliente com 58.796 linhas em `sxb.csv` virava 46.669 no DB (perda de 20,6%) silenciosamente. Pesquisa contra TDN oficial confirmou: SXB tem 6 tipos (XB_TIPO 1-6: header/indice/permissao/coluna/retorno/filtro) e a PK natural inclui XB_TIPO.
+
+### Fixed
+- **SXB consultas: PK agora inclui `tipo`** (`migrations/004_consultas_pk_with_tipo.sql`).
+  Antes: PK `(alias, sequencia, coluna)` fazia colidir as 6 paginas da consulta padrao
+  (uma consulta full virava 1-2 rows). Agora: PK `(alias, tipo, sequencia, coluna)`
+  espelha a chave natural TOTVS (TDN: `XB_FILIAL+XB_ALIAS+XB_TIPO+XB_SEQ+XB_COLUNA`;
+  XB_FILIAL eh sempre vazio porque SXB eh X2_MODO='C').
+  `SCHEMA_VERSION` bumpado `3 → 4`.
+
+### Added
+- **Aviso de SXG mal-rotulado** (`parse_sxg`): quando `sxg.csv` tem header `X3_*`
+  (eh um dump SX3 disfarcado, comum em alguns exports do Configurador), o parser
+  agora emite aviso amarelo em stderr explicando o problema em vez de pular silencioso.
+  Mensagem orienta solicitar o SXG correto ao DBA.
+- **Transparencia de dedup** (`ingest_sx`): para cada tabela, conta PKs distintas
+  ANTES de `INSERT OR REPLACE` e compara com linhas processadas. Quando diff > 0,
+  imprime aviso amarelo `WARN: tabela 'X': N linhas CSV -> M distintas apos PK dedup
+  (D duplicada(s) na PK (...) foram sobrescrita(s))`. Util pra distinguir bug
+  do parser (PK incompleta) de duplicatas reais no dump.
+- **`_PK_COLS_BY_TABLE`** em `ingest_sx.py` — mapa tabela -> tupla de colunas PK
+  (espelha as migrations 001 + 002 + 004). Usado pelo dedup detector.
+
+### Changed
+- Skill `ingest-sx`: nova secao "Avisos em stderr (v0.3.14)" documentando os 2
+  diagnosticos novos + nota historica sobre o bug do SXB com cenario real
+  (58k -> 46k) e link com TDN.
+- 18 skills bumpadas `@0.3.13` -> `@0.3.14`.
+
+### Tests
+- `tests/integration/test_ingest_sx.py::TestIngestSx`: +4 testes
+  (`test_sxb_consultas_preserves_all_tipos` — RED test do bug; `test_sxg_mislabel_emits_warning`;
+  `test_ingest_sx_warns_when_dedup_lost_rows`; `test_ingest_sx_no_dedup_warning_when_clean`).
+- Fixture `sxb_with_collisions.csv` — 6 linhas USRGRP, 1 por XB_TIPO, todas com
+  mesmo (seq, coluna). Antes do fix: 2 rows sobreviviam. Depois: 6 (uma por tipo).
+- 305 testes verde (era 301).
+
+### Migration notes
+- `apply_migrations` aplica `004_*.sql` automaticamente no primeiro `init`/`ingest`/`ingest-sx`
+  apos upgrade. Dados existentes em `consultas` sao preservados via `INSERT SELECT`
+  pra `consultas_new` antes do swap.
+- **Usuarios existentes precisam re-rodar `ingest-sx`** para popular os ~20% de
+  rows que estavam sendo silenciosamente sobrescritos antes. Trigger automatico:
+  v0.3.13 ja avisa quando `lookup_bundle_hash` muda (`ingest --incremental` warning),
+  e o `status` ainda mostra divergencia `runtime_version != plugadvpl_version`.
+
+### Notes
+- Foi a 4a iteracao do mesmo loop "IA externa testa, reporta sintoma, fix":
+  v0.3.11 (truncamento + --json), v0.3.12 (runtime vs index version),
+  v0.3.13 (--incremental sem reaplicar regras), v0.3.14 (SXB PK + dedup transparency).
+- Pesquisa contra fontes oficiais (TDN paginas 22479685-22479707) confirmou a
+  semantica dos 6 tipos antes do schema change — evitou shipping de fix incorreto.
+- SX9/SXA/SX1 tambem tem dedup minor (321/85/13 rows) no dump do cliente, mas
+  analise mostrou que sao duplicatas reais no SX (nao bug de PK). Sem migration
+  pra eles; a transparencia nova ja loga quando aparecerem.
+
 ## [0.3.13] - 2026-05-14
 
 ### `--incremental` post-upgrade gotcha — terceiro round do mesmo feedback de IA externa. Apos `uv tool upgrade plugadvpl` + `ingest --incremental`, os arquivos pulados (mtime nao mudou) NAO eram re-avaliados contra regras de lint novas, mesmo apos o usuario seguir corretamente o fluxo recomendado pela v0.3.12. Resultado: `total_lint_findings` ficava frozen na versao antiga pra 99% do projeto sem aviso.
