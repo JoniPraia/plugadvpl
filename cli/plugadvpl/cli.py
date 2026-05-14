@@ -474,6 +474,26 @@ def ingest(
         ],
     )
 
+    # v0.3.13 — pegadinha do --incremental após bump de lookups: arquivos pulados
+    # NÃO são re-avaliados contra regras de lint novas. Detectamos via mudança no
+    # lookup_bundle_hash + qualquer arquivo skipped + modo incremental.
+    if (
+        incremental
+        and counters.get("lookup_hash_changed")
+        and counters["arquivos_skipped"] > 0
+        and not ctx.obj["quiet"]
+    ):
+        skipped = counters["arquivos_skipped"]
+        typer.secho(
+            f"\n⚠ Lookups (lint_rules/funcoes_restritas/...) mudaram desde o último ingest.\n"
+            f"  --incremental pulou {skipped} arquivo(s) cujo mtime não mudou — "
+            f"esses NÃO foram re-avaliados contra as regras novas.\n"
+            f"  Para cobrir todo o codebase com as regras atualizadas, rode:\n"
+            f"      plugadvpl ingest --no-incremental",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
+
 
 # ---------------------------------------------------------------------------
 # reindex

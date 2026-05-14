@@ -28,6 +28,7 @@ from plugadvpl import __version__ as _cli_version
 from plugadvpl.db import (
     apply_migrations,
     close_db,
+    get_meta,
     init_meta,
     open_db,
     seed_lookups,
@@ -633,7 +634,7 @@ def ingest(
     incremental: bool = True,
     no_content: bool = False,
     redact_secrets: bool = False,
-) -> dict[str, int]:
+) -> dict[str, Any]:
     """Pipeline completo: scan -> parse -> write -> FTS5 rebuild.
 
     Args:
@@ -651,7 +652,10 @@ def ingest(
     Returns:
         Dict com counters: ``arquivos_total``, ``arquivos_ok``,
         ``arquivos_skipped``, ``arquivos_failed``, ``chunks``, ``chamadas``,
-        ``params``, ``lint_findings``, ``duration_ms``.
+        ``params``, ``lint_findings``, ``duration_ms``, e (v0.3.13)
+        ``lookup_hash_changed`` (bool — True se o bundle de lookups mudou
+        desde o ingest anterior, sinaliza pegadinha do ``--incremental``)
+        + ``previous_lookup_hash`` (str | None).
     """
     start_time = time.time()
 
@@ -662,7 +666,12 @@ def ingest(
     try:
         apply_migrations(conn)
         init_meta(conn, project_root=str(root), cli_version=_cli_version)
+        # Captura o hash ANTES de seed_lookups sobrescrever — permite detectar
+        # se o bundle de lookups (lint_rules, funcoes_restritas, ...) mudou
+        # entre a versão do binário antiga (que gravou o índice) e a atual.
+        previous_lookup_hash = get_meta(conn, "lookup_bundle_hash")
         seed_lookups(conn)
+        current_lookup_hash = get_meta(conn, "lookup_bundle_hash")
         set_meta(conn, "parser_version", PARSER_VERSION)
         set_meta(conn, "cli_version", _cli_version)
 
@@ -687,7 +696,7 @@ def ingest(
 
         effective_workers = _decide_workers(workers, len(files_to_parse))
 
-        counters: dict[str, int] = {
+        counters: dict[str, Any] = {
             "arquivos_total": len(all_files),
             "arquivos_ok": 0,
             "arquivos_skipped": len(all_files) - len(files_to_parse),
@@ -697,6 +706,14 @@ def ingest(
             "params": 0,
             "lint_findings": 0,
             "duration_ms": 0,
+            # v0.3.13: caller (CLI) usa esses campos pra detectar a pegadinha do
+            # `--incremental` após `uv tool upgrade` — quando lookup_bundle muda
+            # mas os arquivos pulados não foram re-avaliados contra as regras novas.
+            "lookup_hash_changed": (
+                previous_lookup_hash is not None
+                and previous_lookup_hash != current_lookup_hash
+            ),
+            "previous_lookup_hash": previous_lookup_hash,
         }
 
         if effective_workers <= 1 or len(files_to_parse) < _PARALLEL_MIN_FILES:

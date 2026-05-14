@@ -4,6 +4,62 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.13] - 2026-05-14
+
+### `--incremental` post-upgrade gotcha — terceiro round do mesmo feedback de IA externa. Apos `uv tool upgrade plugadvpl` + `ingest --incremental`, os arquivos pulados (mtime nao mudou) NAO eram re-avaliados contra regras de lint novas, mesmo apos o usuario seguir corretamente o fluxo recomendado pela v0.3.12. Resultado: `total_lint_findings` ficava frozen na versao antiga pra 99% do projeto sem aviso.
+
+### Added
+- **Warning de divergencia de lookups no `ingest --incremental`** — antes de
+  `seed_lookups()` sobrescrever `meta.lookup_bundle_hash`, capturamos o valor
+  anterior. Apos o ingest, se (1) modo `--incremental`, (2) `lookup_bundle_hash`
+  mudou, e (3) houve `arquivos_skipped > 0`, imprime aviso amarelo em **stderr**:
+  ```
+  ⚠ Lookups (lint_rules/funcoes_restritas/...) mudaram desde o ultimo ingest.
+    --incremental pulou N arquivo(s) cujo mtime nao mudou — esses NAO foram
+    re-avaliados contra as regras novas.
+    Para cobrir todo o codebase com as regras atualizadas, rode:
+        plugadvpl ingest --no-incremental
+  ```
+  Suprimivel com `--quiet`.
+
+### Changed
+- `plugadvpl.ingest.ingest()` retorna 2 chaves novas no dict de counters:
+  - `lookup_hash_changed: bool` — True se o hash do bundle de lookups mudou
+    entre o ingest anterior e o atual.
+  - `previous_lookup_hash: str | None` — hash gravado antes deste ingest
+    (None se primeiro ingest no DB).
+  Tipo do retorno mudou de `dict[str, int]` para `dict[str, Any]` (back-compat:
+  todas as chaves originais continuam tendo valores int/str).
+- Skill `ingest`: nova secao "Pegadinha do --incremental apos upgrade do
+  binario" com cenario tipico (5 passos) + exemplo do warning. Renomeada
+  `--no-incremental` na lista de opcoes pra `--incremental`/`--no-incremental`
+  (mostra os dois lados do toggle).
+- Skill `plugadvpl-index-usage`: secao "Versao do plugin" ganhou subsecao
+  "Pegadinha do --incremental apos upgrade" com fluxo correto pos-upgrade
+  (status → ingest --no-incremental → status novamente).
+- 18 skills bumpadas `@0.3.12` → `@0.3.13`.
+
+### Tests
+- `tests/integration/test_cli.py::TestIngest`: +4 testes
+  (`test_ingest_incremental_warns_when_lookups_changed`,
+  `test_ingest_no_incremental_no_warning_even_with_hash_change`,
+  `test_ingest_incremental_no_warning_when_hash_unchanged`,
+  `test_ingest_warning_suppressed_by_quiet`). Cobrem matriz completa
+  hash×modo×skipped + supressao por `--quiet`.
+- 301 testes verde (era 297).
+
+### Notes
+- Decisao de design: NAO implementar auto-relint (re-aplicar lint sem
+  re-parsear) nesta versao — seria mais ergonomico mas adiciona
+  complexidade (nova flag, novo caminho, separar parser cache de lint
+  cache). Avisar é suficiente; usuario decide se vale o tempo de
+  `--no-incremental`. Re-avaliar se feedback de uso indicar que a dor
+  recorrente justifica.
+- O sinal usado (`lookup_bundle_hash`) ja existia desde antes —
+  `seed_lookups` ja calculava SHA-256 do bundle. So precisava ser lido
+  ANTES de `seed_lookups` sobrescrever pra detectar mudanca. Custo
+  marginal: 1 query SQL extra por ingest.
+
 ## [0.3.12] - 2026-05-14
 
 ### Version-confusion fix — IA externa (mesmo feedback da v0.3.11) tinha rodado `uv tool upgrade` e ficou perdida porque `plugadvpl status` continuava mostrando a versão antiga (frozen no índice). Padrão git/hatch/dvc: mostrar **runtime + stored** lado a lado e avisar quando divergem.

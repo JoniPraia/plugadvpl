@@ -140,6 +140,84 @@ class TestIngest:
         assert payload["total"] == 1  # 1 summary row
         assert payload["rows"][0]["ok"] == 3
 
+    def test_ingest_incremental_warns_when_lookups_changed(
+        self, indexed_project: Path, runner: CliRunner
+    ) -> None:
+        """v0.3.13 — pegadinha do feedback real: após `uv tool upgrade` com novas
+        regras de lint, `ingest --incremental` pula arquivos cujo mtime não mudou
+        e essas regras NÃO são re-aplicadas. Avisa em stderr orientando
+        `--no-incremental`. Simulamos forçando um lookup_bundle_hash antigo."""
+        db = indexed_project / ".plugadvpl" / "index.db"
+        conn = sqlite3.connect(db)
+        try:
+            conn.execute(
+                "UPDATE meta SET valor='hash-from-old-version' WHERE chave='lookup_bundle_hash'"
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        # Re-ingest incremental — todos os 3 arquivos têm mtime antigo, serão skipped.
+        result = runner.invoke(
+            app, ["--root", str(indexed_project), "ingest"]
+        )
+        assert result.exit_code == 0
+        assert "Lookups" in result.stderr
+        assert "--no-incremental" in result.stderr
+        assert "ingest" in result.stderr
+
+    def test_ingest_no_incremental_no_warning_even_with_hash_change(
+        self, indexed_project: Path, runner: CliRunner
+    ) -> None:
+        """Em --no-incremental tudo é re-parseado de qualquer jeito → não há
+        pegadinha pra avisar."""
+        db = indexed_project / ".plugadvpl" / "index.db"
+        conn = sqlite3.connect(db)
+        try:
+            conn.execute(
+                "UPDATE meta SET valor='hash-from-old-version' WHERE chave='lookup_bundle_hash'"
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        result = runner.invoke(
+            app, ["--root", str(indexed_project), "ingest", "--no-incremental"]
+        )
+        assert result.exit_code == 0
+        assert "--no-incremental" not in result.stderr  # sem aviso
+
+    def test_ingest_incremental_no_warning_when_hash_unchanged(
+        self, indexed_project: Path, runner: CliRunner
+    ) -> None:
+        """Caso normal: nada mudou → sem aviso amarelo."""
+        result = runner.invoke(
+            app, ["--root", str(indexed_project), "ingest"]
+        )
+        assert result.exit_code == 0
+        assert "Lookups" not in result.stderr
+
+    def test_ingest_warning_suppressed_by_quiet(
+        self, indexed_project: Path, runner: CliRunner
+    ) -> None:
+        """`--quiet` suprime o aviso de divergência de lookups (consistente com
+        a política de outras decorações)."""
+        db = indexed_project / ".plugadvpl" / "index.db"
+        conn = sqlite3.connect(db)
+        try:
+            conn.execute(
+                "UPDATE meta SET valor='hash-from-old-version' WHERE chave='lookup_bundle_hash'"
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        result = runner.invoke(
+            app, ["--root", str(indexed_project), "--quiet", "ingest"]
+        )
+        assert result.exit_code == 0
+        assert "Lookups" not in result.stderr
+
 
 class TestFind:
     def test_find_function(

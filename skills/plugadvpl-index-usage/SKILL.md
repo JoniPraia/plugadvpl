@@ -129,9 +129,21 @@ O `status` mostra **duas versoes** desde v0.3.12:
 - `runtime_version` = binario rodando AGORA (== `plugadvpl --version`)
 - `plugadvpl_version` = binario que **gravou o indice** (frozen no init/ingest)
 
-Quando divergirem (ex: `uv tool upgrade plugadvpl` deixou o binario em 0.3.12 mas o indice continua marcado como 0.2.0), o `status` imprime aviso amarelo em stderr: `Indice criado com plugadvpl 0.2.0, binario atual e 0.3.12. Rode 'plugadvpl ingest --incremental'`. Acao correta: rodar `ingest --incremental` para puxar regras/parsers da versao nova.
+Quando divergirem (ex: `uv tool upgrade plugadvpl` deixou o binario em 0.3.13 mas o indice continua marcado como 0.2.0), o `status` imprime aviso amarelo em stderr: `Indice criado com plugadvpl 0.2.0, binario atual e 0.3.13. Rode 'plugadvpl ingest --incremental'`.
 
 Para checar so a versao do binario, sem ler o indice: `plugadvpl --version` (ou `-V`).
+
+### Pegadinha do `--incremental` apos upgrade — v0.3.13
+
+`ingest --incremental` re-parseia somente arquivos cujo **mtime mudou no filesystem**. As **regras de lint** vivem dentro do binario — entao apos `uv tool upgrade` os 1990 arquivos pulados continuam refletindo as regras antigas (`total_lint_findings` nao sobe).
+
+**v0.3.13 detecta isso** comparando `lookup_bundle_hash` antes/depois do ingest. Se mudou e ha arquivos `skipped`, o `ingest --incremental` imprime aviso em stderr orientando rodar `ingest --no-incremental` para garantir que as regras novas passem em todo o codebase.
+
+Resumo do fluxo correto apos `uv tool upgrade`:
+
+1. `plugadvpl status` — confirma divergencia `runtime_version != plugadvpl_version`.
+2. `plugadvpl ingest --no-incremental` — re-parseia tudo + aplica regras novas em todo o codebase.
+3. `plugadvpl status` — agora `total_lint_findings` reflete o estado real e `lookup_bundle_hash` esta sincronizado.
 
 ## Anti-padroes
 
