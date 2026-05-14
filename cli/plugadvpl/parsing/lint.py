@@ -65,6 +65,65 @@ _WSRESTFUL_CLASS_RE = re.compile(
 )
 _END_CLASS_RE = re.compile(r"^[ \t]*ENDCLASS\b|^[ \t]*END\s+CLASS\b", re.IGNORECASE | re.MULTILINE)
 
+# SEC-004 (v0.3.19): credenciais hardcoded em codigo fonte.
+# Padroes confirmados via TDN + comunidade (Terminal de Informacao, BlackTDN).
+# RpcSetEnv(emp, fil, USER, PWD, mod, ...) — slots 3 e 4 sao user/senha em texto plano.
+# Captura quando os slots 3+4 sao strings literais NAO-VAZIAS (vazio = "usar admin"
+# por convencao, smell mas nao leak).
+_SEC004_RPCSETENV_LITERAL_RE = re.compile(
+    r"\bRpcSetEnv\s*\("
+    r"\s*['\"][^'\"]*['\"]\s*,"        # emp (qualquer)
+    r"\s*['\"][^'\"]*['\"]\s*,"        # fil (qualquer)
+    r"\s*['\"]([^'\"]+)['\"]\s*,"      # user (NAO vazio) — group 1
+    r"\s*['\"]([^'\"]+)['\"]",         # pwd (NAO vazio) — group 2
+    re.IGNORECASE,
+)
+# PREPARE ENVIRONMENT ... PASSWORD '<literal>' (UDC tbiconn.ch).
+# Aceita PASSWORD seguido de string literal nao-vazia.
+_SEC004_PREPARE_ENV_RE = re.compile(
+    r"\bPREPARE\s+ENVIRONMENT\b[^\n]*?\bPASSWORD\s+['\"]([^'\"]+)['\"]",
+    re.IGNORECASE,
+)
+# SMTPAuth / MailAuth (smtp credentials). Match com 2 args literais nao-vazios.
+_SEC004_SMTPAUTH_RE = re.compile(
+    r"\b(?:SMTPAuth|MailAuth)\s*\("
+    r"\s*['\"][^'\"]+['\"]\s*,"
+    r"\s*['\"][^'\"]+['\"]",
+    re.IGNORECASE,
+)
+# Encode64('user:pwd') — Basic Auth construido inline com literal.
+# `:` no meio + qualquer coisa de cada lado nao vazia.
+_SEC004_BASIC_AUTH_RE = re.compile(
+    r"\bEncode64\s*\(\s*['\"][^'\":]+:[^'\"]+['\"]",
+    re.IGNORECASE,
+)
+
+# SEC-003 (v0.3.19): PII / dados sensiveis em logs (LGPD).
+# Funcoes de log que mandam pro console.log do AppServer (visivel a quem tem
+# acesso ao servidor). MsgInfo/MsgBox/Aviso sao UI (nao log) — fora do escopo.
+_SEC003_LOG_FUNCS_RE = re.compile(
+    r"\b(?:ConOut|FwLogMsg|MsgLog|LogMsg|UserException|Help)\s*\(",
+    re.IGNORECASE,
+)
+# Variaveis com nome semanticamente PII. Hungarian opcional (`c` ou nada).
+_SEC003_PII_VAR_RE = re.compile(
+    r"\b[a-z]?(?:Cpf|Cnpj|Senha|Pwd|Pass|Password|Token|Cartao|Card|Cvv|Pin|"
+    r"ApiKey|Api_Key|Secret|Rg)\w*\b",
+    re.IGNORECASE,
+)
+# Campos SX3 conhecidos como PII (clientes/funcionarios). Lista conservadora —
+# evita falsos positivos. Cobre os principais campos sensiveis A1_* (clientes)
+# e RA_* (funcionarios) usados em LGPD audits.
+_SEC003_PII_FIELDS_RE = re.compile(
+    r"\b(?:A1_CGC|A1_CPF|A1_NOME|A1_NREDUZ|A1_EMAIL|A1_TEL|A1_END|A1_DDD|"
+    r"RA_CIC|RA_RG|RA_NOMECMP|RA_EMAIL|RA_NUMCP|RA_TELEFON)\b",
+    re.IGNORECASE,
+)
+# CPF formatado: 999.999.999-99
+_SEC003_CPF_LITERAL_RE = re.compile(r"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b")
+# CNPJ formatado: 99.999.999/9999-99
+_SEC003_CNPJ_LITERAL_RE = re.compile(r"\b\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}\b")
+
 # SEC-002: User Function sem prefixo de cliente/PE pattern.
 # Padrão Protheus PE: ^[A-Z]{2,4}\d{2,4}[A-Z_]*$ (com pelo menos 2 letras finais opcionais)
 _PE_NAME_RE = re.compile(r"^[A-Z]{2,4}\d{2,4}[A-Z_]*$")
@@ -513,6 +572,160 @@ def _check_sec002_user_function_no_prefix(
                 ),
             }
         )
+    return findings
+
+
+def _check_sec004_hardcoded_creds(
+    arquivo: str, parsed: dict[str, Any], content: str
+) -> list[dict[str, Any]]:
+    """SEC-004 (warning): credenciais hardcoded em codigo fonte.
+
+    Padroes detectados (TDN + comunidade ADVPL):
+      - `RpcSetEnv("emp", "fil", "user", "pwd", ...)` com user E pwd literais
+        nao-vazios (slots 3+4). Vazio = usar admin default por convencao
+        (smell, mas nao leak).
+      - `PREPARE ENVIRONMENT ... PASSWORD '<literal>'` (UDC tbiconn.ch).
+      - `oMail:SMTPAuth("user", "pwd")` ou `MailAuth("user", "pwd")`.
+      - `Encode64("user:pwd")` (Basic Auth literal pra REST).
+
+    Strings sao removidas antes de buscar (`strip_advpl(strip_strings=False)`
+    preserva strings; comentarios sao limpos). Assim chamadas em comentario
+    nao disparam.
+
+    Mitigacao recomendada: ler de SX6 via `SuperGetMV/GetNewPar`, ou variavel
+    de ambiente, ou cofre dedicado.
+    """
+    findings: list[dict[str, Any]] = []
+    stripped = strip_advpl(content, strip_strings=False)
+    funcoes = parsed.get("funcoes", []) or []
+
+    def _emit(off: int, snippet_extra: str, suggestion: str) -> None:
+        linha = _line_at(stripped, off)
+        findings.append(
+            {
+                "arquivo": arquivo,
+                "funcao": _funcao_at_line(funcoes, linha),
+                "linha": linha,
+                "regra_id": "SEC-004",
+                "severidade": "warning",
+                "snippet": _snippet_at_line(content, linha) or snippet_extra,
+                "sugestao_fix": suggestion,
+            }
+        )
+
+    for m in _SEC004_RPCSETENV_LITERAL_RE.finditer(stripped):
+        _emit(
+            m.start(),
+            m.group(0)[:120],
+            "Mova user/senha pra MV_* em SX6 (encrypted via EncryptPwd) e leia "
+            "via SuperGetMV/GetNewPar em runtime. NUNCA commitar credenciais "
+            "no fonte — fica exposto no git e em qualquer fork do RPO.",
+        )
+    for m in _SEC004_PREPARE_ENV_RE.finditer(stripped):
+        _emit(
+            m.start(),
+            m.group(0)[:120],
+            "Substitua a senha literal em PREPARE ENVIRONMENT por leitura de "
+            "MV_* via SuperGetMV/GetNewPar. Manter `PASSWORD ''` (vazio) eh "
+            "OK quando o usuario eh admin default; o problema eh literal explicito.",
+        )
+    for m in _SEC004_SMTPAUTH_RE.finditer(stripped):
+        _emit(
+            m.start(),
+            m.group(0)[:120],
+            "Mova user/senha SMTP pra MV_RELAUSR/MV_RELAPSW em SX6 e leia via "
+            "SuperGetMV. Esses parametros ja existem no Protheus exatamente "
+            "pra esse uso.",
+        )
+    for m in _SEC004_BASIC_AUTH_RE.finditer(stripped):
+        _emit(
+            m.start(),
+            m.group(0)[:120],
+            "Encode64('user:pwd') hardcoded vaza credencial. Construa o header "
+            "Basic com user/pwd vindos de MV_* (SX6) ou variavel de ambiente.",
+        )
+
+    return findings
+
+
+def _check_sec003_pii_in_logs(
+    arquivo: str, parsed: dict[str, Any], content: str
+) -> list[dict[str, Any]]:
+    """SEC-003 (warning): PII / dados sensiveis em logs.
+
+    Detecta chamadas a `ConOut/FwLogMsg/MsgLog/LogMsg/UserException/Help` cujos
+    argumentos contem:
+      - variavel com nome PII (`cCpf`, `cSenha`, `cToken`, `cPwd`, ...)
+      - campo SX3 conhecido sensivel (`A1_CGC`, `A1_CPF`, `RA_CIC`, ...)
+      - CPF/CNPJ literal formatado em string
+
+    NAO sinaliza:
+      - `MsgInfo/MsgAlert/MsgBox/Aviso` (UI modal pra usuario autenticado, nao log)
+      - Strings literais sem variavel PII (ex: `ConOut("CPF invalido")`)
+      - Comentarios (limpos pelo strip_advpl)
+
+    Mitigacao: mascarar antes de logar (`Transform(cCpf,"@R 999.999.999-99")`
+    + ofuscar parte; ou nao logar PII em producao).
+    """
+    findings: list[dict[str, Any]] = []
+    # Duas variantes: com strings (pra detectar CPF/CNPJ literal) e sem strings
+    # (pra detectar nome de variavel/campo sem confundir com label "CPF invalido").
+    stripped_keep = strip_advpl(content, strip_strings=False)
+    stripped_no_str = strip_advpl(content, strip_strings=True)
+    funcoes = parsed.get("funcoes", []) or []
+
+    for m in _SEC003_LOG_FUNCS_RE.finditer(stripped_keep):
+        # Extrai conteudo dos parenteses balanceados a partir do `(` do match.
+        open_paren = m.end() - 1
+        depth = 0
+        end = open_paren
+        for i in range(open_paren, len(stripped_keep)):
+            ch = stripped_keep[i]
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth == 0:
+                    end = i
+                    break
+        args_with_str = stripped_keep[open_paren + 1 : end]
+        # Mesma janela na variante sem strings (offsets coincidem ate o length total).
+        args_no_str = stripped_no_str[open_paren + 1 : end]
+
+        # Var/field PII: checar fora de strings (caso contrario "CPF invalido"
+        # literal vira false positive).
+        # CPF/CNPJ literal: checar com strings preservadas (esta DENTRO de string).
+        signal: str | None = None
+        if _SEC003_PII_VAR_RE.search(args_no_str):
+            signal = "variavel com nome PII (cCpf/cSenha/cToken/...)"
+        elif _SEC003_PII_FIELDS_RE.search(args_no_str):
+            signal = "campo SX3 sensivel (A1_CGC/A1_CPF/RA_CIC/...)"
+        elif _SEC003_CPF_LITERAL_RE.search(args_with_str):
+            signal = "CPF formatado literal em string"
+        elif _SEC003_CNPJ_LITERAL_RE.search(args_with_str):
+            signal = "CNPJ formatado literal em string"
+
+        if signal is None:
+            continue
+
+        linha = _line_at(stripped_keep, m.start())
+        findings.append(
+            {
+                "arquivo": arquivo,
+                "funcao": _funcao_at_line(funcoes, linha),
+                "linha": linha,
+                "regra_id": "SEC-003",
+                "severidade": "warning",
+                "snippet": _snippet_at_line(content, linha),
+                "sugestao_fix": (
+                    f"PII em log ({signal}): viola LGPD se cair em producao. "
+                    "Mascarar antes de logar (Transform + ocultar trecho), ou "
+                    "remover o log de PII e usar log estruturado de transacao "
+                    "sem dado pessoal."
+                ),
+            }
+        )
+
     return findings
 
 
@@ -1151,6 +1364,8 @@ def lint_source(parsed: dict[str, Any], content: str) -> list[dict[str, Any]]:
     findings.extend(_check_bp008_shadowed_reserved(arquivo, parsed, content))
     findings.extend(_check_sec001_rpcsetenv_in_restful(arquivo, parsed, content))
     findings.extend(_check_sec002_user_function_no_prefix(arquivo, parsed, content))
+    findings.extend(_check_sec003_pii_in_logs(arquivo, parsed, content))
+    findings.extend(_check_sec004_hardcoded_creds(arquivo, parsed, content))
     findings.extend(_check_sec005_restricted_function_call(arquivo, parsed, content))
     findings.extend(_check_perf001_select_star(arquivo, parsed, content))
     findings.extend(_check_perf002_no_notdel(arquivo, parsed, content))

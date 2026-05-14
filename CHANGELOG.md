@@ -4,6 +4,79 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.19] - 2026-05-14
+
+### Security pack — fecha a categoria SEC. Implementa as 2 ultimas regras `planned` da categoria security: SEC-003 (PII em logs, LGPD) + SEC-004 (credenciais hardcoded). Pesquisa-first contra TDN + comunidade ADVPL (Terminal de Informação, BlackTDN, MasterAdvPL) confirmou padrões antes do detector — evita shipping de regra ruidosa.
+
+### Added
+- **SEC-004 (warning) — credenciais hardcoded em código fonte**. Detecta 4
+  padrões canônicos de leak via git:
+  - `RpcSetEnv("emp", "fil", "USER", "PWD", ...)` com user E pwd literais
+    não-vazios (slots 3+4). Vazio = "usar admin default" por convenção,
+    não é leak — não sinaliza.
+  - `PREPARE ENVIRONMENT ... PASSWORD '<literal>'` (UDC `tbiconn.ch`).
+  - `oMail:SMTPAuth("user","pwd")` ou `MailAuth("user","pwd")` literais.
+  - `Encode64("user:pwd")` (Basic Auth construído inline).
+  
+  Não sinaliza leitura segura via `SuperGetMV`/`GetNewPar`/`GetMV` (padrão
+  recomendado TOTVS). Comentários são limpos pelo `strip_advpl`.
+  Sugestão de fix orienta MV_* em SX6 (e cita `MV_RELAUSR/MV_RELAPSW` para
+  SMTP especificamente).
+- **SEC-003 (warning) — PII / dados sensíveis em logs (LGPD)**. Detecta 4
+  sinais em chamadas a `ConOut`/`FwLogMsg`/`MsgLog`/`LogMsg`/`UserException`/`Help`:
+  - Variável com nome PII (`cCpf`, `cCnpj`, `cSenha`, `cPwd`, `cToken`,
+    `cCard`, `cRg`, `cApiKey`, `cSecret`, ...).
+  - Campo SX3 conhecido sensível: `A1_CGC`/`A1_CPF`/`A1_NOME`/`A1_NREDUZ`/
+    `A1_EMAIL`/`A1_TEL`/`A1_END` (clientes), `RA_CIC`/`RA_RG`/`RA_NOMECMP`/
+    `RA_EMAIL`/`RA_NUMCP` (funcionários).
+  - CPF formatado literal (`999.999.999-99`).
+  - CNPJ formatado literal (`99.999.999/9999-99`).
+  
+  **Não sinaliza** `MsgInfo`/`MsgAlert`/`MsgBox`/`Aviso` (UI modal, não vai
+  pro log do servidor — exposição diferente, fora do escopo SEC-003). Detector
+  usa 2 variantes do source: com strings (pra pegar literal CPF/CNPJ) e sem
+  strings (pra pegar nome de variável sem confundir com label `"CPF inválido"`).
+- Helpers em `lint.py`: `_SEC003_LOG_FUNCS_RE`, `_SEC003_PII_VAR_RE`,
+  `_SEC003_PII_FIELDS_RE`, `_SEC003_CPF_LITERAL_RE`, `_SEC003_CNPJ_LITERAL_RE`,
+  `_SEC004_RPCSETENV_LITERAL_RE`, `_SEC004_PREPARE_ENV_RE`,
+  `_SEC004_SMTPAUTH_RE`, `_SEC004_BASIC_AUTH_RE`.
+
+### Changed
+- Catálogo `lookups/lint_rules.json`:
+  - SEC-003: `status="planned"` → `"active"` + `impl_function="_check_sec003_pii_in_logs"`.
+    Descrição expandida com lista completa dos 4 sinais detectados + regras
+    de exclusão (não sinaliza UI).
+  - SEC-004: `status="planned"` → `"active"` + `impl_function="_check_sec004_hardcoded_creds"`.
+    Descrição expandida com 4 padrões canônicos detectados + casos
+    explicitamente excluídos (SuperGetMV, vazio = admin default, comentários).
+- Skill `advpl-code-review`:
+  - Tabela "Single-file" ganhou linhas SEC-003 e SEC-004 com exemplos.
+  - Lista "regras planned" reduzida de 6 → 4 (sobram BP-002b, BP-007,
+    PERF-006, MOD-003).
+- 18 skills bumpadas `@0.3.18` → `@0.3.19`.
+
+### Tests
+- `tests/unit/test_lint.py::TestSEC004HardcodedCreds`: 8 testes (5 positivos
+  + 3 negativos cobrindo SuperGetMV, vazio, comentário).
+- `tests/unit/test_lint.py::TestSEC003PIIInLogs`: 7 testes (4 positivos
+  + 3 negativos cobrindo log seguro, MsgBox UI, label literal).
+- `test_active_count_matches_impl` (catalog consistency) detectou o gap
+  durante o release — exatamente o propósito do guard.
+- 331 testes verde (era 316).
+
+### Notes
+- **Categoria SEC do catálogo agora 100% ativa**: SEC-001..SEC-005 todas
+  com detector. Sobram 4 planned (BP-002b, BP-007, PERF-006, MOD-003) —
+  todas info/warning de menor impacto.
+- Pesquisa-first metodologia (mesmo padrão da v0.3.8 MOD-004): subagent
+  consultou TDN oficial + 15 fontes da comunidade ADVPL antes do detector.
+  Isso evitou shipping de regra over-aggressive (ex: marcar
+  `Authorization: Bearer xxx` em todo header REST literal — ficou de fora
+  por gerar muitos false positives em código de teste).
+- **Para usuários existentes**: `plugadvpl ingest --no-incremental` recomendado
+  pra reprocessar fontes ja indexados com as 2 regras novas (lookup_bundle_hash
+  mudou — warning automático da v0.3.13 vai disparar no próximo `ingest --incremental`).
+
 ## [0.3.18] - 2026-05-14
 
 ### Polish pack — fecha os 3 ultimos achados do `gaps/PLUGADVPL_QA_REPORT.md`. Com este release o backlog do QA inicial chega a zero — sobram apenas os achados ja resolvidos em v0.3.14-v0.3.17.

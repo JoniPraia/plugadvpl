@@ -120,23 +120,25 @@
   },
   {
     "regra_id": "SEC-003",
-    "titulo": "Dados sensíveis (PII/credenciais) em ConOut ou FwLogMsg",
+    "titulo": "Dados sensíveis (PII/credenciais) em ConOut/FwLogMsg/MsgLog",
     "severidade": "warning",
     "categoria": "security",
-    "descricao": "Logs com CPF/CNPJ/senha/token vão pro `console.log` do AppServer e ficam visíveis a qualquer um com acesso ao servidor. Vazamento de PII viola LGPD.",
-    "fix_guidance": "Mascarar dados sensíveis antes de logar (`***.***.***-XX` para CPF). NUNCA logue senha, token, ou body REST cru com PII. Use `FwLogMsg` com category específica que possa ser desabilitada em produção.",
+    "descricao": "Logs com CPF/CNPJ/senha/token vão pro `console.log` do AppServer e ficam visíveis a qualquer um com acesso ao servidor. Vazamento de PII viola LGPD. Detector cobre 4 sinais: (1) variável com nome PII (`cCpf`, `cSenha`, `cToken`, `cPwd`, `cCard`, `cRg`, `cApiKey`, `cSecret`, ...) passada a função de log; (2) campo SX3 conhecido sensível (`A1_CGC`, `A1_CPF`, `A1_NOME`, `A1_NREDUZ`, `A1_EMAIL`, `A1_TEL`, `A1_END`, `RA_CIC`, `RA_RG`, `RA_NOMECMP`, `RA_EMAIL`, ...); (3) CPF formatado literal (`999.999.999-99`) em string passada a log; (4) CNPJ formatado literal (`99.999.999/9999-99`). Funções de log: `ConOut`/`FwLogMsg`/`MsgLog`/`LogMsg`/`UserException`/`Help`. NÃO sinaliza `MsgInfo`/`MsgAlert`/`MsgBox` (UI modal, não vai pro log do servidor).",
+    "fix_guidance": "Mascarar antes de logar (`Transform(cCpf,'@R 999.999.999-99')` + ofuscar trecho, ex: `123.***.***-01`). Para senha/token, NUNCA logue — log estruturado de transação sem dado pessoal. `FwLogMsg` permite category específica desabilitável em produção (ex: ativar log PII só em sandbox).",
     "detection_kind": "regex",
-    "status": "planned"
+    "status": "active",
+    "impl_function": "_check_sec003_pii_in_logs"
   },
   {
     "regra_id": "SEC-004",
     "titulo": "Credenciais hardcoded em código fonte",
     "severidade": "warning",
     "categoria": "security",
-    "descricao": "Senhas, tokens, connection strings hardcoded no .prw são vazadas ao versionamento git, expostas a qualquer dev com acesso ao repo. Particularmente crítico em Jobs (`RpcSetEnv(\"01\", \"0101\", \"admin\", \"totvs\")`).",
-    "fix_guidance": "Mova credenciais para `MV_*` em SX6 (encrypted via `EncryptPwd`), variável de ambiente, ou cofre dedicado. Em JOB, leia via `SuperGetMV(\"MV_XYZUSR\")` em runtime.",
+    "descricao": "Senhas, tokens, connection strings hardcoded no .prw são vazadas ao versionamento git, expostas a qualquer dev com acesso ao repo. Detector cobre 4 padrões canônicos confirmados via TDN: (1) `RpcSetEnv(\"emp\",\"fil\",\"USER\",\"PWD\",...)` com user E pwd como string literal não-vazia (slots 3+4); (2) `PREPARE ENVIRONMENT ... PASSWORD '<literal>'` (UDC `tbiconn.ch`); (3) `oMail:SMTPAuth(\"user\",\"pwd\")` ou `MailAuth(\"user\",\"pwd\")` com literais; (4) `Encode64(\"user:pwd\")` (Basic Auth literal). Não sinaliza credenciais lidas via `SuperGetMV/GetNewPar/GetMV` (leitura segura do SX6) nem strings vazias `RpcSetEnv(...,\"\",\"\",...)` (convenção \"usar admin default\"). Comentários são limpos pelo strip_advpl.",
+    "fix_guidance": "Mova credenciais para `MV_*` em SX6 (encrypted via `EncryptPwd`) e leia via `SuperGetMV(\"MV_XYZUSR\")` em runtime. SMTP: use `MV_RELAUSR`/`MV_RELAPSW` que existem exatamente pra isso. Em JOB sem SX6 acessível: variável de ambiente. NUNCA commitar credencial — fica no git history para sempre, mesmo após delete.",
     "detection_kind": "regex",
-    "status": "planned"
+    "status": "active",
+    "impl_function": "_check_sec004_hardcoded_creds"
   },
   {
     "regra_id": "SEC-005",

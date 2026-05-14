@@ -37,6 +37,8 @@ Rode `/plugadvpl:lint <arq>` para resultado de fato — esta skill é o **guia m
 | `BP-008`   | critical | Shadowing de variável reservada framework (`cFilAnt`, `cEmpAnt`, `dDataBase`, `PARAMIXB`, `lMsErroAuto`, `INCLUI`, etc. — **20 reservadas** cobertas) — novo em v0.3.5, expandido em v0.3.10 |
 | `SEC-001`  | critical | `RpcSetEnv` dentro de classe que herda de `WSRESTFUL`                          |
 | `SEC-002`  | warning  | `User Function` sem prefixo cliente (2-3 letras) ou nome de PE oficial         |
+| `SEC-003`  | warning  | PII/credenciais em log (`ConOut`/`FwLogMsg`/`MsgLog`) — variável `cCpf`/`cSenha`/`cToken`, campo `A1_CGC`/`A1_CPF`/`RA_CIC`, ou CPF/CNPJ literal — **novo em v0.3.19** |
+| `SEC-004`  | warning  | Credenciais hardcoded — `RpcSetEnv("01","01","admin","totvs")`, `PREPARE ENVIRONMENT ... PASSWORD '...'`, `:SMTPAuth("user","pwd")`, `Encode64("user:pwd")` — **novo em v0.3.19** |
 | `SEC-005`  | critical | Chamada de função TOTVS restrita (lookup `funcoes_restritas`, ~194 entries) — **novo em v0.3.7** |
 | `PERF-001` | warning  | `SELECT *` em `BeginSql`/`TCQuery`                                             |
 | `PERF-002` | error    | SQL contra tabela Protheus **sem `%notDel%`** (traz registros deletados)       |
@@ -65,7 +67,7 @@ Disponíveis após `/plugadvpl:ingest-sx <pasta-csv>`. Acionadas com `--cross-fi
 | `SX-010`  | error    | Gatilho `X7_TIPO='P'` (Pesquisar) sem `X7_SEEK='S'` válido                      |
 | `SX-011`  | error    | `X3_F3` aponta pra alias SXB que não existe                                    |
 
-## As 6 regras catalogadas mas não detectadas (v0.3.9)
+## As 4 regras catalogadas mas não detectadas (v0.3.19)
 
 Aparecem em `lookups/lint_rules.json` com `status="planned"`. Use como checklist mental.
 
@@ -73,8 +75,6 @@ Aparecem em `lookups/lint_rules.json` com `status="planned"`. Use como checklist
 |------------|----------|-------------------------------------------------------------------------------|
 | `BP-002b`  | warning  | Variável declarada como `Private`/`Public` em vez de `Local`                  |
 | `BP-007`   | info     | Função sem header Protheus.doc                                                |
-| `SEC-003`  | warning  | PII/credenciais em `ConOut`/`FwLogMsg`                                        |
-| `SEC-004`  | warning  | Credenciais hardcoded                                                         |
 | `PERF-006` | info     | Query sem hint de índice ou ORDER BY não casando índice                       |
 | `MOD-003`  | info     | Grupos de funções com prefixo comum candidatas a classe                       |
 

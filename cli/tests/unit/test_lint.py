@@ -1198,3 +1198,188 @@ class TestPERF004StringConcatInLoop:
         perf = [f for f in findings if f["regra_id"] == "PERF-004"]
         assert len(perf) == 1
         assert perf[0]["linha"] == 5
+
+
+# --- SEC-004: credenciais hardcoded em codigo fonte ---------------------------
+
+
+class TestSEC004HardcodedCreds:
+    """SEC-004 (warning): credenciais hardcoded em RpcSetEnv/PREPARE ENV/SMTPAuth/Encode64."""
+
+    def test_positive_rpcsetenv_with_user_pwd_literals(self) -> None:
+        """RpcSetEnv com user e pwd em strings literais (caso classico)."""
+        src = (
+            "User Function ZJob()\n"
+            '    RpcSetEnv("01", "0101", "admin", "totvs", "FAT")\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        sec = [f for f in findings if f["regra_id"] == "SEC-004"]
+        assert len(sec) == 1
+        assert sec[0]["severidade"] == "warning"
+        assert sec[0]["linha"] == 2
+
+    def test_positive_rpcsetenv_default_pwd_totvs(self) -> None:
+        """Senha default 'totvs' no slot 4 do RpcSetEnv eh sempre flagged."""
+        src = (
+            "User Function ZJob()\n"
+            '    RpcSetEnv("01","01","fulano","totvs")\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-004" in _ids(findings)
+
+    def test_positive_prepare_environment_with_password(self) -> None:
+        """PREPARE ENVIRONMENT ... PASSWORD '<literal>' eh hardcoded creds."""
+        src = (
+            "User Function ZJob()\n"
+            "    PREPARE ENVIRONMENT EMPRESA '01' FILIAL '01' "
+            "USER 'admin' PASSWORD 'totvs' MODULO 'FAT'\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-004" in _ids(findings)
+
+    def test_positive_smtpauth_literal(self) -> None:
+        """oMail:SMTPAuth('user','pwd') com literais."""
+        src = (
+            "User Function ZMail()\n"
+            "    Local oMail := TMailManager():New()\n"
+            '    oMail:SMTPAuth("noreply@x.com","minhasenha123")\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-004" in _ids(findings)
+
+    def test_positive_basic_auth_encode64(self) -> None:
+        """Encode64('user:pwd') = Basic Auth literal."""
+        src = (
+            "User Function ZApi()\n"
+            '    Local cAuth := "Basic " + Encode64("apiuser:abc123")\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-004" in _ids(findings)
+
+    # --- Negativos ---
+
+    def test_negative_rpcsetenv_with_supergetmv(self) -> None:
+        """SuperGetMV no slot da senha eh leitura segura do SX6 — NAO flag."""
+        src = (
+            "User Function ZJob()\n"
+            "    Local cUser := SuperGetMV('MV_XYZUSR',.F.,'')\n"
+            "    Local cPwd  := SuperGetMV('MV_XYZPWD',.F.,'')\n"
+            "    RpcSetEnv('01','01', cUser, cPwd, 'FAT')\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-004" not in _ids(findings)
+
+    def test_negative_rpcsetenv_empty_user_pwd(self) -> None:
+        """RpcSetEnv('01','01','','') usa admin default por convencao — nao eh leak."""
+        src = (
+            "User Function ZJob()\n"
+            "    RpcSetEnv('01','01','','','FAT')\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-004" not in _ids(findings)
+
+    def test_negative_in_comment(self) -> None:
+        """Comentario citando exemplo nao deve disparar."""
+        src = (
+            "User Function ZJob()\n"
+            '    // Exemplo errado: RpcSetEnv("01","01","admin","totvs")\n'
+            "    RpcSetEnv('01','01', GetMV('MV_USR'), GetMV('MV_PWD'))\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-004" not in _ids(findings)
+
+
+# --- SEC-003: PII / dados sensiveis em logs -----------------------------------
+
+
+class TestSEC003PIIInLogs:
+    """SEC-003 (warning): variavel/campo PII passado a ConOut/FwLogMsg/MsgLog."""
+
+    def test_positive_csenha_in_conout(self) -> None:
+        """cSenha sendo logado eh leak claro."""
+        src = (
+            "User Function ZAuth()\n"
+            "    Local cSenha := SuperGetMV('MV_XYZ',.F.,'')\n"
+            '    ConOut("Senha=" + cSenha)\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        sec = [f for f in findings if f["regra_id"] == "SEC-003"]
+        assert len(sec) == 1
+        assert sec[0]["severidade"] == "warning"
+
+    def test_positive_ccpf_in_fwlogmsg(self) -> None:
+        """cCpf passado a FwLogMsg eh PII em log."""
+        src = (
+            "User Function ZCli()\n"
+            "    Local cCpf := M->A1_CGC\n"
+            '    FwLogMsg("INFO","TX","GRP","CAT","STEP","M","cpf="+cCpf)\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-003" in _ids(findings)
+
+    def test_positive_a1_cpf_field_in_log(self) -> None:
+        """Campo SX3 sensivel (A1_CGC/A1_CPF) concatenado em log."""
+        src = (
+            "User Function ZCli()\n"
+            '    ConOut("CPF=" + SA1->A1_CGC)\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-003" in _ids(findings)
+
+    def test_positive_cpf_literal_in_log(self) -> None:
+        """CPF formatado literal em log (debug esquecido)."""
+        src = (
+            "User Function ZDbg()\n"
+            '    ConOut("Testando com CPF 123.456.789-00")\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-003" in _ids(findings)
+
+    # --- Negativos ---
+
+    def test_negative_safe_log_no_pii(self) -> None:
+        """ConOut com mensagem generica — sem PII."""
+        src = (
+            "User Function ZOk()\n"
+            '    ConOut("Processo iniciado em " + DToC(Date()))\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-003" not in _ids(findings)
+
+    def test_negative_msgbox_is_ui_not_log(self) -> None:
+        """MsgInfo/MsgBox/Aviso eh UI, nao log — nao deve disparar SEC-003.
+
+        Esses sao mostrados em modal pra usuario autenticado, nao vao pro
+        console.log do servidor. (Outro tipo de exposicao, fora do escopo SEC-003.)
+        """
+        src = (
+            "User Function ZAuth()\n"
+            "    Local cSenha := 'x'\n"
+            '    MsgInfo("Senha incorreta: " + cSenha)\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-003" not in _ids(findings)
+
+    def test_negative_label_only_no_var(self) -> None:
+        """Label literal sem variavel PII."""
+        src = (
+            "User Function ZAuth()\n"
+            '    ConOut("CPF invalido")\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-003" not in _ids(findings)
