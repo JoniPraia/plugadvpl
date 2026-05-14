@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778755713951,
+  "lastUpdate": 1778756867778,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -1501,6 +1501,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00037377011798587676",
             "extra": "mean: 14.115106230771236 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "5232d659ffc79107ab20089a579df4093b9cb7f3",
+          "message": "release: v0.3.12 — fix version confusion (runtime vs index)\n\nOutra IA externa (mesmo feedback que motivou v0.3.11) tinha rodado\n`uv tool upgrade` e ficou confusa porque `plugadvpl status` continuava\nmostrando 0.2.0 (frozen no indice) enquanto `uv tool list` mostrava\n0.3.11. Padrao git/hatch/dvc: mostrar runtime + stored lado a lado e\navisar quando divergem.\n\n- `plugadvpl --version` / `-V` (eager flag global) — antes so existia\n  o subcomando `plugadvpl version`.\n- `status` expoe `runtime_version` = `__version__` do binario AGORA;\n  convive com `plugadvpl_version` (versao que gravou o indice).\n- Quando divergem, `status` imprime warning amarelo em stderr orientando\n  `ingest --incremental`. Suprimivel com `--quiet`.\n- query.status() ganhou param keyword opcional `runtime_version`\n  (back-compat: chave vira None quando nao passado).\n- 18 skills bumpadas @0.3.10/@0.3.11 -> @0.3.12; status/help/\n  plugadvpl-index-usage atualizadas com a nova UX.\n\nTests: +8 (2 unit + 6 integration). Suite total: 297 verde.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-14T08:07:25-03:00",
+          "tree_id": "3e5980c17b73f0d68039e67b77d7904a9f5d43cb",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/5232d659ffc79107ab20089a579df4093b9cb7f3"
+        },
+        "date": 1778756867113,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 19.842770872645694,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000318739995035186",
+            "extra": "mean: 50.3961874285689 msec\nrounds: 14"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 71.00566442226105,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00045535548659681856",
+            "extra": "mean: 14.083383461538164 msec\nrounds: 13"
           }
         ]
       }
