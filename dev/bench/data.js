@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778767574696,
+  "lastUpdate": 1778778734683,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -1609,6 +1609,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.000687948568170226",
             "extra": "mean: 14.67884430769026 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "21b6ffbdd5d3b48d57c1069ad7277cca54e803ee",
+          "message": "release: v0.3.15 — correctness pack from QA report\n\n5 fixes derivados de gaps/PLUGADVPL_QA_REPORT.md (rodado contra projeto\nreal Marfrig, 1992 fontes + 421k registros SX). Foco em bugs reais com fix\nsurgical; parser heuristicas (#3, #5, #6, #9, #10) ficam pra v0.3.16+.\n\n#8 (CRITICO) callees totalmente quebrado:\n  chamadas_funcao.funcao_origem ficava \"\" em todos os 30k+ registros\n  (\"# best-effort vazio no MVP\" esquecido), o que matava `callees <fn>`\n  pra qualquer nome de funcao. Resolvemos via lookup nos chunks: pra\n  cada call, achamos o chunk MAIS INTERNO cujo [linha_inicio, linha_fim]\n  contem linha_origem (handle nesting Class > Method > Static).\n\n#4 gatilho ignorava destinos:\n  query era WHERE upper(campo_origem) = ? mas help diz \"originados/\n  destinados\". Campos que apenas RECEBEM gatilhos (chaves geradas)\n  ficavam invisiveis. Agora OR upper(campo_destino) = ? tambem.\n\n#13 ingest-sx sobrescrevia project_root:\n  init_meta(project_root=str(csv_dir)) upsertava o slot errado. Agora\n  so chama init_meta se project_root nao existir; caso contrario so\n  atualiza cli_version. sx_csv_dir continua indo pro slot proprio.\n\n#2 hint amigavel pra flag global misplaced:\n  `plugadvpl status --limit 20` antes retornava \"No such option: --limit\"\n  sem dica. Agora main() detecta e imprime \"Dica: '--limit' eh global —\n  vem ANTES do subcomando\" depois do erro do click.\n\n#1 fragment CLAUDE.md desatualizado:\n  Tabela de decisao listava `--fts/--literal/--identifier` (flags inexistentes).\n  Correto eh `-m fts|literal|identifier`. Atualizado.\n\nTests: +4 (todos RED -> GREEN). Suite total 309 verde.\n\nUsuarios precisam re-rodar `ingest --no-incremental` pra que funcao_origem\nseja populado nos registros existentes (lookups nao mudaram, so codigo,\nentao warning da v0.3.13 nao dispara — precisa reingest manual).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-14T14:11:51-03:00",
+          "tree_id": "dd698bcc3502ecc3be71a125b071115f946f4979",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/21b6ffbdd5d3b48d57c1069ad7277cca54e803ee"
+        },
+        "date": 1778778734042,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 20.094263825940004,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0003465710968549737",
+            "extra": "mean: 49.76544593333566 msec\nrounds: 15"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 70.77472843288933,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00046503189895059026",
+            "extra": "mean: 14.129337153843398 msec\nrounds: 13"
           }
         ]
       }
