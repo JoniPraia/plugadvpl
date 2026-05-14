@@ -439,6 +439,135 @@ class TestLint:
         # Pode estar vazio mas tem que retornar JSON válido.
         json.loads(result.stdout)
 
+    def test_callers_flags_is_self_call(
+        self, tmp_path: Path, runner: CliRunner
+    ) -> None:
+        """v0.3.18 — Bug #12 do QA report: `callers <nome>` misturava
+        callsites externos com self-calls (FwLoadModel('X') dentro de X.prw)
+        sem distincao. Agora cada row tem `is_self_call: bool` baseado em
+        `funcao_origem == nome` OR `basename(arquivo_origem) == nome`."""
+        src = tmp_path / "src"
+        src.mkdir()
+        # Self-call: dentro de SelfCall.prw, funcao SelfCall chama propria via FwLoadModel.
+        (src / "SelfCall.prw").write_bytes(
+            b'#include "totvs.ch"\n'
+            b'User Function SelfCall()\n'
+            b'  Local oModel := FwLoadModel("SelfCall")\n'
+            b'Return\n'
+        )
+        # External: outro fonte chama SelfCall.
+        (src / "Caller.prw").write_bytes(
+            b'#include "totvs.ch"\n'
+            b'User Function Caller()\n'
+            b'  U_SelfCall()\n'
+            b'Return\n'
+        )
+        runner.invoke(app, ["--root", str(src), "init"])
+        runner.invoke(app, ["--root", str(src), "ingest"])
+        result = runner.invoke(
+            app,
+            ["--root", str(src), "--format", "json", "callers", "SelfCall"],
+        )
+        assert result.exit_code == 0, result.stderr
+        payload = json.loads(result.stdout)
+        rows = payload["rows"]
+        # Esperado: 1 self (FwLoadModel) + 1 external (U_SelfCall)
+        self_calls = [r for r in rows if r.get("is_self_call") is True]
+        external = [r for r in rows if r.get("is_self_call") is False]
+        assert len(self_calls) >= 1, f"esperado >=1 self_call, rows={rows}"
+        assert len(external) >= 1, f"esperado >=1 external, rows={rows}"
+        # Self deve vir de SelfCall.prw; external de Caller.prw.
+        assert all("SelfCall" in r["arquivo"] for r in self_calls)
+        assert all("Caller" in r["arquivo"] for r in external)
+
+    def test_arch_flags_tabelas_via_execauto(
+        self, tmp_path: Path, runner: CliRunner
+    ) -> None:
+        """v0.3.18 — Bug #11 do QA report: programas que usam MsExecAuto
+        delegam acesso a tabelas pra rotina chamada — `tabelas_*` do parser
+        ficam vazias mesmo o programa "tocando" SC5/SC6/SF4 etc. Sem flag,
+        usuario tira conclusao errada confiando so na lista. Agora `arch`
+        expoe `tabelas_via_execauto: bool` quando `EXEC_AUTO_CALLER` esta
+        em capabilities."""
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "ExecAutoCaller.prw").write_bytes(
+            b'#include "totvs.ch"\n'
+            b'User Function ExecAutoCaller()\n'
+            b'  Local aCab := {{"C5_NUM", "001", Nil}}\n'
+            b'  Local aIt  := {{{"C6_NUM", "001", Nil}}}\n'
+            b'  Private lMsErroAuto := .F.\n'
+            b'  MsExecAuto({|x,y,z| MATA410(x,y,z)}, aCab, aIt, 3)\n'
+            b'  If lMsErroAuto\n'
+            b'    MostraErro()\n'
+            b'  EndIf\n'
+            b'Return\n'
+        )
+        runner.invoke(app, ["--root", str(src), "init"])
+        runner.invoke(app, ["--root", str(src), "ingest"])
+        result = runner.invoke(
+            app,
+            ["--root", str(src), "--format", "json", "arch", "ExecAutoCaller.prw"],
+        )
+        assert result.exit_code == 0, result.stderr
+        payload = json.loads(result.stdout)
+        row = payload["rows"][0]
+        assert "EXEC_AUTO_CALLER" in row["capabilities"], (
+            f"Caso de teste deve ter EXEC_AUTO_CALLER. caps={row['capabilities']}"
+        )
+        assert row.get("tabelas_via_execauto") is True, (
+            f"Esperado tabelas_via_execauto=True quando EXEC_AUTO_CALLER, "
+            f"recebido {row.get('tabelas_via_execauto')!r}"
+        )
+
+    def test_arch_no_execauto_flag_when_no_capability(
+        self, indexed_project: Path, runner: CliRunner
+    ) -> None:
+        """Caso negativo: fonte sem MsExecAuto deve ter tabelas_via_execauto=False."""
+        result = runner.invoke(
+            app,
+            ["--root", str(indexed_project), "--format", "json", "arch", "FATA050.prw"],
+        )
+        assert result.exit_code == 0, result.stderr
+        payload = json.loads(result.stdout)
+        row = payload["rows"][0]
+        assert row.get("tabelas_via_execauto") is False
+
+    def test_lint_findings_no_duplicates_alias_reclock(
+        self, tmp_path: Path, runner: CliRunner
+    ) -> None:
+        """v0.3.18 — Bug #9 do QA report: BP-001 reportava o mesmo RecLock
+        2x quando vinha em forma `<alias>->(RecLock(...))` — casava com
+        AMBOS _RECLOCK_OPEN_RE (literal) E _RECLOCK_VIA_ALIAS_RE (alias).
+        Fixture forca o cenario; teste assegura unicidade no DB."""
+        src = tmp_path / "src"
+        src.mkdir()
+        fixture = (
+            Path(__file__).parent.parent
+            / "fixtures" / "synthetic" / "reclock_alias_dup_trigger.prw"
+        )
+        (src / "ZH3DupTrigger.prw").write_bytes(fixture.read_bytes())
+        runner.invoke(app, ["--root", str(src), "init"])
+        runner.invoke(app, ["--root", str(src), "ingest"])
+        db = src / ".plugadvpl" / "index.db"
+        conn = sqlite3.connect(db)
+        try:
+            dups = conn.execute(
+                """
+                SELECT arquivo, linha, regra_id, COUNT(*) AS n
+                FROM lint_findings
+                WHERE regra_id='BP-001'
+                GROUP BY arquivo, linha, regra_id
+                HAVING n > 1
+                """
+            ).fetchall()
+        finally:
+            conn.close()
+        assert dups == [], (
+            f"BP-001 duplicado em (arquivo, linha): {dups}. "
+            "ZH3->(RecLock(...)) deveria gerar 1 finding, nao 2."
+        )
+
 
 class TestMissingDb:
     def test_query_without_db_exits_2(

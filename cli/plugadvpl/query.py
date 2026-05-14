@@ -78,7 +78,13 @@ def find_any(conn: sqlite3.Connection, termo: str) -> list[dict[str, Any]]:
 
 
 def callers(conn: sqlite3.Connection, nome: str) -> list[dict[str, Any]]:
-    """Quem chama ``nome``? Lookup em ``chamadas_funcao`` (destino + destino_norm)."""
+    """Quem chama ``nome``? Lookup em ``chamadas_funcao`` (destino + destino_norm).
+
+    v0.3.18 (#12): cada row inclui ``is_self_call: bool`` indicando que a
+    chamada origina do mesmo símbolo (mesma função homônima OU mesmo arquivo
+    de basename igual ao nome buscado). Útil pra filtrar self-references
+    quando você quer só callers externos (FwLoadModel('X') de dentro de X.prw).
+    """
     norm = nome.upper().lstrip("U_") if nome.upper().startswith("U_") else nome.upper()
     rows = conn.execute(
         """
@@ -89,8 +95,25 @@ def callers(conn: sqlite3.Connection, nome: str) -> list[dict[str, Any]]:
         """,
         (norm, nome),
     ).fetchall()
-    cols = ["arquivo", "funcao", "linha", "tipo", "contexto"]
-    return [dict(zip(cols, r, strict=True)) for r in rows]
+    nome_up = nome.upper()
+    out: list[dict[str, Any]] = []
+    for arquivo, funcao, linha, tipo, contexto in rows:
+        # Self-call quando: a função-pai é o próprio nome OU o arquivo de
+        # origem (sem extensão) bate com o nome buscado.
+        arq_base = (arquivo or "").upper().rsplit(".", 1)[0]
+        is_self = (
+            (funcao or "").upper() == nome_up
+            or arq_base == nome_up
+        )
+        out.append({
+            "arquivo": arquivo,
+            "funcao": funcao,
+            "linha": linha,
+            "tipo": tipo,
+            "contexto": contexto,
+            "is_self_call": is_self,
+        })
+    return out
 
 
 def callees(conn: sqlite3.Connection, nome: str) -> list[dict[str, Any]]:
@@ -200,12 +223,13 @@ def arch(conn: sqlite3.Connection, arquivo: str) -> list[dict[str, Any]]:
         namespace,
         tipo_arquivo,
     ) = row
+    capabilities = _json_or_default(caps_json, [])
     return [
         {
             "arquivo": arquivo_,
             "tipo_arquivo": tipo_arquivo,
             "source_type": source_type,
-            "capabilities": _json_or_default(caps_json, []),
+            "capabilities": capabilities,
             "lines_of_code": loc,
             "encoding": enc,
             "namespace": namespace,
@@ -215,6 +239,11 @@ def arch(conn: sqlite3.Connection, arquivo: str) -> list[dict[str, Any]]:
             "tabelas_read": _json_or_default(tabs_read_json, []),
             "tabelas_write": _json_or_default(writes_json, []),
             "tabelas_reclock": _json_or_default(reclock_json, []),
+            # v0.3.18 (#11 do QA report): sinaliza que `tabelas_*` pode estar
+            # incompleto porque o fonte usa MsExecAuto (analise estatica nao
+            # expande a rotina chamada). Caller deve checar a rotina pelo nome
+            # e/ou rodar `tables` na rotina alvo pra cobertura completa.
+            "tabelas_via_execauto": "EXEC_AUTO_CALLER" in capabilities,
             "includes": _json_or_default(incs_json, []),
         }
     ]

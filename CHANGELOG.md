@@ -4,6 +4,50 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.18] - 2026-05-14
+
+### Polish pack — fecha os 3 ultimos achados do `gaps/PLUGADVPL_QA_REPORT.md`. Com este release o backlog do QA inicial chega a zero — sobram apenas os achados ja resolvidos em v0.3.14-v0.3.17.
+
+### Fixed
+- **#9 — `lint` retornava findings duplicados**. BP-001 (RecLock sem
+  MsUnlock) reportava o mesmo RecLock 2x quando vinha em forma alias
+  (`<alias>->(RecLock(...))`) — casava com AMBOS regexes (`_RECLOCK_OPEN_RE`
+  pra literal + `_RECLOCK_VIA_ALIAS_RE` pra alias). Fix: dedup por **linha**
+  no detector antes de contar opens (`opens_by_line` dict). Mesma linha
+  agora conta como 1 open mesmo casando 2 regexes.
+
+### Added
+- **#11 — `arch` expoe `tabelas_via_execauto: bool`**: quando o fonte tem
+  capability `EXEC_AUTO_CALLER`, a flag fica True sinalizando que as
+  listas `tabelas_read/write/reclock` podem estar incompletas (analise
+  estatica nao expande a rotina chamada via MsExecAuto). Caller deve
+  rodar `tables` na rotina alvo pra cobertura completa.
+- **#12 — `callers` expoe `is_self_call: bool`** em cada row. Self-call
+  quando `funcao_origem == nome` OU `basename(arquivo_origem) == nome`.
+  Util pra filtrar self-references (FwLoadModel('X') de dentro de X.prw
+  contava como caller externo no output).
+
+### Tests
+- `tests/integration/test_cli.py::TestLint`: +4 testes
+  (`test_lint_findings_no_duplicates_alias_reclock` com fixture
+  `reclock_alias_dup_trigger.prw`; `test_arch_flags_tabelas_via_execauto`;
+  `test_arch_no_execauto_flag_when_no_capability`;
+  `test_callers_flags_is_self_call`).
+- 316 testes verde (era 312).
+
+### Notes
+- **QA report inicial agora 100% endereçado**:
+  - Resolvidos em v0.3.14: #14 (SXG mislabel), #15 (consultas Δ).
+  - Resolvidos em v0.3.15: #1 (CLAUDE.md fragment), #2 (--limit hint),
+    #4 (gatilho destino), #8 (callees broken), #13 (project_root).
+  - Resolvidos em v0.3.16: #5/#7 (WSRESTFUL), #6/#10 (PE canonico).
+  - Resolvidos em v0.3.17: #3 (impacto boundary).
+  - Resolvidos em v0.3.18: #9 (lint dups), #11 (execauto flag), #12
+    (self-call flag).
+- Próximo grande tema natural: v0.4.0 Universo 3 (Rastreabilidade) — ou
+  promover mais regras planned restantes (SEC-004 hardcoded creds,
+  SEC-003 PII em logs, BP-007 Protheus.doc, etc.).
+
 ## [0.3.17] - 2026-05-14
 
 ### Impacto preciso — fix #3 do `gaps/PLUGADVPL_QA_REPORT.md`. `plugadvpl impacto A1_COD` retornava >100KB de output em campo curto/comum, com gatilhos de campos cujo nome apenas CONTEM 'A1_COD' como substring (`BA1_CODEMP`, `BA1_CODINT`, `DA1_CODPRO`, `A1_CODSEG`, etc.). Para campos de tabelas standard (SA1, SB1, SC5...) o comando ficava praticamente inutilizavel — caso real reportado: `A1_COD` retornava ~150 resultados, ~95% falsos positivos.

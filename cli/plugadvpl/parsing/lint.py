@@ -202,16 +202,24 @@ def _check_bp001_reclock_unbalanced(
 
     for f in funcs_off:
         scope = stripped[f["char_inicio"] : f["char_fim"] + 1]
-        opens = []
+        # v0.3.18 (#9 do QA report): dedup por LINHA antes de contar opens.
+        # `ZH3->(RecLock("ZH3",...))` casa AMBOS regexes (literal + alias-form),
+        # gerando 2 opens pra 1 RecLock real → BP-001 reportava 2x na mesma linha.
+        opens_by_line: dict[int, int] = {}
         for m in _RECLOCK_OPEN_RE.finditer(scope):
-            opens.append(m.start() + f["char_inicio"])
+            off = m.start() + f["char_inicio"]
+            linha = _line_at(content, off)
+            opens_by_line.setdefault(linha, off)
         for m in _RECLOCK_VIA_ALIAS_RE.finditer(scope):
-            opens.append(m.start() + f["char_inicio"])
+            off = m.start() + f["char_inicio"]
+            linha = _line_at(content, off)
+            opens_by_line.setdefault(linha, off)
+        opens = sorted(opens_by_line.values())
         closes_count = len(_MSUNLOCK_RE.findall(scope))
         if len(opens) <= closes_count:
             continue
         # Reportar os opens "extras" (os últimos N=opens-closes em ordem).
-        unbalanced = sorted(opens)[closes_count:]
+        unbalanced = opens[closes_count:]
         for off in unbalanced:
             linha = _line_at(content, off)
             findings.append(
