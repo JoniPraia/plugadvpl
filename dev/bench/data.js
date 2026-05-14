@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778756867778,
+  "lastUpdate": 1778758197961,
   "repoUrl": "https://github.com/JoniPraia/plugadvpl",
   "entries": {
     "Benchmark": [
@@ -1537,6 +1537,42 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00045535548659681856",
             "extra": "mean: 14.083383461538164 msec\nrounds: 13"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "committer": {
+            "email": "plugadvpl-org@example.com",
+            "name": "plugadvpl-org"
+          },
+          "distinct": true,
+          "id": "e5372825876bade08e4ff4bb40c6ef59f5e3e89b",
+          "message": "release: v0.3.13 — warn on --incremental when lookups changed\n\nTerceiro round do mesmo feedback de IA externa: apos `uv tool upgrade\nplugadvpl` + `ingest --incremental`, os arquivos pulados (mtime nao\nmudou) NAO eram re-avaliados contra regras de lint novas — silenciosamente\no `total_lint_findings` ficava frozen na versao antiga pra 99% do projeto.\n\n- ingest() agora compara lookup_bundle_hash antes/depois de seed_lookups\n  e expoe `lookup_hash_changed: bool` no dict de counters.\n- CLI `ingest` imprime warning amarelo em stderr quando (incremental\n  ativo) AND (hash mudou) AND (skipped > 0), orientando rodar\n  `ingest --no-incremental`. Suprimivel com --quiet.\n- Skill `ingest`: nova secao \"Pegadinha do --incremental apos upgrade\"\n  com cenario tipico + exemplo do warning.\n- Skill `plugadvpl-index-usage`: subsecao com fluxo correto pos-upgrade.\n- 18 skills bumpadas @0.3.12 → @0.3.13.\n\nTests: +4 integracao cobrindo a matriz hash×modo×skipped + supressao\npor --quiet. Suite total: 301 verde.\n\nSinal usado (lookup_bundle_hash) ja existia desde antes — so precisava\nser lido ANTES de seed_lookups sobrescrever. Custo: 1 SELECT extra.\n\nDecisao: nao auto-relint nesta versao (avisar e suficiente; usuario\ndecide se vale o --no-incremental). Re-avaliar se a dor for recorrente.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-05-14T08:29:31-03:00",
+          "tree_id": "ddf3cfdf78e0caed760e3e8fbea0dd4f318392ba",
+          "url": "https://github.com/JoniPraia/plugadvpl/commit/e5372825876bade08e4ff4bb40c6ef59f5e3e89b"
+        },
+        "date": 1778758197600,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/bench/test_ingest_perf.py::test_ingest_synthetic_fixtures_under_5s",
+            "value": 20.18252972240755,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0007457406764467604",
+            "extra": "mean: 49.54780266666745 msec\nrounds: 15"
+          },
+          {
+            "name": "tests/bench/test_sx_ingest_perf.py::test_ingest_sx_synthetic_under_2s",
+            "value": 72.8743647913021,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0003004763487911011",
+            "extra": "mean: 13.722246538461146 msec\nrounds: 13"
           }
         ]
       }
