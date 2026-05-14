@@ -297,6 +297,21 @@ Sintetize o que encontrar nos passos 1–6 num parágrafo: o que faz + dependên
 Para ver versão / status do índice: `plugadvpl status`. Para ver todos os comandos:
 `plugadvpl --help`.
 
+### Output format — IMPORTANTE para agentes IA
+
+A flag global `--format` aceita 3 valores e **vem ANTES do subcomando** (é do callback):
+
+- `--format table` (default) — Rich em **stderr**, **trunca** colunas em terminais
+  estreitos (você vê `ar...`, `ti...`, `ca...`). OK para humano interativo.
+- `--format md` — Markdown em **stdout**, **sem truncamento**. **Recomendado para Claude/agentes IA**: limpo, parseável visualmente, vai pro stdout.
+- `--format json` — JSON em **stdout**, sem truncamento. Use para parsing programático (jq, scripts).
+
+Padrões inválidos comuns (não tente):
+
+- `plugadvpl arch X --json` → flag `--json` **não existe**. Correto: `plugadvpl --format json arch X`.
+- `$env:COLUMNS=400; plugadvpl ...` → workaround frágil; mistura sintaxe PS/Bash. Correto: `--format md`.
+- Posicionar `--format` depois do subcomando funciona em alguns casos mas é frágil — **sempre** antes do subcomando.
+
 ### Encoding (importante para Edit/Write)
 
 Fontes legados são `cp1252` (.prw/.prx). TLPP moderno (.tlpp) pode ser `utf-8`.

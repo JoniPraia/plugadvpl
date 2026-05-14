@@ -4,6 +4,50 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.11] - 2026-05-14
+
+### UX/docs release — feedback de outra IA usando o plugin revelou 2 fricções de discoverability + 1 maintenance gap. Sem mudança de código de produção.
+
+### Fixed
+- **18 skills com `uvx plugadvpl@0.3.1` hardcoded** — bumped pra `@0.3.10`
+  em todas (`arch`, `find`, `lint`, `tables`, `callees`, `callers`,
+  `doctor`, `gatilho`, `grep`, `help`, `impacto`, `ingest`, `ingest-sx`,
+  `init`, `param`, `reindex`, `status`, `sx-status`). Estavam congeladas
+  desde a v0.3.1 — usuários do plugin marketplace puxavam o catálogo
+  sem regras BP-008/PERF-005/MOD-004/PERF-004/SEC-005.
+
+### Added
+- **Skill `plugadvpl-index-usage`**: nova seção "Output format —
+  IMPORTANTE para agentes IA" documentando explicitamente as 3 opções
+  (`table`/`md`/`json`), com tabela mostrando truncamento + lista de
+  anti-padrões observados em sessões reais (tentar `--json` standalone,
+  setar `$env:COLUMNS=400`, misturar shell PS/Bash). Recomenda
+  `--format md` para Claude/agentes.
+- **Skills com tabelas largas** (`arch`, `find`, `lint`, `tables`,
+  `callees`, `callers`): callout no topo "Para agente IA: prefira
+  `--format md`" — comando exemplo já vem com a flag para induzir cópia
+  correta.
+- **Skill `help`**: documentação completa das 8 flags globais com
+  posicionamento (callback vem ANTES do subcomando) + aviso explícito
+  "flags `--json`/`--vertical`/`--wide`/`--no-table` não existem; use
+  `--format json` ou `--format md`".
+- **CLAUDE.md fragment** (injetado por `/plugadvpl:init`): nova seção
+  "Output format — IMPORTANTE para agentes IA" com mesma orientação
+  + 3 anti-padrões. Projetos novos terão a guidance baked in.
+
+### Notes
+- Não há mudança no comportamento do CLI — todas as flags já existiam
+  (`--format`, `--quiet`, `--compact`, `--no-next-steps`). Era só
+  discoverability.
+- Trigger: usuário compartilhou feedback de outra IA que rodou o plugin
+  e identificou 3 fricções (truncamento Rich em terminal estreito,
+  tentou `--json` em vez de `--format json`, misturou syntax PS/Bash em
+  workaround). Análise: 1 era UX real (truncamento), 2 eram falta de
+  documentação no contrato CLI.
+- Não foram adicionadas novas flags (`--vertical`, `--wide`,
+  `--no-truncate`) — `--format md` já resolve sem truncamento e é mais
+  legível para LLM. Mantém superfície da API enxuta.
+
 ## [0.3.10] - 2026-05-13
 
 ### Audit release — sem regras novas; 4 gaps de qualidade identificados na revisão item-a-item de v0.3.4–v0.3.9 (com pesquisa em TDN/casos reais), todos corrigidos.

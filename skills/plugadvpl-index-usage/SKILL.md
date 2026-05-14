@@ -90,6 +90,32 @@ A pergunta mais comum do usuario merece um caminho explicito:
 Todo comando retorna no maximo 20 resultados (`--limit 20`). Se a saida indicar  
 "... e mais N resultados; refine com --table/--module/--path", **refine com filtros**, nao peca mais resultados sem criterio. Comandos suportam `--compact` para uma-linha-por-registro.
 
+## Output format — IMPORTANTE para agentes IA
+
+A flag global `--format` aceita 3 valores. **Nunca tente `--json` (nao existe) — use `--format json`:**
+
+| Formato                 | Saida em | Quando usar                                          | Trunca? |
+|-------------------------|----------|------------------------------------------------------|---------|
+| `--format table` (default) | stderr   | Humano olhando no terminal interativo            | **Sim** — Rich auto-shrinka colunas com base em `$COLUMNS`/`COLS`; em terminais estreitos voce ve `ar...`, `ti...`, `ca...` |
+| `--format md`            | stdout   | **AI agent / Claude lendo a saida** ou pra colar em chat | Nao    |
+| `--format json`          | stdout   | Parsing programatico, jq, scripts                   | Nao    |
+
+**Regra para Claude/agente:** ao executar qualquer subcomando do plugadvpl via `Bash`, **prefira `--format md`** — output limpo, sem codigos ANSI, sem truncamento, e ja vem em markdown que renderiza bem no chat. Reserve `--format json` para quando precisar parsear (filtrar, contar, transformar) o resultado.
+
+**Anti-padroes ja vistos:**
+
+- `plugadvpl arch X --json` → ERRO: flag nao existe. Correto: `plugadvpl arch X --format json`.
+- Setar `$env:COLUMNS=400` no PowerShell pra evitar truncamento → workaround. Correto: usar `--format md` ou `--format json` direto, sem mexer em variavel de ambiente.
+- Misturar sintaxe: `$env:COLUMNS=400; plugadvpl ...` (PowerShell) **dentro** do `bash` → `:COLUMNS` vira "command not found". Cada shell sua sintaxe; ou simplesmente nao precisa porque `--format md` resolve.
+
+**Outras flags globais uteis** (definir ANTES do subcomando, ja que sao do callback):
+
+- `--quiet` / `-q` — suprime mensagens decorativas (titulo, hints).
+- `--compact` — JSON sem indent / table sem `show_lines` (mais denso).
+- `--no-next-steps` — desliga sugestoes "Proximo passo recomendado:".
+- `--limit N` — default 20, `0` = ilimitado (cuidado com contexto!).
+- `--offset N` — paginacao.
+
 ## Saude do indice
 
 Antes de confiar em consultas, em sessao nova rode `/plugadvpl:status` para conferir contagens e ultima ingestao. Se arquivos foram editados fora do Claude (IDE, git pull), execute `/plugadvpl:reindex <arquivo>` ou `/plugadvpl:ingest --incremental`.
