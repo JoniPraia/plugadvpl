@@ -1778,3 +1778,170 @@ class TestBP002bPrivateWhenLocal:
         )
         findings = lint_source(_parsed_for(src), src)
         assert "BP-002b" not in _ids(findings)
+
+
+# --- Audit V4 #4: PERF-004 hungarian estrito ---------------------------------
+
+
+class TestPerf004HungarianStrict:
+    """Audit V4 #4: regex `c[A-Za-z_]\\w*` casava `cnt`/`csv`/`cmd` (não-hungarian).
+    Hungarian estrita exige `c[A-Z]\\w*` — segunda letra MAIÚSCULA."""
+
+    def test_negative_cnt_counter(self) -> None:
+        """`cnt` (counter, sigla 3 letras lowercase) eh numerico, nao string."""
+        src = (
+            "User Function ZTms()\n"
+            "    Local cnt := 0\n"
+            "    Local nI\n"
+            "    For nI := 1 To 100\n"
+            "        cnt += 1\n"
+            "    Next\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-004" not in _ids(findings), (
+            "cnt nao eh hungarian (segunda letra minuscula) — nao deve disparar PERF-004"
+        )
+
+    def test_negative_csv_var(self) -> None:
+        """`csv` tipicamente eh formato (string), mas em loop é raro — ja contem
+        sigla 3 letras lower. Se passar com c minusculo so, perdemos. OK trade."""
+        src = (
+            "User Function ZRel()\n"
+            "    Local csv := ''\n"
+            "    For nI := 1 To 10\n"
+            "        csv += 'linha'\n"
+            "    Next\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-004" not in _ids(findings)
+
+    def test_positive_cBuffer_still_works(self) -> None:
+        """cBuffer (hungarian valido: c + maiuscula) continua disparando."""
+        src = (
+            "User Function ZBuild()\n"
+            "    Local cBuffer := ''\n"
+            "    Local nI\n"
+            "    For nI := 1 To 100\n"
+            "        cBuffer += 'x'\n"
+            "    Next\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-004" in _ids(findings)
+
+    def test_positive_long_form_strict(self) -> None:
+        """Long form `cAcc := cAcc + ...` — exige hungarian estrito."""
+        src = (
+            "User Function ZAcc()\n"
+            "    Local cAcc := ''\n"
+            "    Local nI\n"
+            "    For nI := 1 To 5\n"
+            "        cAcc := cAcc + 'item'\n"
+            "    Next\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "PERF-004" in _ids(findings)
+
+
+# --- Audit V4 #13: BP-005 paren balance em params ---------------------------
+
+
+class TestBp005ParenBalance:
+    """Audit V4 #13: contador `params_text.count(',') + 1` ignora virgulas
+    dentro de literais `{1,2,3}` ou chamadas aninhadas `MyFunc(1,2)`."""
+
+    def test_negative_array_default_does_not_inflate_count(self) -> None:
+        """5 params reais; um tem default `{1,2,3}` — NAO eh 7+ params (threshold)."""
+        src = (
+            "User Function ZGood(cA, cB, cC, cD := {1,2,3}, cE)\n"
+            "    Return Nil\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-005" not in _ids(findings), (
+            "{1,2,3} default em 5 params reais nao deve inflar contagem alem de 6"
+        )
+
+    def test_negative_nested_func_default(self) -> None:
+        """5 params reais; um tem default `MyFn(1,2,3)` — 5 reais, nao 7."""
+        src = (
+            "User Function ZGood(cA, cB, cC, cD, cE := MyFn(1, 2, 3))\n"
+            "    Return Nil\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-005" not in _ids(findings)
+
+    def test_positive_seven_real_params(self) -> None:
+        """7 params reais ainda deve disparar BP-005 (>6)."""
+        src = (
+            "User Function ZBad(a, b, c, d, e, f, g)\n"
+            "    Return Nil\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-005" in _ids(findings)
+
+
+# --- Audit V4 #7: BP-001 RecLock com fisico/variavel ------------------------
+
+
+class TestBp001RecLockExtended:
+    """Audit V4 #7: regex original `\\w{2,3}` perdia fisico (`SA1010`) e
+    variavel (`cTab`). Casos comuns em scripts de migracao e rotinas reuse."""
+
+    def test_positive_reclock_physical_table_name(self) -> None:
+        """RecLock com nome fisico `SA1010` (6 chars) deve disparar."""
+        src = (
+            "User Function ZMigra()\n"
+            '    DbSelectArea("SA1010")\n'
+            '    RecLock("SA1010", .F.)\n'
+            "    SA1010->A1_NOME := 'X'\n"
+            # SEM MsUnlock — deve disparar BP-001
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-001" in _ids(findings)
+
+    def test_positive_reclock_variable_alias(self) -> None:
+        """RecLock(cTab, .F.) com variavel — deve disparar."""
+        src = (
+            "User Function ZGenerico(cTab)\n"
+            "    DbSelectArea(cTab)\n"
+            "    RecLock(cTab, .F.)\n"
+            "    Replace A1_NOME With 'X'\n"
+            # SEM MsUnlock
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-001" in _ids(findings)
+
+
+# --- Audit V4 #12: SEC-003 forma curta com sufixo --------------------------
+
+
+class TestSec003ShortFormSuffix:
+    """Audit V4 #12: forma curta `c<Pwd|Rg|Pin|Card|Pass>\\b` exige boundary —
+    perde variantes legitimas como `cPwdHash`, `cRgEmissor`."""
+
+    def test_positive_cpwdhash_leak(self) -> None:
+        """`cPwdHash` continua sendo material sensivel — deve disparar."""
+        src = (
+            "User Function ZAuth()\n"
+            "    Local cPwdHash := Sha256('senha')\n"
+            '    ConOut("Hash: " + cPwdHash)\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-003" in _ids(findings)
+
+    def test_positive_crgemissor_leak(self) -> None:
+        """`cRgEmissor` (orgao emissor do RG) ainda eh PII."""
+        src = (
+            "User Function ZCli()\n"
+            "    Local cRgEmissor := 'SSP-SP'\n"
+            '    ConOut("RG: " + cRgEmissor)\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-003" in _ids(findings)

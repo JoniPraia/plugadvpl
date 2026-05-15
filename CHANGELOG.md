@@ -4,6 +4,61 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.29] - 2026-05-15
+
+### Lint robustness pack 2 — fecha mais 4 dos 8 restantes do `gaps/PLUGADVPL_LINT_AUDIT_V4.md`. Foco em precision/recall: PERF-004 hungarian estrito, BP-005 paren balance, BP-001 RecLock variável/físico, SEC-003 sufixo CamelCase. Sobram 4 de severidade média/baixa (PERF-006 determinismo, SEC-005 homônima local, PERF-006 fallback, SX-005 corpus 50-250MB).
+
+### Fixed
+- **#4 (MÉDIA) — PERF-004 hungarian estrito (`c[A-Z]\\w*`)**. Antes
+  `c[A-Za-z_]\\w*` casava `cnt` (counter), `csv`, `cmd`, `crm` — siglas 3
+  letras lowercase comuns em ADVPL legado. Estrito exige segunda letra
+  MAIÚSCULA, eliminando FP sem perder casos hungarianos válidos
+  (`cBuffer`, `cMsg`, `cAcc`, etc).
+- **#13 (BAIXA) — BP-005 paren balance em params**. Antes
+  `params_text.count(",") + 1` inflava contagem em defaults com array
+  literal `{1,2,3}` ou função aninhada `MyFn(1,2,3)`. Função com 5 params
+  reais + `cD := {1,2,3}` virava 7 params apparent → BP-005 falso
+  positivo. Helper novo `_count_top_level_commas(text)` ignora vírgulas
+  dentro de `()`/`{}`/`[]`.
+- **#7 (MÉDIA) — BP-001 detecta RecLock com físico/variável**. Antes
+  `\\w{2,3}` perdia alias físico (`SA1010`, 6 chars) e variável (`cTab`,
+  sem aspas). Agora:
+  - `_RECLOCK_OPEN_RE` aceita literal 2-7 chars (cobre alias lógico SA1
+    + físico SA1010).
+  - `_RECLOCK_OPEN_VAR_RE` (novo) captura `RecLock(<identifier>, ...)`
+    sem aspas — cenário comum em scripts de migração e rotinas reuse.
+  - `_RECLOCK_VIA_ALIAS_RE` também 2-7 chars.
+- **#12 (BAIXA) — SEC-003 forma curta aceita sufixo CamelCase**. Antes
+  `\\bc(?:Pwd|Rg|Pin|Card|Pass)\\b` exigia boundary após o termo —
+  perdia variantes legítimas como `cPwdHash` (hash de senha continua
+  PII), `cRgEmissor` (info do RG), `cCardNumber`, `cPinAtual`. Agora
+  `\\bc(?:Pwd|Rg|Pin|Card|Pass)(?:[A-Z]\\w*)?\\b` aceita sufixo iniciado
+  em maiúscula. Continua não-pegando `cPassagem`/`cCardapio` (próxima
+  letra é minúscula = parte de palavra PT-BR).
+
+### Tests
+- 11 testes RED→GREEN em `test_lint.py`:
+  - `TestPerf004HungarianStrict` — 4 testes (2 negativos `cnt`/`csv` +
+    2 positivos `cBuffer`/`cAcc`).
+  - `TestBp005ParenBalance` — 3 testes (2 negativos com `{1,2,3}` +
+    `MyFn(1,2,3)` defaults + 1 positivo regressão 7 params reais).
+  - `TestBp001RecLockExtended` — 2 testes (físico `SA1010` + variável
+    `cTab`).
+  - `TestSec003ShortFormSuffix` — 2 testes (`cPwdHash` + `cRgEmissor`).
+- 386 testes verde (era 375).
+
+### Notes
+- **Backlog Audit V4 restante (4 itens, todos baixos)**:
+  - #8 (PERF-006 cross-table match não-determinístico — depende de ordem
+    de `dict.items()`).
+  - #9 (SEC-005 não distingue função homônima custom local — improvável
+    mas possível em PEs canônicos).
+  - #10 (PERF-006 sem aviso quando `indices` SX vazia — UX, não bug).
+  - #14 (SX-005 carrega 50-250MB corpus em memória — só problema em
+    monorepo gigante; comment já justifica como aceitável).
+- **Quase fim do backlog técnico**. Continuar com #8 + #9 fecharia 100%
+  do Audit V4. #10 é UX simples. #14 é trade-off documentado.
+
 ## [0.3.28] - 2026-05-15
 
 ### Lint robustness pack — fecha 7 dos 15 achados de `gaps/PLUGADVPL_LINT_AUDIT_V4.md`. Foco em correctness técnica: persist cross-file, SQL truncation, regex frágeis. Sobram 8 médios/baixos no backlog (PERF-004 hungarian estrito, BP-001 RecLock variável, PERF-006 cross-table determinismo, etc).

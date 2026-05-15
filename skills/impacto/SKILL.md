@@ -33,7 +33,7 @@ Requer `/plugadvpl:ingest-sx` rodado antes.
 ## Execucao
 
 ```bash
-uvx plugadvpl@0.3.28 impacto $ARGUMENTS
+uvx plugadvpl@0.3.29 impacto $ARGUMENTS
 ```
 
 ## Exemplos

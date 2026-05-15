@@ -26,8 +26,19 @@ from plugadvpl.parsing.stripper import strip_advpl
 # --- Pre-compiled module-level regexes ----------------------------------------
 
 # BP-001: RecLock("XXX") sem MsUnlock no mesmo escopo.
-_RECLOCK_OPEN_RE = re.compile(r'\bRecLock\s*\(\s*["\'](\w{2,3})["\']', re.IGNORECASE)
-_RECLOCK_VIA_ALIAS_RE = re.compile(r"\b(\w{2,3})\s*->\s*\(\s*RecLock\b", re.IGNORECASE)
+# v0.3.29 (Audit V4 #7): regex original `\w{2,3}` perdia alias fisico (`SA1010`,
+# 6 chars) e variavel (`cTab`, sem aspas). Estendido pra:
+#   - alias literal 2-7 chars (cobre alias logico SA1 + fisico SA1010)
+#   - alias variavel: `RecLock(cTab,...)` ou `(cAlias)->(RecLock(...))`
+# Cuidado: o detector BP-001 conta opens × closes no escopo da funcao;
+# casar amplo demais pode gerar FP se "RecLock" aparecer em string. Strings
+# sao removidas pelo strip_strict, entao OK.
+_RECLOCK_OPEN_RE = re.compile(r'\bRecLock\s*\(\s*["\'](\w{2,7})["\']', re.IGNORECASE)
+# Variavel sem aspas: RecLock(cTab, ...) — primeiro arg eh identifier
+_RECLOCK_OPEN_VAR_RE = re.compile(
+    r'\bRecLock\s*\(\s*([A-Za-z_]\w*)\s*[,)]', re.IGNORECASE,
+)
+_RECLOCK_VIA_ALIAS_RE = re.compile(r"\b(\w{2,7})\s*->\s*\(\s*RecLock\b", re.IGNORECASE)
 _MSUNLOCK_RE = re.compile(r"\bMsUnlock\s*\(", re.IGNORECASE)
 
 # BP-002: BEGIN TRANSACTION sem END TRANSACTION.
@@ -113,23 +124,25 @@ _SEC003_LOG_FUNCS_RE = re.compile(
     r"\b(?:ConOut|FwLogMsg|MsgLog|LogMsg|UserException)\s*\(",
     re.IGNORECASE,
 )
-# Variaveis com nome semanticamente PII (v0.3.20 #2 do QA round 2):
+# Variaveis com nome semanticamente PII (v0.3.20 #2 do QA round 2,
+# refinado v0.3.29 Audit V4 #12):
 #   - Formas LONGAS sao matched diretamente (low FP risk):
 #     Cpf, Cnpj, Senha, Password, Token, Cartao, Cvv, ApiKey, Api_Key, Secret
 #   - Formas CURTAS ambiguas em PT-BR (Pass/Pin/Card/Pwd/Rg) so casam com
-#     prefixo Hungarian estrito `c` literal e end-of-token: cPwd, cRg, cPin,
-#     cCard, cPass — evita falso positivo em `cPassagem`/`cPintar`/`cCardapio`/
-#     `cArgumento`/etc. Quem usar `nPin` num projeto nao vai ser flaggado, OK
-#     (preferimos missar do que gritar massivamente).
+#     prefixo Hungarian estrito `c` literal + sufixo opcional iniciado em
+#     MAIUSCULA: cPwd, cPwdHash, cRg, cRgEmissor, cPin, cPinAtual, cCard,
+#     cCardNumber, cPass. NAO casa cPassagem/cPintar/cCardapio/cArgumento
+#     porque proxima letra apos termo curto eh minuscula (parte de palavra
+#     PT-BR). cPwdHash dispara porque H eh maiuscula (CamelCase).
 _SEC003_PII_VAR_RE = re.compile(
     # Forma longa: prefixo opcional + termo PII completo + sufixo opcional.
     r"\b[a-z]?(?:"
     r"Cpf|Cnpj|Senha|Password|Token|Cartao|Cvv|ApiKey|Api_Key|Secret"
     r")\w*\b"
     r"|"
-    # Forma curta: exige `c` literal + termo curto + boundary (sem sufixo).
-    r"\bc(?:Pwd|Rg|Pin|Card|Pass)\b",
-    re.IGNORECASE,
+    # Forma curta: `c` literal + termo + (boundary OU sufixo CamelCase).
+    # `(?:[A-Z]\w*)?\b` aceita sufixo iniciado em maiuscula OU vazio + boundary.
+    r"\bc(?:Pwd|Rg|Pin|Card|Pass)(?:[A-Z]\w*)?\b",
 )
 # Campos SX3 conhecidos como PII. Cobre os principais campos sensiveis usados
 # em LGPD audits: A1_* (clientes), A2_* (fornecedores), RA_* (funcionarios),
@@ -340,6 +353,11 @@ def _check_bp001_reclock_unbalanced(
             off = m.start() + f["char_inicio"]
             linha = _line_at(content, off)
             opens_by_line.setdefault(linha, off)
+        # v0.3.29 (Audit V4 #7): captura RecLock(<var>, ...) sem aspas.
+        for m in _RECLOCK_OPEN_VAR_RE.finditer(scope):
+            off = m.start() + f["char_inicio"]
+            linha = _line_at(content, off)
+            opens_by_line.setdefault(linha, off)
         opens = sorted(opens_by_line.values())
         closes_count = len(_MSUNLOCK_RE.findall(scope))
         if len(opens) <= closes_count:
@@ -476,6 +494,25 @@ def _check_bp004_pergunte_no_check(
     return findings
 
 
+def _count_top_level_commas(text: str) -> int:
+    """Conta virgulas no nivel 0 (ignora dentro de `()`, `{}`, `[]`).
+
+    v0.3.29 (Audit V4 #13): suporte a defaults com array literal (`{1,2,3}`)
+    ou chamada aninhada (`MyFn(1, 2, 3)`). Antes `text.count(',')` inflava
+    contagem em ate N-1 falsos positivos por param com default.
+    """
+    depth = 0
+    n = 0
+    for ch in text:
+        if ch in "({[":
+            depth += 1
+        elif ch in ")}]":
+            depth = max(0, depth - 1)
+        elif ch == "," and depth == 0:
+            n += 1
+    return n
+
+
 def _check_bp005_too_many_params(
     arquivo: str, parsed: dict[str, Any], content: str
 ) -> list[dict[str, Any]]:
@@ -492,8 +529,9 @@ def _check_bp005_too_many_params(
         params_text = m.group(2).strip()
         if not params_text:
             continue
-        # Split top-level por vírgula (parâmetros ADVPL não têm comas internas).
-        n_params = params_text.count(",") + 1
+        # v0.3.29: paren-balance pra ignorar virgulas dentro de defaults
+        # (`{1,2,3}` ou `MyFn(1,2,3)`). Antes contava virgulas naive.
+        n_params = _count_top_level_commas(params_text) + 1
         if n_params <= _BP005_MAX_PARAMS:
             continue
         linha = _line_at(stripped, m.start())
@@ -1167,16 +1205,18 @@ _PERF004_LOOP_KW_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Compound: cVar += ... (variável começa com c → string por convenção húngara)
+# Compound: cVar += ... (hungarian estrito: `c` minusculo + segunda letra
+# MAIUSCULA). v0.3.29 (Audit V4 #4): antes `c[A-Za-z_]\w*` casava `cnt`
+# (counter), `csv`, `cmd`, `crm` — siglas comuns 3 letras lower em ADVPL
+# legado. Estrito reduz FP sem perder casos hungarianos validos (cBuffer,
+# cMsg, cAcc, etc).
 _PERF004_COMPOUND_RE = re.compile(
-    r"\bc[A-Za-z_]\w*\s*\+=",
-    re.IGNORECASE,
+    r"\bc[A-Z]\w*\s*\+=",
 )
 
 # Long form: cVar := cVar + ... (mesmo nome dos dois lados via backreference)
 _PERF004_LONGFORM_RE = re.compile(
-    r"\b(c[A-Za-z_]\w*)\s*:=\s*\1\s*\+",
-    re.IGNORECASE,
+    r"\b(c[A-Z]\w*)\s*:=\s*\1\s*\+",
 )
 
 
