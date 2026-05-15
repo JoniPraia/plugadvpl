@@ -920,6 +920,165 @@ class TestExecauto:
         assert count == 3
 
 
+class TestDocs:
+    """v0.4.2 — Universo 3 / Feature C: comando `docs` agrega Protheus.doc."""
+
+    @pytest.fixture
+    def docs_project(self, tmp_path: Path, runner: CliRunner) -> Path:
+        """Projeto com 3 fontes: 1 doc completo, 1 deprecated, 1 órfão (sem doc)."""
+        src = tmp_path / "src" / "SIGAFAT"
+        src.mkdir(parents=True)
+        # 1) Doc completo
+        (src / "MT460FIM.tlpp").write_bytes(
+            b'/*/{Protheus.doc} MT460FIM\n'
+            b'Ponto de Entrada apos faturamento.\n'
+            b'@type user function\n'
+            b'@author Fernando Vernier\n'
+            b'@since 18/10/2025\n'
+            b'@version 2.0\n'
+            b'@param cNumNF, character, "Numero da NF"\n'
+            b'@return logical, ".T. se sucesso"\n'
+            b'/*/\n'
+            b'User Function MT460FIM(cNumNF)\n'
+            b'Return .T.\n'
+        )
+        # 2) Deprecated
+        (src / "MT460OLD.tlpp").write_bytes(
+            b'/*/{Protheus.doc} MT460OLD\n'
+            b'Versao antiga do PE.\n'
+            b'@type user function\n'
+            b'@author Joao\n'
+            b'@deprecated Use MT460FIM no lugar\n'
+            b'/*/\n'
+            b'User Function MT460OLD()\n'
+            b'Return\n'
+        )
+        # 3) Órfão (sem doc) — gera BP-007.
+        (src / "MT460NEW.tlpp").write_bytes(
+            b'User Function MT460NEW()\n'
+            b'   ConOut("sem doc")\n'
+            b'Return\n'
+        )
+        runner.invoke(app, ["--root", str(tmp_path / "src"), "init"])
+        runner.invoke(app, ["--root", str(tmp_path / "src"), "ingest"])
+        return tmp_path / "src"
+
+    def test_docs_lists_all(
+        self, docs_project: Path, runner: CliRunner
+    ) -> None:
+        """Sem filtro: lista 2 docs (MT460FIM + MT460OLD; órfão NÃO aparece aqui)."""
+        result = runner.invoke(
+            app, ["--root", str(docs_project), "--format", "json", "docs"]
+        )
+        assert result.exit_code == 0, result.stderr
+        rows = json.loads(result.stdout)["rows"]
+        assert len(rows) == 2
+        funcs = {r["funcao"] for r in rows}
+        assert funcs == {"MT460FIM", "MT460OLD"}
+
+    def test_docs_filter_by_modulo(
+        self, docs_project: Path, runner: CliRunner
+    ) -> None:
+        """Path `src/SIGAFAT/...` infere SIGAFAT."""
+        result = runner.invoke(
+            app,
+            [
+                "--root", str(docs_project), "--format", "json",
+                "docs", "SIGAFAT",
+            ],
+        )
+        assert result.exit_code == 0, result.stderr
+        rows = json.loads(result.stdout)["rows"]
+        assert len(rows) == 2
+        for r in rows:
+            assert r["modulo"] == "SIGAFAT"
+
+    def test_docs_filter_deprecated(
+        self, docs_project: Path, runner: CliRunner
+    ) -> None:
+        """`--deprecated` retorna só MT460OLD."""
+        result = runner.invoke(
+            app,
+            [
+                "--root", str(docs_project), "--format", "json",
+                "docs", "--deprecated",
+            ],
+        )
+        assert result.exit_code == 0, result.stderr
+        rows = json.loads(result.stdout)["rows"]
+        assert len(rows) == 1
+        assert rows[0]["funcao"] == "MT460OLD"
+        assert rows[0]["deprecated"] == "sim"
+
+    def test_docs_filter_author(
+        self, docs_project: Path, runner: CliRunner
+    ) -> None:
+        """`--author Fernando` LIKE match localiza só MT460FIM."""
+        result = runner.invoke(
+            app,
+            [
+                "--root", str(docs_project), "--format", "json",
+                "docs", "--author", "Fernando",
+            ],
+        )
+        assert result.exit_code == 0, result.stderr
+        rows = json.loads(result.stdout)["rows"]
+        assert len(rows) == 1
+        assert rows[0]["funcao"] == "MT460FIM"
+
+    def test_docs_show_renders_markdown(
+        self, docs_project: Path, runner: CliRunner
+    ) -> None:
+        """`--show MT460FIM` retorna Markdown estruturado."""
+        result = runner.invoke(
+            app, ["--root", str(docs_project), "docs", "--show", "MT460FIM"]
+        )
+        assert result.exit_code == 0, result.stderr
+        out = result.stdout
+        assert "## MT460FIM" in out
+        assert "SIGAFAT" in out
+        assert "Fernando Vernier" in out
+        assert "### Parâmetros" in out
+        assert "cNumNF" in out
+        assert "### Retorno" in out
+
+    def test_docs_show_not_found_exits_1(
+        self, docs_project: Path, runner: CliRunner
+    ) -> None:
+        """`--show <inexistente>` retorna exit 1."""
+        result = runner.invoke(
+            app, ["--root", str(docs_project), "docs", "--show", "FnInexistente"]
+        )
+        assert result.exit_code == 1
+
+    def test_docs_orphans_lists_bp007(
+        self, docs_project: Path, runner: CliRunner
+    ) -> None:
+        """`--orphans` lista funções sem header (cross-ref BP-007)."""
+        result = runner.invoke(
+            app,
+            [
+                "--root", str(docs_project), "--format", "json",
+                "docs", "--orphans",
+            ],
+        )
+        assert result.exit_code == 0, result.stderr
+        rows = json.loads(result.stdout)["rows"]
+        # MT460NEW deve aparecer como órfão
+        funcs = {r["funcao"] for r in rows}
+        assert "MT460NEW" in funcs
+
+    def test_docs_persisted_in_db(self, docs_project: Path) -> None:
+        """Sanity: tabela protheus_docs existe e tem 2 rows."""
+        db = docs_project / ".plugadvpl" / "index.db"
+        conn = sqlite3.connect(db)
+        try:
+            count = conn.execute("SELECT COUNT(*) FROM protheus_docs").fetchone()[0]
+        finally:
+            conn.close()
+        assert count == 2
+
+
 class TestMissingDb:
     def test_query_without_db_exits_2(
         self, synthetic_project: Path, runner: CliRunner

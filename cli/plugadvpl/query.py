@@ -998,3 +998,213 @@ def arch_execauto_tables(
         for t in parse_tables(tjson):
             seen.add(t)
     return sorted(seen)
+
+
+# v0.4.2 — Universo 3 / Feature C: Protheus.doc agregado.
+
+_PDOC_COLUMNS = (
+    "arquivo, funcao, funcao_id, tipo, module_inferido, "
+    "linha_bloco_inicio, linha_bloco_fim, linha_funcao, "
+    "summary, description, author, since, version, "
+    "deprecated, deprecated_reason, language, "
+    "params_json, returns_json, examples_json, history_json, "
+    "see_json, tables_json, todos_json, obs_json, links_json, "
+    "raw_tags_json"
+)
+
+
+def _row_to_pdoc(row: tuple[Any, ...]) -> dict[str, Any]:
+    """Converte row do SELECT em dict com JSONs já parseados."""
+    from plugadvpl.parsing.protheus_doc import parse_json_dict, parse_json_list
+    (
+        arq, fn, fn_id, tipo, modulo, lb_ini, lb_fim, lf,
+        summary, descr, author, since, version,
+        dep, dep_reason, lang,
+        params_json, returns_json, examples_json, history_json,
+        see_json, tables_json, todos_json, obs_json, links_json,
+        raw_tags_json,
+    ) = row
+    return {
+        "arquivo": arq,
+        "funcao": fn,
+        "funcao_id": fn_id,
+        "tipo": tipo,
+        "module_inferido": modulo,
+        "linha_bloco_inicio": int(lb_ini or 0),
+        "linha_bloco_fim": int(lb_fim or 0),
+        "linha_funcao": lf,
+        "summary": summary,
+        "description": descr,
+        "author": author,
+        "since": since,
+        "version": version,
+        "deprecated": bool(dep),
+        "deprecated_reason": dep_reason,
+        "language": lang,
+        "params": parse_json_list(params_json),
+        "returns": parse_json_list(returns_json),
+        "examples": parse_json_list(examples_json),
+        "history": parse_json_list(history_json),
+        "see": parse_json_list(see_json),
+        "tables": parse_json_list(tables_json),
+        "todos": parse_json_list(todos_json),
+        "obs": parse_json_list(obs_json),
+        "links": parse_json_list(links_json),
+        "raw_tags": parse_json_dict(raw_tags_json),
+    }
+
+
+def protheus_docs_query(
+    conn: sqlite3.Connection,
+    *,
+    modulo: str | None = None,
+    author: str | None = None,
+    funcao: str | None = None,
+    arquivo: str | None = None,
+    deprecated: bool | None = None,
+    tipo: str | None = None,
+) -> list[dict[str, Any]]:
+    """Lista blocos Protheus.doc indexados (Universo 3 Feature C).
+
+    Args:
+        conn: conexão SQLite.
+        modulo: filtra por módulo inferido (`SIGAFAT`, ...). Case-insensitive.
+        author: filtra por autor (LIKE %valor%, case-insensitive).
+        funcao: filtra por nome de função (case-insensitive, exact match).
+        arquivo: filtra por basename (case-insensitive).
+        deprecated: True = só deprecated; False = só ativos; None = ambos.
+        tipo: filtra por @type (`function`, `method`, etc).
+
+    Returns:
+        Lista de dicts com TODOS os campos do schema (JSONs já parseados).
+    """
+    sql = f"SELECT {_PDOC_COLUMNS} FROM protheus_docs"
+    where: list[str] = []
+    params: list[Any] = []
+    if modulo:
+        where.append("upper(module_inferido) = upper(?)")
+        params.append(modulo)
+    if author:
+        where.append("author LIKE ? COLLATE NOCASE")
+        params.append(f"%{author}%")
+    if funcao:
+        where.append("funcao = ? COLLATE NOCASE")
+        params.append(funcao)
+    if arquivo:
+        where.append("arquivo = ? COLLATE NOCASE")
+        params.append(arquivo)
+    if deprecated is not None:
+        where.append("deprecated = ?")
+        params.append(1 if deprecated else 0)
+    if tipo:
+        where.append("lower(tipo) = lower(?)")
+        params.append(tipo)
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    sql += " ORDER BY module_inferido, arquivo, linha_bloco_inicio"
+    rows = conn.execute(sql, params).fetchall()
+    return [_row_to_pdoc(r) for r in rows]
+
+
+def protheus_docs_orphans(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """Funções sem header Protheus.doc (cross-ref com BP-007 do lint).
+
+    Estratégia: lista findings BP-007 do `lint_findings`. Cada finding já
+    aponta a função sem header. Mais rápido que JOIN com `simbolos`.
+    """
+    rows = conn.execute(
+        """
+        SELECT arquivo, funcao, linha, snippet
+        FROM lint_findings
+        WHERE regra_id = 'BP-007'
+        ORDER BY arquivo, linha
+        """
+    ).fetchall()
+    return [
+        {
+            "arquivo": arq,
+            "funcao": fn,
+            "linha": int(ln or 0),
+            "snippet": snippet or "",
+        }
+        for arq, fn, ln, snippet in rows
+    ]
+
+
+def protheus_doc_show(
+    conn: sqlite3.Connection, funcao: str
+) -> dict[str, Any] | None:
+    """Retorna doc completo de uma função (modo `--show`).
+
+    Se há múltiplos docs (raro — função homônima em fontes diferentes),
+    retorna o primeiro. Match case-insensitive.
+    """
+    sql = f"SELECT {_PDOC_COLUMNS} FROM protheus_docs WHERE funcao = ? COLLATE NOCASE"
+    row = conn.execute(sql, (funcao,)).fetchone()
+    if row is None:
+        return None
+    return _row_to_pdoc(row)
+
+
+def render_pdoc_markdown(d: dict[str, Any]) -> str:
+    """Renderiza um doc em Markdown estruturado pra modo `--show`."""
+    lines: list[str] = []
+    title = d.get("funcao") or d.get("funcao_id") or "(sem nome)"
+    modulo = d.get("module_inferido")
+    tipo = d.get("tipo")
+    header = f"## {title}"
+    if modulo:
+        header += f" ({modulo})"
+    if tipo:
+        header += f" — `@type {tipo}`"
+    lines.append(header)
+    if d.get("deprecated"):
+        reason = d.get("deprecated_reason") or "sem motivo"
+        lines.append(f"\n> ⚠️ **DEPRECATED** — {reason}\n")
+    if d.get("summary"):
+        lines.append("")
+        lines.append(d["summary"])
+    if d.get("description"):
+        lines.append("")
+        lines.append(d["description"])
+    meta_parts: list[str] = []
+    for key in ("author", "since", "version", "language"):
+        if d.get(key):
+            meta_parts.append(f"**{key.title()}:** {d[key]}")
+    if meta_parts:
+        lines.append("")
+        lines.append("  ".join(meta_parts))
+    if d.get("params"):
+        lines.append("\n### Parâmetros")
+        lines.append("| name | type | optional | desc |")
+        lines.append("|------|------|----------|------|")
+        for p in d["params"]:
+            lines.append(
+                f"| `{p.get('name') or ''}` | {p.get('type') or ''} | "
+                f"{'sim' if p.get('optional') else 'não'} | {p.get('desc') or ''} |"
+            )
+    if d.get("returns"):
+        lines.append("\n### Retorno")
+        for r in d["returns"]:
+            t = r.get("type") or ""
+            desc = r.get("desc") or ""
+            lines.append(f"- `{t}` — {desc}")
+    if d.get("examples"):
+        lines.append("\n### Exemplos")
+        for ex in d["examples"]:
+            lines.append("```advpl")
+            lines.append(ex)
+            lines.append("```")
+    if d.get("see"):
+        lines.append("\n**See:** " + ", ".join(d["see"]))
+    if d.get("tables"):
+        lines.append("\n**Tables:** " + ", ".join(d["tables"]))
+    if d.get("history"):
+        lines.append("\n### Histórico")
+        for h in d["history"]:
+            lines.append(
+                f"- {h.get('date') or ''} ({h.get('user') or ''}): {h.get('desc') or ''}"
+            )
+    location = f"\n_Source: {d.get('arquivo')}:{d.get('linha_bloco_inicio')}-{d.get('linha_bloco_fim')}_"
+    lines.append(location)
+    return "\n".join(lines)

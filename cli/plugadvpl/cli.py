@@ -60,6 +60,10 @@ from plugadvpl.query import (
     execauto_calls_query,
     execution_triggers_query,
     find_any,
+    protheus_doc_show,
+    protheus_docs_orphans,
+    protheus_docs_query,
+    render_pdoc_markdown,
     gatilho_query,
     grep_fts,
     impacto_query,
@@ -1248,6 +1252,125 @@ def execauto(
             else [
                 "plugadvpl ingest --no-incremental  # se esperava findings",
                 "plugadvpl execauto --dynamic       # ver calls não-resolvíveis",
+            ]
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# v0.4.2 — Universo 3 (Rastreabilidade) Feature C: docs
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def docs(
+    ctx: typer.Context,
+    modulo: Annotated[
+        str | None,
+        typer.Argument(help="Módulo TOTVS pra filtrar (SIGAFAT, SIGACOM, ...). Sem valor: lista tudo."),
+    ] = None,
+    author: Annotated[
+        str | None,
+        typer.Option("--author", help="Filtra por autor (LIKE %valor%, case-insensitive)."),
+    ] = None,
+    funcao: Annotated[
+        str | None,
+        typer.Option("--funcao", "-f", help="Filtra por nome de função (exact match)."),
+    ] = None,
+    arquivo: Annotated[
+        str | None,
+        typer.Option("--arquivo", "-a", help="Filtra por arquivo (basename)."),
+    ] = None,
+    deprecated: Annotated[
+        bool | None,
+        typer.Option("--deprecated/--no-deprecated", help="Só @deprecated / só ativos / ambos."),
+    ] = None,
+    tipo: Annotated[
+        str | None,
+        typer.Option("--tipo", "-t", help="Filtra por @type (function, method, class, ...)."),
+    ] = None,
+    show: Annotated[
+        str | None,
+        typer.Option("--show", help="Mostra doc completo de uma função em Markdown estruturado."),
+    ] = None,
+    orphans: Annotated[
+        bool,
+        typer.Option("--orphans", help="Lista funções SEM Protheus.doc (cross-ref BP-007 do lint)."),
+    ] = False,
+) -> None:
+    """Catálogo de Protheus.doc agregado (Universo 3 / Feature C).
+
+    Sem args: lista todos os blocos indexados. Com ``[modulo]``: filtra por
+    módulo (path-inferido). Use ``--show <funcao>`` pra ver o bloco completo
+    formatado em Markdown. Use ``--orphans`` pra ver funções sem header.
+    """
+    if show:
+        d = _with_ro_db(ctx, lambda c: protheus_doc_show(c, show))
+        if d is None:
+            typer.echo(f"Nenhum Protheus.doc encontrado pra função '{show}'.", err=True)
+            raise typer.Exit(code=1)
+        typer.echo(render_pdoc_markdown(d))
+        return
+
+    if orphans:
+        rows = _with_ro_db(ctx, lambda c: protheus_docs_orphans(c))
+        _render_from_ctx(
+            ctx,
+            rows,
+            columns=["arquivo", "funcao", "linha", "snippet"],
+            title="Funções sem Protheus.doc (BP-007)",
+            next_steps=(
+                [f"plugadvpl find {r['funcao']}" for r in rows[:3] if r.get("funcao")]
+                if rows
+                else ["plugadvpl lint --regra BP-007  # ver findings raw"]
+            ),
+        )
+        return
+
+    rows = _with_ro_db(
+        ctx,
+        lambda c: protheus_docs_query(
+            c,
+            modulo=modulo,
+            author=author,
+            funcao=funcao,
+            arquivo=arquivo,
+            deprecated=deprecated,
+            tipo=tipo,
+        ),
+    )
+    display_rows = [
+        {
+            "arquivo": r["arquivo"],
+            "funcao": r["funcao"] or r["funcao_id"] or "",
+            "modulo": r["module_inferido"] or "",
+            "tipo": r["tipo"] or "",
+            "author": r["author"] or "",
+            "since": r["since"] or "",
+            "deprecated": "sim" if r["deprecated"] else "",
+            "summary": (r["summary"] or "").replace("\n", " ")[:80],
+        }
+        for r in rows
+    ]
+    _render_from_ctx(
+        ctx,
+        display_rows,
+        columns=["arquivo", "funcao", "modulo", "tipo", "author", "since", "deprecated", "summary"],
+        title=(
+            "Protheus.doc"
+            + (f" (modulo={modulo})" if modulo else "")
+            + (f" (author={author})" if author else "")
+            + (f" (deprecated)" if deprecated else "")
+        ),
+        next_steps=(
+            [
+                f"plugadvpl docs --show {r['funcao']}"
+                for r in rows[:3] if r.get("funcao")
+            ]
+            if rows
+            else [
+                "plugadvpl docs --orphans  # funções sem header",
+                "plugadvpl ingest --no-incremental  # se esperava docs",
             ]
         ),
     )

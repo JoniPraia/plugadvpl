@@ -33,7 +33,7 @@ Antes do v0.4.0 era impossível responder via plugin "essa rotina é alvo de wor
 ## Execução
 
 ```bash
-uvx plugadvpl@0.4.1 --format md workflow $ARGUMENTS
+uvx plugadvpl@0.4.2 --format md workflow $ARGUMENTS
 ```
 
 > **Para agente IA:** prefira `--format md` (sem truncamento). Default `table` Rich trunca colunas em terminais estreitos. Flag global vem **antes** do subcomando.

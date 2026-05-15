@@ -4,6 +4,85 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-05-15
+
+### 🎉 Universo 3 — fechamento (Feature C: Protheus.doc agregada)
+
+**Última feature do Universo 3 (Rastreabilidade).** Indexa blocos
+`/*/{Protheus.doc} ... /*/` com 16 tags canônicas TOTVS, agrega por
+módulo/autor/tipo/deprecation, e oferece modo `--show <funcao>` que renderiza
+doc completo em Markdown estruturado — agente IA copia direto pro contexto
+sem abrir o fonte.
+
+**Universo 3 completo:**
+- ✅ **A (v0.4.0)** — execução não-direta (workflow/schedule/job/mail)
+- ✅ **B (v0.4.1)** — chamada indireta (ExecAuto chain → tabelas)
+- ✅ **C (v0.4.2)** — documentação inline (Protheus.doc)
+
+### Added
+- **Detector `parsing/protheus_doc.py`** — `extract_protheus_docs(content,
+  arquivo=...)` extrai blocos completos com 16 tags estruturadas:
+  - Single: `@type`, `@author`, `@since`, `@version`, `@description`,
+    `@language`, `@deprecated` (+ reason)
+  - Multi: `@param` (name+type+desc+optional), `@return` (type+desc),
+    `@example`/`@sample`, `@history` (date+user+desc), `@see`, `@table`,
+    `@todo`, `@obs`, `@link`
+  - Tags fora do whitelist vão pro `raw_tags` catch-all (zero perda)
+- **Tabela `protheus_docs`** (schema v6→v7, migration 007) — 26 colunas:
+  6 quentes estruturadas (module/author/tipo/since/deprecated/funcao),
+  10 JSON arrays pra multi-valor, `raw_tags_json` catch-all. 5 índices.
+- **Inferência de módulo** — algoritmo dual:
+  1. Path-based: regex `SIGA\w{3,4}` no caminho relativo
+  2. Routine-prefix: reaproveita catálogo da Feature B (`MATA*` → SIGAFAT)
+     com exact match prioritário e fallback alfabético determinístico
+  3. Fallback: `null` (sem invenção)
+- **Comando `plugadvpl docs [modulo]`** com 3 modos + 5 filtros:
+  - **Lista**: `docs SIGAFAT` ou `docs --author X --deprecated`
+  - **Show**: `docs --show MT460FIM` → Markdown estruturado (cabeçalho +
+    tabela params + sections retorno/exemplos/histórico)
+  - **Orphans**: `docs --orphans` → cross-ref BP-007 do lint (funções sem header)
+  - Filtros: `--author` (LIKE), `--funcao` (exact), `--arquivo`,
+    `--deprecated/--no-deprecated`, `--tipo`
+- **Skill `/plugadvpl:docs`** — documentação completa com 6 casos de uso.
+- **Counter** `protheus_docs` no contador de ingest + meta `total_protheus_docs`.
+
+### Tests
+- **28 testes unit** (`tests/unit/test_protheus_doc.py`):
+  TestBlockParsing (5), TestTagExtraction (8), TestModuleInference (6),
+  TestEdgeCases (6), TestFunctionResolution (3).
+- **8 testes integration** (`tests/integration/test_cli.py::TestDocs`):
+  fixture com 3 fontes (doc completo SIGAFAT, deprecated, órfão); cobre
+  todos os modos + filtros + sanity DB.
+- **470 testes verde** (era 442).
+
+### Migration
+- **Schema 6 → 7** (não-breaking; só adiciona tabela).
+
+### Padrão TOTVS
+- Spec oficial: [tds-vscode/docs/protheus-doc.md](https://github.com/totvs/tds-vscode/blob/master/docs/protheus-doc.md)
+- Reaproveita o catálogo `execauto_routines.json` da Feature B pra inferência
+  de módulo via prefixo de rotina (MATA*/FINA*/CTBA*/EECAP*/TMSA* → módulo).
+
+### Casos de uso
+1. *"Catálogo do módulo Faturamento"* → `/plugadvpl:docs SIGAFAT`
+2. *"Quem escreveu o quê?"* → `/plugadvpl:docs --author "Fernando"`
+3. *"O que está deprecated?"* → `/plugadvpl:docs --deprecated`
+4. *"Doc completa sem abrir o fonte"* → `/plugadvpl:docs --show MT460FIM`
+5. *"Cobertura de documentação"* → `/plugadvpl:docs --orphans`
+
+### Notes
+- **Spec aprovado** em `docs/universo3/C-protheus-doc.md` antes do código.
+- **Fechamento Universo 3**: A (workflow) + B (execauto) + C (docs) entregues
+  em 3 dot-releases consecutivos (v0.4.0 → v0.4.1 → v0.4.2).
+- **Próximo grande tema natural**: pivot pra **Universo 4** (a definir —
+  candidatos: qualidade & métricas, complexidade ciclomática, hot-paths,
+  ownership analytics).
+- **Limitações conhecidas** (em `skills/docs/SKILL.md`):
+  - Headers legados pré-Protheus.doc (ASCII art `+--+`) não detectados
+  - Inline `//{pdoc}` (associado a próxima variável) fora do MVP
+  - Bloco sem `/*/` fechamento ignorado (BP-007b candidato futuro)
+  - Cross-validação `@param` vs assinatura real fora do MVP (BP-009 candidato)
+
 ## [0.4.1] - 2026-05-15
 
 ### 🚀 Universo 3 — Rastreabilidade Feature B (ExecAuto chain expansion)

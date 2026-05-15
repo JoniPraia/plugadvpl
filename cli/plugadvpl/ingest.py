@@ -40,6 +40,10 @@ from plugadvpl.parsing.execauto import (
     extract_execauto_calls,
     serialize_tables as serialize_execauto_tables,
 )
+from plugadvpl.parsing.protheus_doc import (
+    extract_protheus_docs,
+    serialize_json as serialize_pdoc_json,
+)
 from plugadvpl.parsing.triggers import (
     extract_execution_triggers,
     serialize_metadata as serialize_trigger_metadata,
@@ -155,6 +159,7 @@ def _delete_dependents(conn: sqlite3.Connection, arquivo: str) -> None:
         "lint_findings",
         "execution_triggers",  # v0.4.0 — Universo 3 Feature A
         "execauto_calls",      # v0.4.1 — Universo 3 Feature B
+        "protheus_docs",       # v0.4.2 — Universo 3 Feature C
     ):
         conn.execute(f"DELETE FROM {table} WHERE arquivo=?", (arquivo,))
     conn.execute(
@@ -644,6 +649,56 @@ def _write_parsed(  # noqa: PLR0912, PLR0915 — escrita verbosa: 12 tabelas dep
         )
         counters["execauto_calls"] = counters.get("execauto_calls", 0) + len(execauto_rows)
 
+    # v0.4.2 (Universo 3 Feature C): protheus_docs
+    # Usa o caminho relativo pra inferência de módulo (path-based regex).
+    pdocs = extract_protheus_docs(content, arquivo=caminho_relativo)
+    if pdocs:
+        pdoc_rows: list[tuple[Any, ...]] = []
+        for d in pdocs:
+            pdoc_rows.append((
+                arquivo,
+                d.get("funcao"),
+                d.get("funcao_id"),
+                d.get("tipo"),
+                d.get("module_inferido"),
+                int(d.get("linha_bloco_inicio") or 0),
+                int(d.get("linha_bloco_fim") or 0),
+                d.get("linha_funcao"),
+                d.get("summary"),
+                d.get("description"),
+                d.get("author"),
+                d.get("since"),
+                d.get("version"),
+                1 if d.get("deprecated") else 0,
+                d.get("deprecated_reason"),
+                d.get("language"),
+                serialize_pdoc_json(d.get("params")),
+                serialize_pdoc_json(d.get("returns")),
+                serialize_pdoc_json(d.get("examples")),
+                serialize_pdoc_json(d.get("history")),
+                serialize_pdoc_json(d.get("see")),
+                serialize_pdoc_json(d.get("tables")),
+                serialize_pdoc_json(d.get("todos")),
+                serialize_pdoc_json(d.get("obs")),
+                serialize_pdoc_json(d.get("links")),
+                serialize_pdoc_json(d.get("raw_tags")),
+            ))
+        conn.executemany(
+            """
+            INSERT INTO protheus_docs (
+                arquivo, funcao, funcao_id, tipo, module_inferido,
+                linha_bloco_inicio, linha_bloco_fim, linha_funcao,
+                summary, description, author, since, version,
+                deprecated, deprecated_reason, language,
+                params_json, returns_json, examples_json, history_json,
+                see_json, tables_json, todos_json, obs_json, links_json,
+                raw_tags_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            pdoc_rows,
+        )
+        counters["protheus_docs"] = counters.get("protheus_docs", 0) + len(pdoc_rows)
+
     counters["arquivos_ok"] += 1
 
 
@@ -799,6 +854,7 @@ def ingest(
             "lint_findings": 0,
             "execution_triggers": 0,  # v0.4.0
             "execauto_calls": 0,      # v0.4.1
+            "protheus_docs": 0,       # v0.4.2
             "duration_ms": 0,
             # v0.3.13: caller (CLI) usa esses campos pra detectar a pegadinha do
             # `--incremental` após `uv tool upgrade` — quando lookup_bundle muda
@@ -837,6 +893,7 @@ def ingest(
             ("lint_findings", "total_lint_findings"),
             ("execution_triggers", "total_execution_triggers"),  # v0.4.0
             ("execauto_calls", "total_execauto_calls"),  # v0.4.1
+            ("protheus_docs", "total_protheus_docs"),  # v0.4.2
         ):
             n = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
             set_meta(conn, key, str(n))
