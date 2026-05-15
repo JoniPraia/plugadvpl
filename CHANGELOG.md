@@ -4,6 +4,92 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.22] - 2026-05-15
+
+### Closeout pack — fecha 9 dos 11 itens baixos restantes do `gaps/PLUGADVPL_QA_REPORT_V2.md`. Backlog QA round 2 efetivamente zerado (sobram 2 polish maiores explicitamente deferidos). Categoria SEC mais completa, gatilho com BFS bidirecional, sx-status com schema estavel.
+
+### Fixed
+- **#3 — `_SEC004_PREPARE_ENV_RE` aceita continuacao multilinha `;`**.
+  Antes `[^\\n]*?` parava no `\\n` real — `PREPARE ENVIRONMENT EMPRESA cEmp ;\\n
+  USER 'admin' ;\\n PASSWORD 'totvs' ;\\n MODULO 'FAT'` escapava (caso comum em
+  ADVPL). Agora `.*?` + `re.DOTALL` cobre multilinhas, `?` mantem nao-greedy.
+- **#5 — `_SEC003_PII_FIELDS_RE` cobre A2_*/RH_***. Antes so A1_* (clientes)
+  e RA_* (funcionarios). Adicionado A2_* (fornecedores: A2_CGC/A2_CPFRG/
+  A2_NOME/A2_NREDUZ/A2_EMAIL/A2_TEL/A2_END/A2_DDD) e RH_* (folha-dependentes:
+  RH_CPFDEP/RH_NOMEDEP/RH_RGDEP). Cobre cenarios de leak comuns em rotinas
+  de compras (CFO, NFE) e folha (declaracao IRPF).
+- **#6 — `gatilho` agora faz BFS bidirecional**. v0.3.15 expandiu OR
+  campo_destino na query mas o frontier so seguia downstream. Cadeia inversa
+  morria em level 1: `Z → Y → X` com query por `X` retornava so `Y → X`,
+  ignorava `Z → Y` (upstream do upstream). Agora ambos `cd` e `co` viram
+  frontier do proximo nivel; visited evita loops.
+- **#8 — `_PARAMIXB_USAGE_RE` busca em stripped_strict** (sem strings/comentarios).
+  Antes scaneava `content.splitlines()` raw — fonte com
+  `cMsg := "Use PARAMIXB[1] na implementacao"` ou `// PARAMIXB[2]` em
+  comentario classificava equivocadamente como PE. Probabilidade pratica
+  baixa mas correctness ganhada sem custo.
+- **#16 — `sx_status` schema sempre consistente**. Antes mudava de 2 keys
+  (sx_ingerido + msg) pra 14 keys (com counts) — caller no `--format json`
+  precisava branchear. Agora sempre o mesmo set de 15 keys; quando ainda
+  nao foi rodado `ingest-sx`, counts=0 e `last_sx_ingest_at`/`sx_csv_dir`
+  ficam `null`. `msg` continua presente quando aplicavel.
+
+### Added
+- **#18 — Hint pra flags subcomando-scoped misplaced**. Caso inverso do #2:
+  `plugadvpl --workers 8 ingest` agora detecta que `--workers` eh flag de
+  subcomando (nao global) e sugere posicionamento correto:
+  ```
+  Dica: '--workers' eh uma flag de SUBCOMANDO — vem DEPOIS do subcomando.
+    Errado:  plugadvpl --workers ... ingest
+    Correto: plugadvpl ingest --workers ...
+  ```
+  Set `_SUBCOMMAND_FLAGS` cobre 16 flags de subcomandos (ingest/status/lint/
+  gatilho/impacto/tables). `_detect_misplaced_global_flag` virou
+  `_detect_misplaced_flag` (alias retrocompat mantido) com retorno
+  `(flag, subcmd, scope)`.
+- **#19 — Test `test_callees_resolves_innermost_chunk_with_nested_methods`**.
+  v0.3.15 docstring fala de "chunk MAIS INTERNO em caso de nesting (Class >
+  Method > Static)" mas testes anteriores eram happy-path. Novo test usa
+  Method + Static Function adjacentes pra validar isolamento mutuo dos
+  callees. Test passa sem precisar mudar codigo (regression guard).
+
+### Changed
+- Skill `impacto`: nova secao "Precisao por tipo (v0.3.17+)" documenta que
+  rows tipo `fonte` usam substring (intencional — codigo pode ter `"SA1->A1_COD"`
+  como string), enquanto SX3/SX7/SX1 usam word boundary. Inclui dica pra
+  rodar `grep -m identifier` quando suspeitar de FP.
+- Skill `arch`: lista de campos do output ganhou `tabelas_via_execauto: bool`
+  (v0.3.18+) explicando significado, e nota sobre WSRESTFUL methods agora
+  nomeados como `<Class>.<VERB>` desde v0.3.21.
+- Skill `callers`: secao "Saida" inclui `is_self_call: bool` com exemplo
+  de filtragem via `jq`.
+
+### Tests
+- 8 testes novos:
+  - `tests/unit/test_lint.py::TestSEC003PIIInLogs::test_positive_a2_fornecedor_field_in_log`
+  - `tests/unit/test_lint.py::TestSEC003PIIInLogs::test_positive_rh_funcionario_field_in_log`
+  - `tests/unit/test_lint.py::TestSEC004HardcodedCreds::test_positive_prepare_environment_multiline_continuation`
+  - `tests/unit/test_parser.py::TestParseSource::test_pe_paramixb_in_string_or_comment_does_not_trigger`
+  - `tests/integration/test_ingest_sx.py::TestGatilhoCommand::test_gatilho_bidirectional_traversal_depth2`
+  - `tests/integration/test_ingest_sx.py::TestSxStatusCommand::test_sx_status_schema_consistent_before_and_after_ingest`
+  - `tests/integration/test_cli.py::TestGlobalFlagPositioning::test_misplaced_subcommand_flag_shows_inverse_hint`
+  - `tests/unit/test_query.py::TestCallees::test_callees_resolves_innermost_chunk_with_nested_methods`
+- 347 testes verde (era 339).
+
+### Deferred (continuam no backlog)
+- **#17** — `fix_guidance` longo em terminal estreito. Fix proper exigiria
+  schema change (`fix_guidance_short` + `fix_guidance_long`); usuarios podem
+  contornar com `--format md` que nao trunca. Out-of-scope.
+- **#20** — encoding misto nas skills (`execucao` vs `execução`). Mass edit
+  cosmetico; legado de geracao via terminal Windows cp1252. Não bloqueia uso.
+
+### Notes
+- **Backlog QA round 2 reduzido de 11 → 2 deferidos**. Resto fechado em
+  v0.3.21 + v0.3.22. Total: round 1 (15) + round 2 (20) = 35 achados,
+  33 endereçados ao longo de 9 releases (v0.3.14-v0.3.22).
+- Re-ingest recomendado pra usuarios existentes (`ingest --no-incremental`)
+  pra ganhar SEC-003 expandido + #8 do PARAMIXB.
+
 ## [0.3.21] - 2026-05-14
 
 ### Bug pack — fecha 3 itens técnicos médios do `gaps/PLUGADVPL_QA_REPORT_V2.md` que sobraram após v0.3.20. Foco: corrigir false negatives em SEC-004 + numero correto no summary do `ingest-sx` + nomenclatura útil pros métodos REST do WSRESTFUL no call graph.

@@ -1,6 +1,6 @@
 {
   "name": "plugadvpl",
-  "version": "0.3.21",
+  "version": "0.3.22",
   "description": "Indexa fontes ADVPL/TLPP em SQLite + FTS5 para Claude consultar metadados antes de ler .prw cru (economiza 10-15x tokens)",
   "author": {
     "name": "JoniPraia"

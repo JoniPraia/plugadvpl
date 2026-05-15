@@ -106,6 +106,29 @@ class TestGlobalFlagPositioning:
         assert "--limit" in captured.err
         assert "global" in captured.err.lower() or "antes" in captured.err.lower()
 
+    def test_misplaced_subcommand_flag_shows_inverse_hint(
+        self,
+        indexed_project: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """v0.3.22 — Bug #18 do QA round 2: caso inverso. Usuario roda
+        `plugadvpl --workers 8 ingest` (achando que --workers eh global)
+        e recebe `No such option: --workers` cru. Agora detectamos e
+        sugerimos posicionar DEPOIS do subcomando."""
+        from plugadvpl.cli import main as cli_main
+
+        monkeypatch.setattr(
+            "sys.argv",
+            ["plugadvpl", "--root", str(indexed_project), "--workers", "8", "ingest"],
+        )
+        with pytest.raises(SystemExit) as exc_info:
+            cli_main()
+        assert exc_info.value.code != 0
+        captured = capsys.readouterr()
+        assert "--workers" in captured.err
+        assert "subcomando" in captured.err.lower() or "depois" in captured.err.lower()
+
 
 class TestHelp:
     def test_help_lists_all_subcommands(self, runner: CliRunner) -> None:

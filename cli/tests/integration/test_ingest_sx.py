@@ -462,6 +462,56 @@ class TestGatilhoCommand:
         niveis = {r["nivel"] for r in payload["rows"]}
         assert 2 in niveis
 
+    def test_gatilho_bidirectional_traversal_depth2(
+        self,
+        sx_project: Path,
+        tmp_path: Path,
+        runner: CliRunner,
+    ) -> None:
+        """v0.3.22 — Bug #6 do QA round 2: ate v0.3.21 a query expandia OR
+        campo_destino mas o frontier so seguia downstream (cd → ...). Quem
+        casa via campo_destino=X tem co (upstream) nunca expandido. Cadeia
+        upstream morre em level 1.
+
+        Fixture:
+          Z → Y  (Z eh upstream de Y)
+          Y → X  (Y eh upstream de X)
+        gatilho X --depth 2 deve retornar:
+          level 1: Y → X (origem Y casa via destino)
+          level 2: Z → Y (Y agora deve estar em frontier de level 2)
+        """
+        csv_dir = tmp_path / "csv"
+        csv_dir.mkdir()
+        (csv_dir / "sx7.csv").write_text(
+            '"X7_CAMPO","X7_SEQUENC","X7_CDOMIN","X7_REGRA","X7_TIPO",'
+            '"X7_ALIAS","X7_CONDIC","X7_PROPRI","X7_SEEK","X7_ORDEM",'
+            '"X7_CHAVE","D_E_L_E_T_"\n'
+            # Z → Y
+            '"Z_FLD","01","Y_FLD","Upper(Z_FLD)","P","","","U","","","",""\n'
+            # Y → X
+            '"Y_FLD","01","X_FLD","Upper(Y_FLD)","P","","","U","","","",""\n',
+            encoding="cp1252",
+        )
+        runner.invoke(app, ["--root", str(sx_project), "init"])
+        db = sx_project / ".plugadvpl" / "index.db"
+        ingest_sx(csv_dir, db)
+
+        result = runner.invoke(
+            app,
+            [
+                "--root", str(sx_project), "--format", "json",
+                "gatilho", "X_FLD", "--depth", "2",
+            ],
+        )
+        assert result.exit_code == 0, result.stderr
+        payload = json.loads(result.stdout)
+        # Esperado: Y→X (level 1, via destino) E Z→Y (level 2, via upstream).
+        pairs = {(r["origem"].upper(), r["destino"].upper()) for r in payload["rows"]}
+        assert ("Y_FLD", "X_FLD") in pairs, f"Y→X falta. pairs={pairs}"
+        assert ("Z_FLD", "Y_FLD") in pairs, (
+            f"Z→Y (upstream traversal level 2) deveria aparecer. pairs={pairs}"
+        )
+
     def test_gatilho_includes_destination_matches(
         self, indexed_with_sx: Path, runner: CliRunner
     ) -> None:
@@ -523,6 +573,47 @@ class TestSxStatusCommand:
         row = payload["rows"][0]
         # Em init o migration 002 é aplicado, então tabelas existem.
         assert "sx_ingerido" in row
+
+    def test_sx_status_schema_consistent_before_and_after_ingest(
+        self,
+        sx_project: Path,
+        sx_csv_dir: Path,
+        runner: CliRunner,
+    ) -> None:
+        """v0.3.22 — Bug #16 do QA round 2: schema instavel (2 keys quando
+        ausente, 14 quando presente) forcava caller a branchear no
+        --format json. Agora sempre o mesmo set de keys."""
+        # Antes do ingest-sx
+        runner.invoke(app, ["--root", str(sx_project), "init"])
+        before = runner.invoke(
+            app, ["--root", str(sx_project), "--format", "json", "sx-status"]
+        )
+        assert before.exit_code == 0
+        keys_before = set(json.loads(before.stdout)["rows"][0].keys())
+
+        # Depois do ingest-sx
+        runner.invoke(
+            app, ["--root", str(sx_project), "ingest-sx", str(sx_csv_dir)]
+        )
+        after = runner.invoke(
+            app, ["--root", str(sx_project), "--format", "json", "sx-status"]
+        )
+        assert after.exit_code == 0
+        keys_after = set(json.loads(after.stdout)["rows"][0].keys())
+
+        # Mesmo schema nos 2 cenarios.
+        assert keys_before == keys_after, (
+            f"Schema sx-status inconsistente. Before: {keys_before}, "
+            f"After: {keys_after}. Diff: {keys_before ^ keys_after}"
+        )
+        # Counts zerados na ausencia.
+        before_row = json.loads(before.stdout)["rows"][0]
+        # Migration 002 aplicada no init, entao sx_ingerido pode ser True.
+        # Em ambos os casos as 11 tabelas SX devem ter int (count) — nao None.
+        for tbl in ("tabelas", "campos", "indices", "gatilhos", "consultas"):
+            assert isinstance(before_row[tbl], int), (
+                f"{tbl} deve ser int sempre. before={before_row[tbl]!r}"
+            )
 
 
 class TestLintCrossFile:

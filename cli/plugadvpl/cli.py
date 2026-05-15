@@ -1042,6 +1042,24 @@ _GLOBAL_FLAGS = {
     "--compact", "--quiet", "-q", "--no-next-steps", "--version", "-V",
 }
 
+# v0.3.22 (#18 do QA round 2): flags scoped a subcomando especifico.
+# Caso inverso de #2: usuario poe flag de subcomando ANTES do subcomando
+# (`plugadvpl --workers 8 ingest`) e Click responde "No such option" cru
+# sem dica. Detectamos e sugerimos posicao correta.
+_SUBCOMMAND_FLAGS = {
+    # ingest
+    "--workers", "-w", "--no-content", "--redact-secrets",
+    "--incremental", "--no-incremental",
+    # status
+    "--check-stale",
+    # lint
+    "--severity", "--rule", "--cross-file",
+    # gatilho/impacto
+    "--depth",
+    # tables
+    "--mode", "-m", "--read", "--write", "--reclock",
+}
+
 
 def main() -> None:
     """Entry point para console_script ``plugadvpl``."""
@@ -1060,32 +1078,43 @@ def main() -> None:
     # subcomando. Click reporta "No such option: --limit" sem dica de que a
     # flag existe mas no escopo errado. Detectamos a chamada misplaced e
     # adicionamos uma linha amarela orientando posicionamento correto.
-    misplaced = _detect_misplaced_global_flag(sys.argv[1:])
+    misplaced = _detect_misplaced_flag(sys.argv[1:])
     try:
         app()
     except SystemExit as exit_:
         if misplaced and exit_.code not in (0, None):
-            flag, subcmd = misplaced
-            typer.secho(
-                f"\nDica: '{flag}' eh uma flag GLOBAL — vem ANTES do subcomando.\n"
-                f"  Errado:  plugadvpl {subcmd} {flag} ...\n"
-                f"  Correto: plugadvpl {flag} ... {subcmd}",
-                fg=typer.colors.YELLOW,
-                err=True,
-            )
+            flag, subcmd, scope = misplaced
+            if scope == "global":
+                typer.secho(
+                    f"\nDica: '{flag}' eh uma flag GLOBAL — vem ANTES do subcomando.\n"
+                    f"  Errado:  plugadvpl {subcmd} {flag} ...\n"
+                    f"  Correto: plugadvpl {flag} ... {subcmd}",
+                    fg=typer.colors.YELLOW,
+                    err=True,
+                )
+            else:  # scope == "subcommand"
+                typer.secho(
+                    f"\nDica: '{flag}' eh uma flag de SUBCOMANDO — vem DEPOIS do subcomando.\n"
+                    f"  Errado:  plugadvpl {flag} ... {subcmd}\n"
+                    f"  Correto: plugadvpl {subcmd} {flag} ...",
+                    fg=typer.colors.YELLOW,
+                    err=True,
+                )
         raise
 
 
-def _detect_misplaced_global_flag(argv: list[str]) -> tuple[str, str] | None:
-    """Retorna (flag, subcomando) se uma flag global aparece DEPOIS do subcomando.
+def _detect_misplaced_flag(
+    argv: list[str],
+) -> tuple[str, str, str] | None:
+    """Detecta flag em posicao errada. Retorna (flag, subcomando, scope).
 
-    Heurística simples: o primeiro token sem '-' é o subcomando; qualquer token
-    em :data:`_GLOBAL_FLAGS` que apareça depois disso indica posicionamento
-    errado. Ignora valores de opções (heurística básica: token logo após uma
-    flag global é tratado como valor).
+    Dois cenarios:
+      - scope="global": flag global aparece DEPOIS do subcomando.
+      - scope="subcommand": flag scoped aparece ANTES do subcomando.
     """
     subcmd: str | None = None
     skip_next = False
+    pre_subcmd_misplaced: tuple[str, str] | None = None  # (flag, ?)
     for tok in argv:
         if skip_next:
             skip_next = False
@@ -1099,12 +1128,28 @@ def _detect_misplaced_global_flag(argv: list[str]) -> tuple[str, str] | None:
                     "--version", "-V",
                 }:
                     skip_next = True
+                # v0.3.22: flag de subcomando aparecendo antes — registramos
+                # mas precisamos do subcmd pra sugerir corretamente.
+                elif tok in _SUBCOMMAND_FLAGS and pre_subcmd_misplaced is None:
+                    pre_subcmd_misplaced = (tok, "")
+                    # Pula valor da flag (heuristica: a maioria aceita valor).
+                    if tok not in {"--no-content", "--redact-secrets",
+                                    "--incremental", "--no-incremental",
+                                    "--check-stale", "--cross-file",
+                                    "--read", "--write", "--reclock"}:
+                        skip_next = True
                 continue
             subcmd = tok
+            if pre_subcmd_misplaced:
+                return (pre_subcmd_misplaced[0], subcmd, "subcommand")
             continue
         if tok in _GLOBAL_FLAGS:
-            return (tok, subcmd)
+            return (tok, subcmd, "global")
     return None
+
+
+# Alias retrocompat (testes antigos podem importar este nome).
+_detect_misplaced_global_flag = _detect_misplaced_flag
 
 
 if __name__ == "__main__":

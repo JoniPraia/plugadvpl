@@ -82,10 +82,13 @@ _SEC004_RPCSETENV_LITERAL_RE = re.compile(
     re.IGNORECASE,
 )
 # PREPARE ENVIRONMENT ... PASSWORD '<literal>' (UDC tbiconn.ch).
-# Aceita PASSWORD seguido de string literal nao-vazia.
+# v0.3.22 (#3 do QA round 2): aceita continuacao multilinha via `;` ADVPL.
+# `.*?` + DOTALL faz o gap entre PREPARE ENVIRONMENT e PASSWORD cobrir
+# multiplas linhas (caso comum). Limitamos a janela com `(?=\bPASSWORD\b)`
+# implicito no proprio padrao (nao-greedy garante).
 _SEC004_PREPARE_ENV_RE = re.compile(
-    r"\bPREPARE\s+ENVIRONMENT\b[^\n]*?\bPASSWORD\s+['\"]([^'\"]+)['\"]",
-    re.IGNORECASE,
+    r"\bPREPARE\s+ENVIRONMENT\b.*?\bPASSWORD\s+['\"]([^'\"]+)['\"]",
+    re.IGNORECASE | re.DOTALL,
 )
 # SMTPAuth / MailAuth (smtp credentials). Match com 2 args literais nao-vazios.
 _SEC004_SMTPAUTH_RE = re.compile(
@@ -128,12 +131,21 @@ _SEC003_PII_VAR_RE = re.compile(
     r"\bc(?:Pwd|Rg|Pin|Card|Pass)\b",
     re.IGNORECASE,
 )
-# Campos SX3 conhecidos como PII (clientes/funcionarios). Lista conservadora —
-# evita falsos positivos. Cobre os principais campos sensiveis A1_* (clientes)
-# e RA_* (funcionarios) usados em LGPD audits.
+# Campos SX3 conhecidos como PII. Cobre os principais campos sensiveis usados
+# em LGPD audits: A1_* (clientes), A2_* (fornecedores), RA_* (funcionarios),
+# RH_* (folha/dependentes). v0.3.22 (#5 do QA round 2) expandiu da lista
+# original A1_*/RA_* pra incluir A2_* (fornecedor PJ ou PF) e RH_* (dep folha).
 _SEC003_PII_FIELDS_RE = re.compile(
-    r"\b(?:A1_CGC|A1_CPF|A1_NOME|A1_NREDUZ|A1_EMAIL|A1_TEL|A1_END|A1_DDD|"
-    r"RA_CIC|RA_RG|RA_NOMECMP|RA_EMAIL|RA_NUMCP|RA_TELEFON)\b",
+    r"\b(?:"
+    # Clientes (SA1)
+    r"A1_CGC|A1_CPF|A1_NOME|A1_NREDUZ|A1_EMAIL|A1_TEL|A1_END|A1_DDD|"
+    # Fornecedores (SA2)
+    r"A2_CGC|A2_CPFRG|A2_NOME|A2_NREDUZ|A2_EMAIL|A2_TEL|A2_END|A2_DDD|"
+    # Funcionarios (SRA)
+    r"RA_CIC|RA_RG|RA_NOMECMP|RA_EMAIL|RA_NUMCP|RA_TELEFON|"
+    # Folha — dependentes (SRH)
+    r"RH_CPFDEP|RH_NOMEDEP|RH_RGDEP"
+    r")\b",
     re.IGNORECASE,
 )
 # CPF formatado: 999.999.999-99

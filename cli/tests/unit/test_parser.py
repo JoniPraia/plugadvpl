@@ -709,6 +709,27 @@ class TestParseSource:
         f2.write_bytes(b"User Function B()\nReturn")
         assert parse_source(f1)["hash"] != parse_source(f2)["hash"]
 
+    def test_pe_paramixb_in_string_or_comment_does_not_trigger(self, tmp_path: Path) -> None:
+        """v0.3.22 — Bug #8 do QA round 2: `PARAMIXB[...]` em comentario ou
+        string literal disparava classificacao como PE. Deve usar stripped
+        (sem strings/comentarios) pra evitar falso positivo."""
+        from plugadvpl.parsing.parser import parse_source
+        f = tmp_path / "FakeP.prw"
+        f.write_text(
+            "User Function FakeP()\n"
+            '    Local cMsg := "Use PARAMIXB[1] na implementacao"\n'
+            "    // PARAMIXB[2] tambem funciona\n"
+            "    ConOut(cMsg)\n"
+            "Return\n",
+            encoding="cp1252",
+        )
+        result = parse_source(f)
+        assert "PE" not in result["capabilities"], (
+            "PARAMIXB em string/comentario nao deve disparar classificacao PE; "
+            f"capabilities={result['capabilities']}"
+        )
+        assert "FakeP" not in result["pontos_entrada"]
+
     def test_pe_canonical_paramixb_detected(self) -> None:
         """v0.3.16 — Bug #6/#10 do QA report: nome canonico TOTVS como
         ANCTB102GR nao casa o regex `_PE_NAME_RE` (que exige <letras><digitos>

@@ -1527,7 +1527,10 @@ def parse_source(file_path: Path) -> dict[str, Any]:
     # v0.3.16: pontos_entrada calculado aqui (antes vivia em ingest.py via
     # regex de nome só). Agora combina nome + PARAMIXB body scan, e ingest
     # consome direto.
-    result["pontos_entrada"] = _derive_pontos_entrada(funcs, content.splitlines())
+    # v0.3.22 (#8 do QA round 2): usa stripped_strict (sem strings/comentarios)
+    # pra body scan — `cMsg := "Use PARAMIXB[1]"` ou `// PARAMIXB[2]` em fonte
+    # comum nao deve mais classificar como PE.
+    result["pontos_entrada"] = _derive_pontos_entrada(funcs, stripped_strict.splitlines())
     # capabilities e source_type derivados a partir dos campos já extraídos +
     # conteúdo stripped (passado explicitamente, sem mutar o result dict).
     result["capabilities"] = _derive_capabilities(result, stripped_keep_strings)

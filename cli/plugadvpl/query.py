@@ -785,9 +785,17 @@ def gatilho_query(
                         "via": parent if level > 1 else "",
                     }
                 )
+                # v0.3.22 (#6 do QA round 2): traversal bidirecional. Antes
+                # so adicionava cd (downstream); rows que casavam via
+                # campo_destino tinham co (upstream) ignorado, matando a
+                # cadeia inversa em level 1. Agora ambos viram frontier
+                # do proximo nivel — visited evita loop infinito em ciclos.
                 if cd and cd.upper() not in visited:
                     visited.add(cd.upper())
                     next_frontier.append((cd.upper(), f"{co}#{seq}"))
+                if co and co.upper() not in visited:
+                    visited.add(co.upper())
+                    next_frontier.append((co.upper(), f"{co}#{seq}"))
             if len(out) >= max_rows:
                 break
         frontier = next_frontier
@@ -796,20 +804,31 @@ def gatilho_query(
     return out
 
 
+_SX_STATUS_TABLES = (
+    "tabelas", "campos", "indices", "gatilhos", "parametros",
+    "perguntas", "tabelas_genericas", "relacionamentos", "pastas",
+    "consultas", "grupos_campo",
+)
+
+
 def sx_status(conn: sqlite3.Connection) -> list[dict[str, Any]]:
-    """Resumo do dicionário SX ingerido: counts por tabela + ``last_sx_ingest_at``."""
-    if not _sx_tables_present(conn):
-        return [{"sx_ingerido": False, "msg": "Rode 'plugadvpl ingest-sx <dir>' primeiro."}]
+    """Resumo do dicionário SX ingerido: counts por tabela + ``last_sx_ingest_at``.
+
+    v0.3.22 (#16 do QA round 2): schema consistente — sempre retorna o mesmo
+    set de keys, com `sx_ingerido=False` + counts zerados quando ainda nao
+    foi rodado o `ingest-sx`. Antes mudavam de 2 keys (ausente) pra 14 keys
+    (presente), forcando caller a branchear no `--format json`.
+    """
+    sx_present = _sx_tables_present(conn)
     out: dict[str, Any] = {
-        "sx_ingerido": True,
-        "last_sx_ingest_at": get_meta(conn, "last_sx_ingest_at"),
-        "sx_csv_dir": get_meta(conn, "sx_csv_dir"),
+        "sx_ingerido": sx_present,
+        "last_sx_ingest_at": get_meta(conn, "last_sx_ingest_at") if sx_present else None,
+        "sx_csv_dir": get_meta(conn, "sx_csv_dir") if sx_present else None,
+        "msg": None if sx_present else "Rode 'plugadvpl ingest-sx <dir>' primeiro.",
     }
-    for table in (
-        "tabelas", "campos", "indices", "gatilhos", "parametros",
-        "perguntas", "tabelas_genericas", "relacionamentos", "pastas",
-        "consultas", "grupos_campo",
-    ):
-        n = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-        out[table] = n
+    for table in _SX_STATUS_TABLES:
+        if sx_present:
+            out[table] = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+        else:
+            out[table] = 0
     return [out]

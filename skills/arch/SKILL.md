@@ -13,16 +13,20 @@ allowed-tools: [Bash]
 
 Em vez de carregar 2000 linhas de fonte, voce recebe o "esqueleto":
 - source_type (User Function, Rotina ERP, MVC, WS, Helper, ...)
-- capabilities (acessa SQL, usa MVC, expoe WS, contem RecLock, ...)
+- capabilities (acessa SQL, usa MVC, expoe WS, contem RecLock, EXEC_AUTO_CALLER, ...)
 - includes / includes_resolved
 - defines
 - namespace (TLPP)
-- lista de simbolos (Function/Class/Method/Static)
+- lista de simbolos (Function/Class/Method/Static; WSRESTFUL methods nomeados como `<Class>.<VERB>` desde v0.3.21)
 - chamadas notaveis (restritas, ERP nativas)
 - tabelas tocadas (read/write/reclock)
+- **`tabelas_via_execauto: bool`** (v0.3.18+) — `True` quando capability
+  `EXEC_AUTO_CALLER` esta set: lista de tabelas pode estar incompleta porque
+  analise estatica nao expande a rotina chamada via `MsExecAuto`. Caller
+  deve rodar `tables` na rotina alvo pra cobertura real.
 - params MV usados
 - SQL embedado (BeginSql/TCQuery/TCSqlExec)
-- WSSTRUCT / WSSERVICE / WSMETHOD
+- WSSTRUCT / WSSERVICE / WSMETHOD / WSRESTFUL (v0.3.16+)
 - MVC hooks (bCommit/bTudoOk/bLineOk/bPosVld/...)
 - lint findings resumidos
 
@@ -35,7 +39,7 @@ Em vez de carregar 2000 linhas de fonte, voce recebe o "esqueleto":
 ## Execucao
 
 ```bash
-uvx plugadvpl@0.3.21 --format md arch $arquivo
+uvx plugadvpl@0.3.22 --format md arch $arquivo
 ```
 
 > **Para agente IA:** sempre passe `--format md` (ou `--format json` se for parsear). O default `table` usa Rich e trunca colunas em terminais estreitos (`ar...`, `ti...`). A flag `--format` vem **antes** do subcomando — eh global no callback.

@@ -117,6 +117,53 @@ class TestCallees:
         destinos = {r["destino"] for r in rows}
         assert "FATA050" in destinos
 
+    def test_callees_resolves_innermost_chunk_with_nested_methods(
+        self, tmp_path: Path
+    ) -> None:
+        """v0.3.22 — Bug #19 do QA round 2: docstring v0.3.15 fala de
+        "chunk MAIS INTERNO em caso de nesting (Class > Method > Static)"
+        mas test era happy-path. Aqui forcamos cenario com 2 funcoes
+        adjacentes — Method da classe + Static helper — e validamos que
+        chamadas em cada uma sao corretamente atribuidas.
+        """
+        from plugadvpl.db import apply_migrations, init_meta, open_db, seed_lookups
+        from plugadvpl.ingest import ingest as do_ingest
+        from plugadvpl.query import callees as cq
+
+        src = tmp_path / "MgfA.prw"
+        src.write_text(
+            'Method M1() Class A\n'                      # 1
+            '    Local x := U_ExtA()\n'                  # 2 — chamada DENTRO de M1
+            'Return\n'                                    # 3
+            '\n'                                          # 4
+            'Static Function helper()\n'                  # 5
+            '    Local y := U_ExtB()\n'                  # 6 — chamada DENTRO de helper
+            'Return\n',                                   # 7
+            encoding="cp1252",
+        )
+        do_ingest(tmp_path, workers=0)
+
+        db = tmp_path / ".plugadvpl" / "index.db"
+        conn = sqlite3.connect(str(db))
+        try:
+            # callees("M1") deve achar U_ExtA (chamada na linha 2 dentro de M1).
+            rows_m1 = cq(conn, "M1")
+            destinos_m1 = {r["destino"].upper() for r in rows_m1}
+            assert "EXTA" in destinos_m1, (
+                f"callees('M1') deveria achar U_ExtA. destinos={destinos_m1}"
+            )
+            # callees("helper") deve achar U_ExtB (chamada na linha 6 dentro de helper).
+            rows_h = cq(conn, "helper")
+            destinos_h = {r["destino"].upper() for r in rows_h}
+            assert "EXTB" in destinos_h, (
+                f"callees('helper') deveria achar U_ExtB. destinos={destinos_h}"
+            )
+            # E validamos isolamento: M1 NAO deve chamar U_ExtB e vice-versa.
+            assert "EXTB" not in destinos_m1
+            assert "EXTA" not in destinos_h
+        finally:
+            conn.close()
+
     def test_callees_by_function_name_works(
         self, db_with_three_sources: tuple[Path, sqlite3.Connection]
     ) -> None:

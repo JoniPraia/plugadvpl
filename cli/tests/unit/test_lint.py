@@ -1296,6 +1296,23 @@ class TestSEC004HardcodedCreds:
         findings = lint_source(_parsed_for(src), src)
         assert "SEC-004" not in _ids(findings)
 
+    def test_positive_prepare_environment_multiline_continuation(self) -> None:
+        """v0.3.22 — Bug #3 do QA round 2: PREPARE ENVIRONMENT em multiplas
+        linhas via `;` (continuation ADVPL) escapava o detector porque o
+        regex usava `[^\\n]*?` que para no `\\n` real."""
+        src = (
+            "User Function ZJob()\n"
+            "    PREPARE ENVIRONMENT EMPRESA cEmp FILIAL cFil ;\n"
+            "        USER 'admin' ;\n"
+            "        PASSWORD 'minhasenha' ;\n"
+            "        MODULO 'FAT'\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-004" in _ids(findings), (
+            "PREPARE ENV multilinha com PASSWORD literal deve disparar SEC-004"
+        )
+
     def test_positive_rpcsetenv_var_emp_fil_literal_user_pwd(self) -> None:
         """v0.3.21 — Bug #4 do QA round 2: caso real comum eh emp/fil virem
         de variaveis (cEmp, cFil, vindos de parametro/argv) e user/pwd
@@ -1398,6 +1415,29 @@ class TestSEC003PIIInLogs:
         )
         findings = lint_source(_parsed_for(src), src)
         assert "SEC-003" not in _ids(findings)
+
+    def test_positive_a2_fornecedor_field_in_log(self) -> None:
+        """v0.3.22 — Bug #5 do QA round 2: A2_* (fornecedores) eh equivalente
+        PII a A1_* (clientes). Antes do fix nao era detectado."""
+        src = (
+            "User Function ZForn()\n"
+            '    ConOut("CGC=" + SA2->A2_CGC)\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-003" in _ids(findings), (
+            "A2_CGC (fornecedor) eh PII equivalente a A1_CGC — deve disparar"
+        )
+
+    def test_positive_rh_funcionario_field_in_log(self) -> None:
+        """RH_* (folha/dependentes) tambem PII."""
+        src = (
+            "User Function ZFolha()\n"
+            '    ConOut("Dep CPF=" + SRH->RH_CPFDEP)\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-003" in _ids(findings)
 
     def test_negative_help_is_ui_not_log(self) -> None:
         """v0.3.20 — Bug #1 do QA round 2: Help() em ADVPL eh dialogo modal de

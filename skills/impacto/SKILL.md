@@ -33,7 +33,7 @@ Requer `/plugadvpl:ingest-sx` rodado antes.
 ## Execucao
 
 ```bash
-uvx plugadvpl@0.3.21 impacto $ARGUMENTS
+uvx plugadvpl@0.3.22 impacto $ARGUMENTS
 ```
 
 ## Exemplos
@@ -52,6 +52,22 @@ Linhas com colunas `tipo`, `local`, `contexto`, `severidade`:
 - `local` — arquivo:linha ou `SX:<tabela>` ou `SX1:<grupo>`
 - `contexto` — snippet curto do trecho que casou
 - `severidade` — `info`, `warning`, `critical` quando aplicável
+
+## Precisao por tipo (v0.3.17+)
+
+Detalhe importante pra IA/usuario: **rows do tipo `fonte` usam substring**
+(`LIKE '%X%'`), enquanto SX3/SX7/SX1 usam **word boundary** (`\bX\b`).
+
+Motivo: codigo pode legitimamente referenciar um campo dentro de string
+maior (`cExpr := "SA1->A1_COD"`); limitar `fonte` com boundary derrubaria
+matches reais. Para nomes de campo SX (regra/validacao/init), boundary
+elimina falsos positivos massivos (v0.3.17 #3 — `BA1_CODEMP` matchando
+busca de `A1_COD`).
+
+**Implicacao pratica:** rodar `impacto A1_COD` em campo de prefixo curto/
+comum pode retornar `fonte` rows que sejam substring legitima de OUTRO
+campo no codigo. Se receber muitas linhas tipo `fonte` suspeitas, rode
+`/plugadvpl:grep -m identifier "A1_COD"` para confirmar uso exato.
 
 ## Proximos passos sugeridos
 
