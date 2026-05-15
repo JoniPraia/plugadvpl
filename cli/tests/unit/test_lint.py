@@ -1945,3 +1945,33 @@ class TestSec003ShortFormSuffix:
         )
         findings = lint_source(_parsed_for(src), src)
         assert "SEC-003" in _ids(findings)
+
+
+# --- Audit V4 #9: SEC-005 funcao homonima local ----------------------------
+
+
+class TestSec005LocallyDefinedFunction:
+    """Audit V4 #9: chamada a funcao homonima a TOTVS-restrita mas DEFINIDA
+    localmente nao deve disparar SEC-005."""
+
+    def test_negative_local_user_function_homonyma(self) -> None:
+        """User Function StaticCall() local — chamada a StaticCall(...) eh local."""
+        src = (
+            "User Function StaticCall(cArg)\n"
+            "    Return cArg\n"
+            "User Function ZUsa()\n"
+            "    Local x := StaticCall('test')\n"
+            "Return x\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-005" not in _ids(findings)
+
+    def test_positive_external_call_still_fires(self) -> None:
+        """Chamada a StaticCall sem definicao local — continua disparando SEC-005."""
+        src = (
+            "User Function ZUsa()\n"
+            "    Local x := StaticCall('SOMEFONTE', 'someFunc', 'arg')\n"
+            "Return x\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-005" in _ids(findings)

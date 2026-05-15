@@ -4,6 +4,58 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.30] - 2026-05-15
+
+### 🎉 Audit V4 closeout — fecha 3 dos 4 últimos itens. Sobra apenas #14 (SX-005 carrega 50-250MB corpus em monorepo gigante) que o próprio auditor classificou como "tradeoff aceitável, comment já justifica". **Backlog técnico zerado para uso prático.** 14 dos 15 achados de Audit V4 endereçados em 3 releases (v0.3.28, v0.3.29, v0.3.30).
+
+### Fixed
+- **#8 (BAIXA) — PERF-006 cross-table determinismo**. Antes iterava
+  `dict.items()` (ordem não-determinística) e parava no primeiro match —
+  em projeto com prefixo de coluna compartilhado entre tabelas (raro mas
+  existe: `SR8` + extension `SR8XYZ`), a coluna podia ser reportada como
+  não-indexada apenas porque a primeira tabela visitada não tinha o
+  índice. Agora coleta TODAS as tabelas candidatas (sorted = determinístico),
+  decide "indexada se em qualquer uma", reporta contra a primeira candidata
+  alfabética caso negativa.
+- **#9 (BAIXA) — SEC-005 ignora função homônima local**. Antes, se o
+  fonte definia `User Function StaticCall(cArg)` (homônima a TOTVS-restrita
+  catalogada), as chamadas a `StaticCall(...)` no mesmo fonte disparavam
+  SEC-005 erroneamente. Cenário improvável mas possível em PEs canônicas
+  (`MT100LOK`, `ANCTB102GR`, etc — clientes podem criar User Function
+  homônima). Agora coleta nomes definidos localmente (kinds: `user_function`/
+  `static_function`/`main_function`/`function`/`method`) e skipa.
+
+### Added
+- **#10 (BAIXA) — PERF-006 emite warning quando `indices` SX vazia**.
+  Antes retornava `findings = []` silenciosamente — usuário rodava
+  `lint --cross-file --regra PERF-006`, recebia 0 findings, e não sabia se
+  era "sem problema" ou "sem dado SX ingerido". Agora detector imprime
+  amarelo em stderr explicando: "WARN: PERF-006 ha N SQL com WHERE/ORDER BY
+  pra avaliar, mas tabela `indices` (SIX) esta vazia. Cobertura limitada —
+  rode `plugadvpl ingest-sx <pasta-csv>` com SX dictionary completo
+  (incluindo six.csv) pra habilitar deteccao de coluna sem indice."
+- `import sys` em `lint.py` (era ausente — necessário pro print stderr).
+
+### Tests
+- 3 testes RED→GREEN:
+  - `tests/unit/test_lint.py::TestSec005LocallyDefinedFunction::test_negative_local_user_function_homonyma` (#9 negativo)
+  - `tests/unit/test_lint.py::TestSec005LocallyDefinedFunction::test_positive_external_call_still_fires` (#9 positivo regressão)
+  - `tests/integration/test_ingest_sx.py::TestLintCrossFile::test_lint_cross_file_perf006_warns_when_indices_empty` (#10 stderr warning)
+- 389 testes verde (era 386).
+
+### Notes
+- **Audit V4 closeout — 14/15 endereçados, 1 documented tradeoff**:
+  - #1, #2, #3, #5, #6, #11, #15 → v0.3.28 (lint robustness pack 1)
+  - #4, #7, #12, #13 → v0.3.29 (lint robustness pack 2)
+  - #8, #9, #10 → v0.3.30 (este release)
+  - #14 (SX-005 corpus 50-250MB) → tradeoff documentado (auditor classificou
+    como "atual eh aceitavel; nao otimizar prematuramente")
+- **Total ciclo QA do projeto** (rounds 1+2+3 + audit técnico V4 = 51 achados,
+  50 endereçados em 17 releases, v0.3.14 → v0.3.30). 1 deferido (não-bug).
+- **Próximo grande tema natural**: pivot pra **v0.4.0 Universo 3** — workflows,
+  schedules, integrações cross-fonte. Catálogo lint fechado, robustness
+  fechada, ciclo QA fechado.
+
 ## [0.3.29] - 2026-05-15
 
 ### Lint robustness pack 2 — fecha mais 4 dos 8 restantes do `gaps/PLUGADVPL_LINT_AUDIT_V4.md`. Foco em precision/recall: PERF-004 hungarian estrito, BP-005 paren balance, BP-001 RecLock variável/físico, SEC-003 sufixo CamelCase. Sobram 4 de severidade média/baixa (PERF-006 determinismo, SEC-005 homônima local, PERF-006 fallback, SX-005 corpus 50-250MB).

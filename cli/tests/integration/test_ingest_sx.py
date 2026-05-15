@@ -652,6 +652,51 @@ class TestLintCrossFile:
         assert all("X3_RELACAO" not in r.get("sugestao_fix", "") for r in sx009)
         assert any("X3_INIT" in r.get("sugestao_fix", "") for r in sx009)
 
+    def test_lint_cross_file_perf006_warns_when_indices_empty(
+        self,
+        sx_project: Path,
+        tmp_path: Path,
+        runner: CliRunner,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """v0.3.30 — Audit V4 #10: PERF-006 deve avisar em stderr quando ha
+        SQL pra avaliar mas tabela `indices` SX esta vazia. Antes retornava
+        silenciosamente, usuario nao sabia se era 'sem problema' ou 'sem dado'.
+
+        Cenario: ingest fontes (com SQL embarcado) sem ingest-sx → indices
+        vazia. Detector dispara warning explicativo."""
+        from plugadvpl.parsing.lint import _check_perf006_where_orderby_no_index
+
+        src = sx_project / "QrySql.prw"
+        src.write_bytes(
+            b'#include "totvs.ch"\n'
+            b'/*/{Protheus.doc} ZSql/*/\n'
+            b'User Function ZSql()\n'
+            b'    BeginSql Alias "QRY"\n'
+            b'        SELECT A1_COD FROM %table:SA1% WHERE A1_NOME = %Exp:cN%\n'
+            b'    EndSql\n'
+            b'Return\n'
+        )
+        runner.invoke(app, ["--root", str(sx_project), "init"])
+        runner.invoke(app, ["--root", str(sx_project), "ingest"])
+        # NAO roda ingest-sx — indices fica vazia.
+
+        # Limpa qualquer stderr pre-existente do init/ingest.
+        capsys.readouterr()
+
+        db = sx_project / ".plugadvpl" / "index.db"
+        conn = sqlite3.connect(str(db))
+        try:
+            findings = _check_perf006_where_orderby_no_index(conn)
+        finally:
+            conn.close()
+
+        captured = capsys.readouterr()
+        assert findings == []  # sem indices, nada pra avaliar
+        assert "PERF-006" in captured.err
+        assert "indices" in captured.err.lower()
+        assert "ingest-sx" in captured.err
+
     def test_lint_cross_file_perf006_where_orderby_no_index(
         self,
         sx_project: Path,

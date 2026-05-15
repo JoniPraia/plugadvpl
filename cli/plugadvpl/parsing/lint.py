@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
+import sys
 from typing import Any
 
 from plugadvpl.parsing.stripper import strip_advpl
@@ -1466,12 +1467,26 @@ def _check_sec005_restricted_function_call(
     restricted = _sec005_load_restricted()
     stripped = strip_advpl(content, strip_strings=True)
     funcoes = parsed.get("funcoes", []) or []
+    # v0.3.30 (Audit V4 #9): se o proprio fonte define funcao/metodo homonimo
+    # a uma restrita, o "call" ali eh chamada local (nao da TOTVS). Coleta
+    # nomes definidos no arquivo upper-cased pra skipar.
+    locally_defined: set[str] = {
+        (f.get("nome", "") or "").upper()
+        for f in funcoes
+        if f.get("kind") in {"user_function", "static_function", "main_function",
+                              "function", "method"}
+    }
     seen: set[tuple[int, str]] = set()  # dedup por (linha, nome) — uma chamada repetida = 1 finding
 
     for m in _SEC005_CALL_RE.finditer(stripped):
         name = m.group(1)
         upper = name.upper()
         if upper not in restricted:
+            continue
+        # v0.3.30: skip se eh chamada a funcao definida localmente (homonima
+        # a restrita TOTVS). Cenario raro mas possivel — PEs canonicas
+        # tem nome predizivel e clientes podem criar User Function homonima.
+        if upper in locally_defined:
             continue
         # Skip definição: olha 50 chars antes do match pra ver se é Function/Method/Class
         prefix = stripped[max(0, m.start() - 50) : m.start()]
@@ -2092,6 +2107,17 @@ def _check_perf006_where_orderby_no_index(
         indices_cache.setdefault(tbl, set()).update(col_names)
 
     if not indices_cache:
+        # v0.3.30 (Audit V4 #10): aviso amarelo em stderr quando ha SQL
+        # pra avaliar mas indices SX vazios. Antes retornava silenciosamente
+        # → usuario rodava lint --cross-file --regra PERF-006, recebia 0
+        # findings, e nao sabia se era "sem problema" ou "sem dado SX".
+        print(
+            f"WARN: PERF-006 ha {len(rows)} SQL com WHERE/ORDER BY pra avaliar, "
+            "mas tabela `indices` (SIX) esta vazia. Cobertura limitada — rode "
+            "`plugadvpl ingest-sx <pasta-csv>` com SX dictionary completo "
+            "(incluindo six.csv) pra habilitar deteccao de coluna sem indice.",
+            file=sys.stderr,
+        )
         return findings  # Sem indices ingeridos — nada a comparar.
 
     seen: set[tuple[str, int, str, str]] = set()  # dedup
@@ -2113,21 +2139,27 @@ def _check_perf006_where_orderby_no_index(
                 continue
             if suffix == "FILIAL":  # *_FILIAL — sempre primeiro do composto
                 continue
-            tabela = prefix  # A1 → SA1 estilo? Nao — `A1` eh prefixo, tabela real
-            # eh "SA1" / "SC5". Mas indices.tabela usa "SA1" estilo. Tentativas:
-            # buscar em indices_cache pelas tabelas cuja chave contem o prefix.
-            # Heuristica: pra cada indice cached, se algum nome de coluna comeca
-            # com `<prefix>_`, esse indice eh da tabela em questao.
-            matched_table = None
-            for tbl, cols in indices_cache.items():
-                if any(c.startswith(prefix + "_") for c in cols):
-                    matched_table = tbl
-                    if full in cols:
-                        # Coluna esta em ALGUM indice dessa tabela — OK.
-                        matched_table = "INDEXED"
-                        break
-            if matched_table is None or matched_table == "INDEXED":
-                continue  # Sem tabela mapeada (skip) ou esta indexada (OK)
+            # v0.3.30 (Audit V4 #8): coleta TODAS as tabelas candidatas
+            # e checa "indexada em qualquer uma" antes de decidir. Antes,
+            # iterava `dict.items()` (ordem nao-deterministica) e parava
+            # no primeiro match — em projetos com prefixo compartilhado
+            # (raro, mas existe: SR8 + SR8XYZ extension), a coluna podia
+            # ser reportada como nao-indexada apenas porque a primeira
+            # tabela visitada nao tinha indice — outras visitas nao
+            # ajudavam. Agora junta candidatas + decide global.
+            candidate_tables = sorted(
+                tbl for tbl, cols in indices_cache.items()
+                if any(c.startswith(prefix + "_") for c in cols)
+            )
+            if not candidate_tables:
+                continue  # Sem tabela mapeada — skip (alias dinamico)
+            indexed_anywhere = any(
+                full in indices_cache[tbl] for tbl in candidate_tables
+            )
+            if indexed_anywhere:
+                continue  # Indexada em pelo menos 1 candidata — OK
+            # Reportar contra a primeira tabela candidata (sorted = deterministico).
+            matched_table = candidate_tables[0]
             # matched_table existe mas a coluna nao esta em nenhum indice.
             key = (arquivo, int(linha or 0), matched_table, full)
             if key in seen:
