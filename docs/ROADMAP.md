@@ -43,17 +43,63 @@ Visão pública do que vem no plugadvpl. Datas são estimativas — comunidade p
 - Parser portado de projeto interno do autor (872 linhas, MIT) — adaptado
   para plugadvpl removendo dependências SaaS.
 
-## 🟡 v0.4.0 — Universo 3: Rastreabilidade unificada (planejado)
+## ✅ v0.4.x — Universo 3: Rastreabilidade (2026-05)
 
 [Milestone v0.4.0](https://github.com/JoniPraia/plugadvpl/milestone/2)
 
-- `expressoes_dicionario` — parser de expressões ADVPL embutidas em SX (X3_VALID,
-  X3_INIT, X7_REGRA, X1_VALID) extraindo user_funcs, funcs_padrao, tabelas_ref,
-  campos_ref, parametros_ref
-- `rastreabilidade_unificada` — adjacência simétrica completa: dado um campo SX3,
-  saber TODA cadeia de funções/gatilhos/PEs/SQL que tocam nele (e vice-versa)
-- Comando novo: `plugadvpl trace <campo|funcao|tabela>` mostra grafo completo
-- Comando novo: `plugadvpl impacto-completo <coisa>` com depth configurável
+Universo 3 entregue em 4 dot-releases consecutivas (3 features + polish):
+
+### v0.4.0 — Feature A: execução não-direta
+- Tabela `execution_triggers` (schema v5, migration 005)
+- Detector `parsing/triggers.py` com 4 mecanismos canônicos TOTVS:
+  - `workflow` — `TWFProcess`/`MsWorkflow`/`WFPrepEnv` (callbacks aprovação)
+  - `schedule` — `Static Function SchedDef()` (configurador SIGACFG)
+  - `job_standalone` — `Main Function` + `RpcSetEnv` (daemon ONSTART)
+  - `mail_send` — `MailAuto`/`SEND MAIL` UDC/`TMailManager`
+- Comando `workflow` + skill `/plugadvpl:workflow`
+
+### v0.4.1 — Feature B: ExecAuto chain expansion
+- Tabela `execauto_calls` (schema v6, migration 006)
+- Catálogo `execauto_routines.json` (31 rotinas TOTVS — MATA*/FINA*/CTBA*/
+  EECAP*/TMSA* com módulo + tabelas primárias/secundárias + URL fonte)
+- Detector `parsing/execauto.py` resolve `MsExecAuto({|x,y,z| MATA410(x,y,z)},
+  ...)` → rotina + tabelas inferidas + op_code (3/4/5 → inc/alt/exc)
+- Comando `execauto` + enrichment de `arch` (campo
+  `tabelas_via_execauto_resolvidas: list[str]`)
+
+### v0.4.2 — Feature C: Protheus.doc agregada
+- Tabela `protheus_docs` (schema v7, migration 007)
+- Detector `parsing/protheus_doc.py` extrai 16 tags canônicas TOTVS
+  (`@type`, `@author`, `@param`, `@return`, `@deprecated`, `@history`, etc)
+  + `raw_tags` catch-all
+- Inferência de módulo dual (path-based + routine-prefix)
+- Comando `docs [modulo]` com 3 modos: lista, `--show <fn>` Markdown
+  estruturado, `--orphans` (cross-ref BP-007)
+
+### v0.4.3 — Polish pack
+- Code review independente identificou 5 críticos com repro confirmado
+  (todos corrigidos): callbacks misturados entre TWFProcess vizinhos,
+  Protheus.doc fechando em `/*/` literal de @example, RpcSetEnv perdendo
+  módulo com 6 args literais, bloco órfão puxando função distante,
+  `infer_module` retornando SIGAEST silenciosamente
+- 4 importantes endereçados: TMailManager solo, `--show` com homônimos,
+  catálogo +6 rotinas + dup test, índices em `funcao` (migration 008)
+- 489 testes verde (era 478)
+
+## 🟡 v0.5.0 — Universo 4 (a definir)
+
+Candidatos sob avaliação (priorizar conforme demanda da comunidade):
+
+- **Qualidade & métricas** — complexidade ciclomática por função, hot-paths
+  (top-N callers), distribuição de tamanho de fonte
+- **Ownership analytics** — quem mantém o quê (cross-ref `git blame` × parser)
+- **Cross-cliente diff** — comparar 2 índices (cliente A vs B) pra ver
+  drift de customização sobre o mesmo módulo TOTVS
+- **`expressoes_dicionario`** — parser de ADVPL embutido em SX (X3_VALID/
+  INIT/WHEN/VLDUSER, X7_REGRA, X1_VALID, X6_VALID/INIT) extraindo
+  user_funcs/funcs_padrao/tabelas_ref/campos_ref/parametros_ref
+- **`trace <campo|funcao|tabela>`** — grafo completo cross-universo
+  (rastreabilidade unificada)
 
 ## 🔵 Backlog (sem ETA)
 

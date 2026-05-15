@@ -1,30 +1,20 @@
 # plugadvpl CLI — Referência completa
 
-Esta página documenta cada subcomando da CLI `plugadvpl` v0.1.0. A CLI é construída com [Typer](https://typer.tiangolo.com/) e expõe **14 subcomandos** mais um callback global com opções compartilhadas.
+Esta página documenta cada subcomando da CLI `plugadvpl` (atualizada para v0.4.3). A CLI é construída com [Typer](https://typer.tiangolo.com/) e expõe **21 subcomandos** mais um callback global com opções compartilhadas.
 
 Use `plugadvpl --help` para ver a lista completa em runtime e `plugadvpl <subcomando> --help` para ver opções específicas.
 
 ## Sumário
 
 - [Opções globais](#opcoes-globais)
-- [Subcomandos write-path (alteram o índice)](#subcomandos-write-path)
-  - [`init`](#init)
-  - [`ingest`](#ingest)
-  - [`reindex`](#reindex)
-- [Subcomandos read-only (consultas)](#subcomandos-read-only)
-  - [`status`](#status)
-  - [`find`](#find)
-  - [`callers`](#callers)
-  - [`callees`](#callees)
-  - [`tables`](#tables)
-  - [`param`](#param)
-  - [`arch`](#arch)
-  - [`lint`](#lint)
-  - [`doctor`](#doctor)
-  - [`grep`](#grep)
-- [Utilitários](#utilitarios)
-  - [`version`](#version)
-- [Reservado para v0.2+](#reservado-para-v02)
+- [Universo 1 — Fontes (v0.1)](#universo-1)
+  - **write-path**: [`init`](#init), [`ingest`](#ingest), [`reindex`](#reindex)
+  - **read-only**: [`status`](#status), [`find`](#find), [`callers`](#callers), [`callees`](#callees), [`tables`](#tables), [`param`](#param), [`arch`](#arch), [`lint`](#lint), [`doctor`](#doctor), [`grep`](#grep)
+  - **utilitários**: [`version`](#version), [`help`](#help)
+- [Universo 2 — Dicionário SX (v0.3)](#universo-2)
+  - [`ingest-sx`](#ingest-sx), [`impacto`](#impacto), [`gatilho`](#gatilho), [`sx-status`](#sx-status)
+- [Universo 3 — Rastreabilidade (v0.4)](#universo-3)
+  - [`workflow`](#workflow), [`execauto`](#execauto), [`docs`](#docs)
 - [Exit codes](#exit-codes)
 
 ---
@@ -48,7 +38,11 @@ Todas as opções abaixo aparecem ANTES do nome do subcomando: `plugadvpl --root
 
 ---
 
-## <a id="subcomandos-write-path"></a>Subcomandos write-path
+## <a id="universo-1"></a>Universo 1 — Fontes (v0.1)
+
+Comandos clássicos pra indexar/consultar fontes ADVPL/TLPP do projeto.
+
+### Subcomandos write-path
 
 ### <a id="init"></a>`init`
 
@@ -310,23 +304,129 @@ Imprime a versão da CLI. Útil em scripts de validação e em `doctor`.
 
 ```
 $ plugadvpl version
-plugadvpl 0.1.0
+plugadvpl 0.4.3
 ```
+
+### <a id="help"></a>`help`
+
+Atalho equivalente a `plugadvpl --help`. Lista todos os 21 subcomandos.
 
 ---
 
-## <a id="reservado-para-v02"></a>Reservado para v0.2+
+## <a id="universo-2"></a>Universo 2 — Dicionário SX (v0.3)
 
-Os subcomandos abaixo já têm tabelas reservadas no schema mas **não estão implementados no MVP v0.1.0**:
+Comandos pra indexar e consultar o dicionário SX exportado do Configurador
+(SIGACFG → Misc → Exportar Dicionário em CSV).
 
-- `plugadvpl impacto <tabela|campo>` — análise de impacto cross-fonte (Universo 3)
-- `plugadvpl native <funcao>` — lookup em `funcoes_nativas` (já populada — 279 rows)
-- `plugadvpl restricted <funcao>` — lookup em `funcoes_restritas` (já populada — 194 rows)
-- `plugadvpl pe <nome>` — lookup em `pontos_entrada_padrao` (já populada — 15 rows)
-- `plugadvpl modulo <codigo>` — lookup em `modulos_erp` (já populada — 8 rows)
-- `plugadvpl dict <SX1|SX3|SXE|...>` — Universo 2 (dicionário SX) — schema migration 002
+### <a id="ingest-sx"></a>`ingest-sx <pasta-csv>`
 
-Roadmap detalhado em `docs/superpowers/specs/2026-05-11-plugadvpl-design.md` §15.
+Ingere os arquivos `sx1.csv`, `sx2.csv`, …, `sxg.csv` (formato exportação TOTVS)
+em 11 tabelas: `tabelas` (SX2), `campos` (SX3), `gatilhos` (SX7),
+`parametros` (SX6), `perguntas` (SX1), `consultas` (SXB), `pastas` (SXA),
+`relacionamentos` (SX9), `indices` (SIX), `tabelas_genericas` (SX5),
+`grupos_campo` (SXG).
+
+```
+plugadvpl ingest-sx <pasta-csv> [--no-incremental]
+```
+
+Apenas customizações do cliente — campos/parâmetros padrão TOTVS são
+ignorados por design.
+
+### <a id="impacto"></a>`impacto <campo>` — killer feature
+
+Cruza referências a um campo SX3 em fontes ↔ SX3 ↔ SX7 (gatilhos) ↔ SX1
+(perguntas/parâmetros). Resposta inclui chain expandido até `--depth 3`.
+
+```
+plugadvpl impacto A1_COD [--depth 1..3] [--format json]
+```
+
+Use quando precisar avaliar impacto de mudança em campo (rename, mudança
+de tipo, deprecation).
+
+### <a id="gatilho"></a>`gatilho <campo>`
+
+Cadeia de gatilhos SX7 origem → destino, com `--depth 1..3` pra atravessar
+gatilhos transitivos (campo X dispara gatilho que mexe em Y, que dispara
+gatilho que mexe em Z).
+
+### <a id="sx-status"></a>`sx-status`
+
+Counts por tabela do dicionário SX ingerido. Sanity check de cobertura.
+
+---
+
+## <a id="universo-3"></a>Universo 3 — Rastreabilidade (v0.4)
+
+Comandos pra indexar mecanismos de execução não-direta (workflow/schedule/
+job/mail), chamadas indiretas via `MsExecAuto`, e documentação inline
+Protheus.doc.
+
+### <a id="workflow"></a>`workflow` (v0.4.0)
+
+Lista os 4 mecanismos canônicos TOTVS de execução não-direta indexados:
+
+```
+plugadvpl workflow [--kind <kind>] [--target <nome>] [--arquivo <basename>]
+```
+
+| `--kind` | Detecção |
+|---|---|
+| `workflow` | `TWFProcess():New(...)`, `MsWorkflow(`, `WFPrepEnv(`, `:bReturn :=` |
+| `schedule` | `Static Function SchedDef()` retornando `{cTipo,cPergunte,cAlias,aOrdem,cTitulo}` |
+| `job_standalone` | `Main Function` + `RpcSetEnv` + `Sleep` loop (daemon ONSTART) |
+| `mail_send` | `MailAuto(`, `SEND MAIL` UDC, `TMailManager`/`TMailMessage` |
+
+Metadados específicos por `kind` (process_id, sched_type/pergunte/alias,
+main_name/empresa/filial/modulo/sleep_seconds, variant/has_attachment/
+uses_mv_rel) ficam em `metadata` no `--format json`.
+
+### <a id="execauto"></a>`execauto` (v0.4.1)
+
+Resolve a indireção do `MsExecAuto({|x,y,z| MATA410(x,y,z)}, ...)` cruzando
+com catálogo TOTVS (31 rotinas em `lookups/execauto_routines.json`) pra
+inferir tabelas tocadas indiretamente, módulo, e operação (3/4/5 →
+inclusão/alteração/exclusão).
+
+```
+plugadvpl execauto [--routine <nome>] [--modulo <SIGAFAT>]
+                   [--arquivo <basename>] [--op inc|alt|exc]
+                   [--dynamic|--no-dynamic]
+```
+
+Enrichment do `arch`: campo `tabelas_via_execauto_resolvidas: list[str]`
+agrega tabelas inferidas (campo bool antigo `tabelas_via_execauto` continua,
+não-breaking).
+
+Calls não-resolvíveis (`&(cVar)`, codeblock vazio, variável armazenada)
+ficam com `routine=null, dynamic_call=true` — use `--dynamic` pra revisão.
+
+### <a id="docs"></a>`docs [modulo]` (v0.4.2)
+
+Catálogo de Protheus.doc agregado por módulo/autor/tipo/deprecação.
+
+```
+plugadvpl docs [<modulo>] [--author <nome>] [--funcao <nome>]
+               [--arquivo <basename>] [--deprecated|--no-deprecated]
+               [--tipo <type>] [--show <funcao>] [--orphans]
+```
+
+Modos:
+
+- **Lista**: `docs SIGAFAT` ou `docs --author "Fernando" --deprecated`
+- **Show formatado**: `docs --show MT460FIM` → Markdown estruturado completo
+  (cabeçalho + tabela params + sections retorno/exemplos/histórico).
+  Aceita `--arquivo` pra desambiguar homônimos (v0.4.3).
+- **Orphans**: `docs --orphans` → cross-ref BP-007 do lint (funções sem header)
+
+16 tags canônicas TOTVS extraídas estruturadamente: `@type`, `@author`,
+`@since`, `@version`, `@description`, `@language`, `@deprecated`, `@param`,
+`@return`, `@example`, `@history`, `@see`, `@table`, `@todo`, `@obs`,
+`@link`. Tags fora do whitelist vão pro `raw_tags` catch-all (zero perda).
+
+Inferência de módulo dual: path-based (`SIGA\w{3,4}` no path) +
+routine-prefix (reaproveita catálogo do `execauto`).
 
 ---
 

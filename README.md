@@ -131,11 +131,15 @@ winget install astral-sh.uv                              # Windows
 Pronto. A partir daqui o Claude já consulta o índice antes de abrir qualquer `.prw`. Para inspecionar você mesmo:
 
 ```bash
-/plugadvpl:arch FATA050.prw         # visão arquitetural de um fonte
+/plugadvpl:arch FATA050.prw         # visão arquitetural (inclui tabelas via ExecAuto)
 /plugadvpl:callers MaFisRef         # quem chama essa função
 /plugadvpl:tables SA1               # quem lê/grava/reclock na SA1
 /plugadvpl:param MV_LOCALIZA        # onde esse parâmetro é usado
 /plugadvpl:lint --severity error    # encontrar problemas críticos
+/plugadvpl:impacto A1_COD           # cruza referências a um campo (Universo 2)
+/plugadvpl:workflow --kind job_standalone  # jobs daemon do projeto (Universo 3)
+/plugadvpl:execauto --routine MATA410 --op inc  # quem inclui Pedido de Venda
+/plugadvpl:docs --show MT460FIM     # doc completa em Markdown sem abrir o fonte
 ```
 
 ---
@@ -189,7 +193,9 @@ Se aparecer output com counters do índice, o plugin está instalado e funcionan
 
 ## Comandos disponíveis
 
-O CLI Python expõe **18 subcomandos** (a partir do v0.3.0), espelhados em slash commands do plugin Claude Code.
+O CLI Python expõe **21 subcomandos** (a partir do v0.4.0), espelhados em slash commands do plugin Claude Code.
+
+### Universo 1 — Fontes (v0.1)
 
 | Comando | Função |
 |---|---|
@@ -202,15 +208,28 @@ O CLI Python expõe **18 subcomandos** (a partir do v0.3.0), espelhados em slash
 | `/plugadvpl:callees <funcao>` | O que a função chama (call graph direto) |
 | `/plugadvpl:tables <T>` | Quem usa a tabela `T` (`--mode read/write/reclock`) |
 | `/plugadvpl:param <MV>` | Onde o parâmetro `MV_*` aparece |
-| `/plugadvpl:arch <arq>` | **Visão arquitetural** — use SEMPRE antes de `Read` |
+| `/plugadvpl:arch <arq>` | **Visão arquitetural** — use SEMPRE antes de `Read`. Inclui `tabelas_via_execauto_resolvidas` (v0.4.1+) |
 | `/plugadvpl:lint [arq]` | Lint findings (`--severity`, `--regra`, `--cross-file`) |
 | `/plugadvpl:doctor` | Diagnósticos (encoding, órfãos, FTS sync, lookups) |
 | `/plugadvpl:grep <pattern>` | Busca textual nos chunks (`--mode fts/literal/identifier`) |
 | `/plugadvpl:help` | Lista comandos (atalho do CLI `--help`) |
-| **`/plugadvpl:ingest-sx <pasta-csv>`** | **(v0.3.0)** Ingere dicionário SX exportado em CSV (sx1..sxg) |
-| **`/plugadvpl:impacto <campo>`** | **(v0.3.0)** **Killer feature** — cruza referências a um campo em fontes ↔ SX3 ↔ SX7 ↔ SX1 (com `--depth 1..3`) |
-| **`/plugadvpl:gatilho <campo>`** | **(v0.3.0)** Cadeia de gatilhos SX7 origem → destino (com `--depth 1..3`) |
-| **`/plugadvpl:sx-status`** | **(v0.3.0)** Counts por tabela do dicionário SX |
+
+### Universo 2 — Dicionário SX (v0.3)
+
+| Comando | Função |
+|---|---|
+| `/plugadvpl:ingest-sx <pasta-csv>` | Ingere dicionário SX exportado em CSV (sx1..sxg) |
+| `/plugadvpl:impacto <campo>` | **Killer feature** — cruza referências a um campo em fontes ↔ SX3 ↔ SX7 ↔ SX1 (`--depth 1..3`) |
+| `/plugadvpl:gatilho <campo>` | Cadeia de gatilhos SX7 origem → destino (`--depth 1..3`) |
+| `/plugadvpl:sx-status` | Counts por tabela do dicionário SX |
+
+### Universo 3 — Rastreabilidade (v0.4)
+
+| Comando | Função |
+|---|---|
+| **`/plugadvpl:workflow`** | **(v0.4.0)** Lista os 4 mecanismos de execução não-direta: `workflow`/`schedule`/`job_standalone`/`mail_send` (filtros `--kind`/`--target`/`--arquivo`) |
+| **`/plugadvpl:execauto`** | **(v0.4.1)** Resolve `MsExecAuto({\|x,y,z\| MATA410(x,y,z)}, ...)` → rotina canônica + módulo + tabelas inferidas (filtros `--routine`/`--modulo`/`--op`/`--dynamic`) |
+| **`/plugadvpl:docs [modulo]`** | **(v0.4.2)** Catálogo de Protheus.doc agregado por módulo/autor/tipo. Modo `--show <fn>` em Markdown estruturado, `--orphans` cruza com BP-007 |
 
 Reference completa: [docs/cli-reference.md](docs/cli-reference.md).
 
@@ -218,7 +237,7 @@ Reference completa: [docs/cli-reference.md](docs/cli-reference.md).
 
 ## Skills incluídas
 
-Além dos 18 command wrappers (1 por subcomando do CLI, mais o helper `setup`), o plugin traz **18 knowledge skills** carregadas pelo Claude conforme contexto:
+Além dos 21 command wrappers (1 por subcomando do CLI + `help` + `setup`), o plugin traz **18 knowledge skills** carregadas pelo Claude conforme contexto:
 
 | Skill | Quando carrega |
 |---|---|
@@ -249,9 +268,9 @@ Também incluídos: **4 agents** especializados (`advpl-analyzer`, `advpl-impact
 
 ```
 .prw / .tlpp           parser strip-first         SQLite + FTS5         slash command
-(seu projeto)   ───▶   (regex sobre conteúdo  ─▶  22 tabelas físicas  ─▶ /plugadvpl:*
+(seu projeto)   ───▶   (regex sobre conteúdo  ─▶  25 tabelas físicas  ─▶ /plugadvpl:*
                        sem comentário/string)     + 2 FTS5 virtuais     (Claude consulta)
-                       paralelo adaptive          + 6 lookups TOTVS
+                       paralelo adaptive          + 7 lookups TOTVS
 ```
 
 O `plugadvpl ingest` escaneia o projeto, parseia cada fonte em paralelo (`ProcessPoolExecutor` com fallback single-thread para projetos < 200 arquivos), persiste metadados (funções, chamadas, tabelas, MV_*, SQL embarcado, PEs, REST endpoints, jobs, etc.) em SQLite, e rebuilda dois índices FTS5 — um `unicode61` com `tokenchars '_-'` (mantém `A1_COD` e `FW-Browse` como um token) e um trigram para busca substring exata (`SA1->A1_COD`, `%xfilial%`).
@@ -271,23 +290,24 @@ Quando você pergunta algo ao Claude sobre o projeto, o slash command roda uma q
 
 ## Status
 
-**v0.3.0 — Universo 2: Dicionário SX (killer feature `impacto`).**
+**v0.4.3 — Universo 3 (Rastreabilidade) entregue + polish pack.**
 
-- 18 subcomandos, 37 skills (18 knowledge + 18 CLI wrappers + 1 setup helper), 4 agents, 1 hook
-- 33 tabelas físicas (22 fontes + 11 SX) + 2 FTS5 + 6 lookups
-- 250+ testes (unit + integration + bench + e2e_local)
+- **21 subcomandos**, **40 skills** (18 knowledge + 21 CLI wrappers + 1 setup helper), 4 agents, 1 hook
+- **25 tabelas físicas** (22 fontes/SX + 3 Universo 3) + 2 FTS5 + 7 lookups
+- **489 testes verde** (unit + integration + bench + e2e_local)
 - Bench em ~2.000 fontes: ingest <60s com `--workers 8`; ingest-sx
   do dicionário completo (~420k rows) <30s
-- Schema + parser SX baseado em projeto interno anterior do autor
+- Schema v8 — migrations 005/006/007 (Universo 3) + 008 (índices polish)
 
 **Roadmap.**
 
 - **v0.1** *(shipped)* — Universo 1: parser de fontes, FTS5, 13 regras lint single-file, 14 subcomandos CLI.
 - **v0.2** *(shipped)* — 21k linhas de referência ADVPL/TLPP embutidas em 5 skills novas + 6 reforçadas.
 - **v0.3** *(shipped)* — Universo 2 (Dicionário SX): ingest SX1..SXG, comandos `impacto`/`gatilho`/`sx-status`, 11 regras cross-file SX-001..SX-011.
-- **v0.4** *(próximo)* — Universo 3 (Rastreabilidade): grafo PE × ponto de origem, MVC × tabela × campo, detecção de código morto, cross-cliente diff.
+- **v0.4** *(shipped)* — Universo 3 (Rastreabilidade): execução não-direta (`workflow`/schedule/job/mail), ExecAuto chain (`execauto`), Protheus.doc agregada (`docs`). Polish pack v0.4.3 (5 críticos + 4 importantes do code review).
+- **v0.5** *(próximo)* — Universo 4 a definir (candidatos: qualidade & métricas, complexidade ciclomática, hot-paths, ownership analytics).
 
-Detalhes em [docs/ROADMAP.md](docs/ROADMAP.md) e no spec `docs/superpowers/specs/2026-05-11-plugadvpl-design.md` (§15).
+Detalhes em [docs/ROADMAP.md](docs/ROADMAP.md), [CHANGELOG.md](CHANGELOG.md) e specs em `docs/universo3/`.
 
 ---
 
