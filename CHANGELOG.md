@@ -4,6 +4,66 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.27] - 2026-05-15
+
+### 🎉 Catálogo lint 100% ativo. Última regra `planned` (PERF-006) implementada — fecha o ciclo iniciado em v0.3.4 (catálogo × impl alignment) com **35/35 regras detectáveis automaticamente**.
+
+### Added
+- **PERF-006 (info, cross-file) — WHERE/ORDER BY em coluna sem índice SIX**.
+  Detector cross-file que requer `ingest-sx` (precisa da `indices` SIX).
+  Skipa graciosamente quando ausente. Heurística:
+  1. Lê `sql_embedado` rows com `WHERE` ou `ORDER BY` no snippet.
+  2. Extrai colunas estilo `<TBL>_<NOME>` (regex `[A-Z][A-Z0-9]{1,2}_<NOME>`
+     — cobre `A1_COD`, `B1_DESC`, `RA_CIC`, `R8_TIPO`, etc).
+  3. Filtra pseudo-colunas Protheus (`D_E_L_E_T_`, `R_E_C_N_O_`,
+     `R_E_C_D_E_L_`) e `*_FILIAL` (sempre primeira chave em qualquer
+     composto, nunca causa scan).
+  4. Cruza com cache `{tabela: {colunas em qualquer chave}}` derivado
+     de `indices.chave`.
+  5. Coluna NÃO em nenhum índice → emite finding com `tabela.coluna`.
+  
+  Heurísticas conservadoras (severidade `info`, baixo FP):
+  - Skipa coluna sem prefixo claro de tabela (alias dinâmico no SQL).
+  - Skipa quando tabela ausente em `indices` (provável standard, não custom).
+  - Dedup por `(arquivo, linha, tabela, coluna)`.
+- Helpers em `lint.py`:
+  - `_PERF006_PSEUDO_COLS` — set com pseudo-colunas Protheus a ignorar.
+  - `_PERF006_COLUMN_RE` — regex coluna estilo `A1_COD` (suporta dígito no prefix).
+  - `_PERF006_WHERE_RE` / `_PERF006_ORDERBY_RE` — extração de cláusula
+    com lookahead pra próximas keywords (GROUP BY/HAVING/EndSql/$).
+
+### Changed
+- Catálogo `lookups/lint_rules.json`: PERF-006 `status="planned"` → `"active"`
+  + `impl_function="_check_perf006_where_orderby_no_index"` + descrição
+  expandida com algoritmo completo + lista de exclusões.
+- Skill `advpl-code-review`:
+  - Frontmatter: `34 → 35` regras, `12 → 13` cross-file.
+    **"100% do catálogo"** explícito.
+  - Tabela cross-file: nova entrada PERF-006.
+  - Nova seção "Catálogo 100% ativo (v0.3.27)" substitui "regras planned".
+  - "Info / Checklist mental" reescrita pra "Catálogo 100% automatizado" —
+    não há mais checklist humano residual.
+- 18 skills bumpadas `@0.3.26` → `@0.3.27`.
+
+### Tests
+- `tests/integration/test_ingest_sx.py::TestLintCrossFile::test_lint_cross_file_perf006_where_orderby_no_index`:
+  fixture com 2 fontes — `QrySemIdx.prw` (BeginSql `WHERE A1_NOME = ...`,
+  não indexado) deve disparar PERF-006; `QryComIdx.prw` (`WHERE A1_COD = ...`,
+  indexado em SA1#1) NÃO deve disparar.
+- 369 testes verde (era 368).
+
+### Notes
+- **Marco do projeto**: catálogo iniciou em v0.3.0 com 35 regras (24 active +
+  11 planned). Após 27 releases, fechamento total: **35 active + 0 planned**.
+  Total de testes cresceu de ~252 (v0.3.13) → 369 (v0.3.27), +117 testes
+  cobrindo novos detectores.
+- **PERF-006 é conservadora por design**: severidade `info` significa que
+  não bloqueia merge/CI. Em projetos com SX rico mas standard tables não
+  ingeridas, FP é baixo (skipa quando tabela ausente em `indices`).
+- **Próximo grande tema natural**: pivot pra **v0.4.0 Universo 3
+  (Rastreabilidade)** — workflows, schedules, integrações cross-fonte —
+  com tranquilidade. Catálogo lint fechado, ciclo QA fechado.
+
 ## [0.3.26] - 2026-05-15
 
 ### MOD-003 implementado — primeira regra cross-file que NÃO requer SX. Sobra apenas PERF-006 (a mais complexa) pra fechar 100% do catálogo.

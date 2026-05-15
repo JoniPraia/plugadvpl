@@ -1984,6 +1984,135 @@ def _check_sx011_x3_f3_consulta_inexistente(conn: sqlite3.Connection) -> list[di
 # --- Orchestrator cross-file --------------------------------------------------
 
 
+# PERF-006 (v0.3.27): WHERE/ORDER BY em coluna fora dos indices SIX.
+# Pseudo-colunas Protheus que NUNCA tem indice (e portanto sempre apareceriam
+# como FP) — D_E_L_E_T_, R_E_C_N_O_, R_E_C_D_E_L_.
+_PERF006_PSEUDO_COLS = {"D_E_L_E_T_", "R_E_C_N_O_", "R_E_C_D_E_L_"}
+# Pattern de coluna Protheus: <2-3 letras/digitos><underscore><resto alfa>.
+# Ex: A1_COD, B1_DESC, RA_CIC, R8_TIPO. Prefixo: 1 letra + 0-2 alfanumericos.
+_PERF006_COLUMN_RE = re.compile(r"\b([A-Z][A-Z0-9]{1,2})_([A-Z][A-Z_0-9]*)\b")
+# Extrai cláusulas WHERE e ORDER BY. Captura tudo até a próxima keyword
+# limítrofe (GROUP BY, HAVING, EndSql, etc) — best-effort.
+_PERF006_WHERE_RE = re.compile(
+    r"\bWHERE\b(.*?)(?=\bGROUP\s+BY\b|\bHAVING\b|\bORDER\s+BY\b|\bEndSql\b|$)",
+    re.IGNORECASE | re.DOTALL,
+)
+_PERF006_ORDERBY_RE = re.compile(
+    r"\bORDER\s+BY\b(.*?)(?=\bEndSql\b|$)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _check_perf006_where_orderby_no_index(
+    conn: sqlite3.Connection,
+) -> list[dict[str, Any]]:
+    """PERF-006 (info): coluna em WHERE/ORDER BY que nao esta em nenhum
+    indice SIX da tabela.
+
+    Cross-file: depende do dicionario SX (`indices`) ingerido. Skipa
+    silenciosamente quando ausente.
+
+    Heuristica:
+      1. Pra cada `sql_embedado` row com WHERE ou ORDER BY no snippet
+      2. Extrai colunas estilo `<TBL>_<NOME>` da clausula
+      3. Filtra pseudo-colunas (D_E_L_E_T_, etc) e *_FILIAL (sempre primeira
+         chave em qualquer composto, nao precisa flagar)
+      4. Pra cada (tabela, coluna): verifica se coluna aparece em qualquer
+         `indices.chave` da tabela
+      5. Se NAO encontrar em nenhum indice → emite PERF-006
+
+    Cobertura intencionalmente conservadora (info, nao warning):
+      - Skipa coluna sem prefixo claro de tabela (alias dinamico)
+      - Skipa quando tabela nao esta em `indices` (provavelmente standard,
+        SX so cobre custom)
+      - 1 finding por (arquivo, linha, tabela, coluna) — dedup automatica
+    """
+    findings: list[dict[str, Any]] = []
+    rows = conn.execute(
+        """
+        SELECT arquivo, funcao, linha, snippet
+        FROM sql_embedado
+        WHERE upper(snippet) LIKE '%WHERE%' OR upper(snippet) LIKE '%ORDER BY%'
+        """
+    ).fetchall()
+    if not rows:
+        return findings
+
+    # Cache de indices por tabela: {tabela.upper(): set(colunas indexadas)}.
+    indices_cache: dict[str, set[str]] = {}
+    for tbl, chave in conn.execute(
+        "SELECT upper(tabela), upper(chave) FROM indices"
+    ).fetchall():
+        if not tbl:
+            continue
+        cols_in_chave = set(_PERF006_COLUMN_RE.findall(chave or ""))
+        # findall retorna list[tuple[prefix, suffix]] — concatena de volta.
+        col_names = {f"{p}_{s}" for p, s in cols_in_chave}
+        indices_cache.setdefault(tbl, set()).update(col_names)
+
+    if not indices_cache:
+        return findings  # Sem indices ingeridos — nada a comparar.
+
+    seen: set[tuple[str, int, str, str]] = set()  # dedup
+    for arquivo, funcao, linha, snippet in rows:
+        snippet_up = (snippet or "").upper()
+        # Coleta colunas em WHERE + ORDER BY.
+        clauses: list[str] = []
+        for m in _PERF006_WHERE_RE.finditer(snippet_up):
+            clauses.append(m.group(1))
+        for m in _PERF006_ORDERBY_RE.finditer(snippet_up):
+            clauses.append(m.group(1))
+        if not clauses:
+            continue
+        clause_text = " ".join(clauses)
+        cols_found = _PERF006_COLUMN_RE.findall(clause_text)
+        for prefix, suffix in cols_found:
+            full = f"{prefix}_{suffix}"
+            if full in _PERF006_PSEUDO_COLS:
+                continue
+            if suffix == "FILIAL":  # *_FILIAL — sempre primeiro do composto
+                continue
+            tabela = prefix  # A1 → SA1 estilo? Nao — `A1` eh prefixo, tabela real
+            # eh "SA1" / "SC5". Mas indices.tabela usa "SA1" estilo. Tentativas:
+            # buscar em indices_cache pelas tabelas cuja chave contem o prefix.
+            # Heuristica: pra cada indice cached, se algum nome de coluna comeca
+            # com `<prefix>_`, esse indice eh da tabela em questao.
+            matched_table = None
+            for tbl, cols in indices_cache.items():
+                if any(c.startswith(prefix + "_") for c in cols):
+                    matched_table = tbl
+                    if full in cols:
+                        # Coluna esta em ALGUM indice dessa tabela — OK.
+                        matched_table = "INDEXED"
+                        break
+            if matched_table is None or matched_table == "INDEXED":
+                continue  # Sem tabela mapeada (skip) ou esta indexada (OK)
+            # matched_table existe mas a coluna nao esta em nenhum indice.
+            key = (arquivo, int(linha or 0), matched_table, full)
+            if key in seen:
+                continue
+            seen.add(key)
+            findings.append(
+                {
+                    "arquivo": arquivo,
+                    "funcao": funcao or "",
+                    "linha": int(linha or 0),
+                    "regra_id": "PERF-006",
+                    "severidade": "info",
+                    "snippet": f"{matched_table}.{full} em WHERE/ORDER BY (sem indice SIX)",
+                    "sugestao_fix": (
+                        f"Coluna `{full}` aparece em WHERE/ORDER BY mas nao "
+                        f"esta em nenhum indice SIX da tabela {matched_table}. "
+                        "Opcoes: (1) adicionar indice custom no SIX (`X3_INDX_NOM` "
+                        f"ou `INDICE >= 21`); (2) refatorar query pra usar "
+                        "coluna ja indexada (ver `tables` pra lista de indices); "
+                        "(3) pre-filtrar via DbSeek antes do TCQuery."
+                    ),
+                }
+            )
+    return findings
+
+
 def _check_mod003_static_funcs_to_class(
     conn: sqlite3.Connection,
 ) -> list[dict[str, Any]]:
@@ -2079,6 +2208,7 @@ _CROSS_FILE_RULES: list[tuple[str, Any, bool]] = [
     ("SX-010", _check_sx010_pesquisar_sem_seek, True),
     ("SX-011", _check_sx011_x3_f3_consulta_inexistente, True),
     ("MOD-003", _check_mod003_static_funcs_to_class, False),
+    ("PERF-006", _check_perf006_where_orderby_no_index, True),
 ]
 
 

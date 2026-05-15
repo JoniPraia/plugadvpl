@@ -213,10 +213,11 @@
     "titulo": "Query com WHERE/ORDER BY em coluna sem índice (cross-file SIX)",
     "severidade": "info",
     "categoria": "performance",
-    "descricao": "WHERE/ORDER BY em coluna fora dos índices SIX da tabela força full table scan. Particularmente caro em tabelas grandes (SF1, SD2, SE1, SF3).",
-    "fix_guidance": "Adicione índice custom no SIX (`INDICE >= 21`) ou refatore query para usar coluna indexada. Use `/plugadvpl:tables <T>` para ver índices existentes.",
+    "descricao": "WHERE/ORDER BY em coluna fora dos índices SIX da tabela força full table scan. Particularmente caro em tabelas grandes (SF1, SD2, SE1, SF3). Detector cross-file: para cada `sql_embedado` row com WHERE ou ORDER BY no snippet, extrai colunas estilo `<TBL>_<NOME>` (ex: `A1_NOME`), filtra pseudo-colunas (`D_E_L_E_T_`, `R_E_C_N_O_`, etc) e `*_FILIAL` (sempre primeira chave), cruza com `indices.chave` da tabela. Skipa coluna sem prefixo claro de tabela ou tabela ausente em `indices` (provavelmente standard). 1 finding por (arquivo, linha, tabela, coluna). Requer `ingest-sx` rodado.",
+    "fix_guidance": "(1) Adicione índice custom no SIX (`INDICE >= 21`); (2) refatore query pra usar coluna já indexada — `/plugadvpl:tables <T>` mostra índices existentes; (3) pre-filtre via `DbSeek` na chave indexada antes do `TCQuery` se o filtro WHERE for restrição extra.",
     "detection_kind": "cross-file",
-    "status": "planned"
+    "status": "active",
+    "impl_function": "_check_perf006_where_orderby_no_index"
   },
   {
     "regra_id": "MOD-001",

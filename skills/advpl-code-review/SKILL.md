@@ -1,10 +1,10 @@
 ---
-description: 34 regras de code review ADVPL/TLPP implementadas (22 single-file via regex + 12 cross-file: 11 SX que requerem ingest-sx + MOD-003 só fontes). Mais 1 regra catalogada porém ainda não detectada (PERF-006). Use após gerar/editar fonte ADVPL, antes de marcar tarefa como concluída, ou quando o usuário pede "revise este código".
+description: 35 regras de code review ADVPL/TLPP implementadas — 100% do catálogo (22 single-file via regex + 13 cross-file: 12 que requerem ingest-sx + MOD-003 só fontes). Use após gerar/editar fonte ADVPL, antes de marcar tarefa como concluída, ou quando o usuário pede "revise este código".
 ---
 
 # advpl-code-review — As regras de code review do plugadvpl
 
-`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **34 são efetivamente detectadas** (v0.3.26+): **22 single-file** via regex/AST/lookup sobre o conteúdo do fonte, e **12 cross-file** — 11 `SX-*` que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes) + `MOD-003` que opera só em `fonte_chunks` (roda sem SX). A última (PERF-006, cross-file SQL+SIX) fica **catalogada como `status='planned'`** — sem detecção automática hoje, serve como checklist mental.
+`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP — **TODAS detectadas automaticamente** desde v0.3.27: **22 single-file** via regex/AST/lookup sobre o conteúdo do fonte, e **13 cross-file** — 12 que requerem `ingest-sx` (11 `SX-*` + `PERF-006` que cruza SQL embarcado com índices SIX) + `MOD-003` que opera só em `fonte_chunks` (roda sem SX). Catálogo 100% ativo, zero regras `planned`.
 
 > **Catálogo alinhado com a impl** desde v0.3.4. Antes (v0.3.0..v0.3.3), o
 > `lookups/lint_rules.json` tinha 25 itens em drift com `parsing/lint.py`
@@ -69,14 +69,11 @@ Disponíveis após `/plugadvpl:ingest-sx <pasta-csv>`. Acionadas com `--cross-fi
 | `SX-010`  | error    | Gatilho `X7_TIPO='P'` (Pesquisar) sem `X7_SEEK='S'` válido                      |
 | `SX-011`  | error    | `X3_F3` aponta pra alias SXB que não existe                                    |
 | `MOD-003` | info     | Grupos >=3 de Static Function com prefixo comum (>=3 chars) no mesmo arquivo — **novo em v0.3.26** (não requer ingest-sx) |
+| `PERF-006`| info     | WHERE/ORDER BY em coluna sem índice SIX da tabela (cross-file SQL+SIX) — **novo em v0.3.27**, fecha catálogo 100% |
 
-## A 1 regra catalogada mas não detectada (v0.3.26)
+## Catálogo 100% ativo (v0.3.27)
 
-Aparece em `lookups/lint_rules.json` com `status="planned"`. Use como checklist mental.
-
-| ID         | Sev      | Título do catálogo                                                            |
-|------------|----------|-------------------------------------------------------------------------------|
-| `PERF-006` | info     | Query sem hint de índice ou ORDER BY não casando índice                       |
+Todas as 35 regras catalogadas em `lookups/lint_rules.json` têm `status="active"` + `impl_function` apontando pra função real em `parsing/lint.py`. Não há mais regras `planned`. O guard `test_lint_catalog_consistency.py` valida o pareamento em todo CI.
 
 ## Severidades — política de bloqueio
 
@@ -456,11 +453,9 @@ Decisão: **remover** do SX3 + script de delete, OU implementar uso pendente.
 - [ ] `ConOut` substituído por `FwLogMsg` em código novo (`MOD-001`).
 - [ ] Sem declaração `Public` (`MOD-002`).
 
-### Info / Checklist mental (apenas regras `planned` — sem detector automático)
+### Catálogo 100% automatizado (v0.3.27+)
 
-O único item abaixo NÃO tem detector — só checklist humano. Os outros (PII, hardcoded creds, shadowing, restritas, RecCount, legacy cadastros, Protheus.doc, `Private` vs `Local`, grupos→classes) são automatizados em v0.3.26+ — `lint`/`lint --cross-file` pega.
-
-- [ ] WHERE/ORDER BY em coluna que está em índice SIX (`PERF-006`) — `tables <T>` mostra índices.
+Todas as 35 regras têm detector. Rode `lint <arq>` (single-file) ou `lint --cross-file` (cross-file: SX + MOD-003 + PERF-006) — não precisa mais de checklist mental para nenhum item do catálogo.
 
 ## Anti-padrões gerais
 

@@ -617,6 +617,64 @@ class TestSxStatusCommand:
 
 
 class TestLintCrossFile:
+    def test_lint_cross_file_perf006_where_orderby_no_index(
+        self,
+        sx_project: Path,
+        sx_csv_dir: Path,
+        runner: CliRunner,
+    ) -> None:
+        """v0.3.27 — PERF-006 (info): WHERE/ORDER BY em coluna que NAO esta
+        em nenhum indice SIX da tabela. Force full table scan.
+
+        Fixture sx_synthetic/six.csv tem SA1 indexada por A1_COD e A1_NREDUZ.
+        Adicionamos fonte com BeginSql usando A1_NOME (NAO indexado) em WHERE
+        — deve disparar PERF-006. WHERE em A1_COD nao deve disparar.
+        """
+        # Reusa sx_csv_dir + adiciona fonte com SQL pra testar.
+        src = sx_project
+        bad_fonte = src / "QrySemIdx.prw"
+        bad_fonte.write_bytes(
+            b'#include "totvs.ch"\n'
+            b'/*/{Protheus.doc} ZQry/*/\n'
+            b'User Function ZQry()\n'
+            b'    BeginSql Alias "QRY"\n'
+            b'        SELECT A1_COD, A1_NOME FROM %table:SA1% SA1\n'
+            b'         WHERE SA1.A1_NOME = %Exp:cNome%\n'
+            b'           AND SA1.%notDel%\n'
+            b'    EndSql\n'
+            b'Return\n'
+        )
+        good_fonte = src / "QryComIdx.prw"
+        good_fonte.write_bytes(
+            b'#include "totvs.ch"\n'
+            b'/*/{Protheus.doc} ZQryOk/*/\n'
+            b'User Function ZQryOk()\n'
+            b'    BeginSql Alias "QRY2"\n'
+            b'        SELECT A1_COD FROM %table:SA1% SA1\n'
+            b'         WHERE SA1.A1_COD = %Exp:cCod%\n'
+            b'           AND SA1.%notDel%\n'
+            b'    EndSql\n'
+            b'Return\n'
+        )
+        runner.invoke(app, ["--root", str(src), "init"])
+        runner.invoke(app, ["--root", str(src), "ingest"])
+        runner.invoke(app, ["--root", str(src), "ingest-sx", str(sx_csv_dir)])
+
+        result = runner.invoke(
+            app, ["--root", str(src), "--format", "json", "lint", "--cross-file"]
+        )
+        assert result.exit_code == 0, result.stderr
+        payload = json.loads(result.stdout)
+        perf = [r for r in payload["rows"] if r["regra_id"] == "PERF-006"]
+        # Esperado: pelo menos 1 finding pra A1_NOME (fonte ruim), 0 pra A1_COD.
+        # Snippets dos findings devem ter "A1_NOME", e arquivos só com QrySemIdx.
+        assert any("A1_NOME" in r.get("snippet", "") for r in perf), (
+            f"PERF-006 deveria disparar pra A1_NOME (nao indexado). perf={perf}"
+        )
+        assert not any("QryComIdx" in r["arquivo"] for r in perf), (
+            f"QryComIdx usa A1_COD (indexado), nao deve disparar. perf={perf}"
+        )
+
     def test_lint_cross_file_mod003_groups_static_functions_by_prefix(
         self, tmp_path: Path, runner: CliRunner
     ) -> None:
