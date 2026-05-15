@@ -242,13 +242,14 @@
   },
   {
     "regra_id": "MOD-003",
-    "titulo": "Funções com prefixo comum candidatas a virar classe",
+    "titulo": "Grupo de Static Function com prefixo comum no mesmo arquivo",
     "severidade": "info",
     "categoria": "modernization",
-    "descricao": "Conjuntos de Static Function com mesmo prefixo (`_AppCalc`, `_AppFmt`, `_AppGet`) e operando sobre os mesmos dados são candidatos a refatoração para `Class ... Method`. OOP melhora encapsulamento e testabilidade.",
-    "fix_guidance": "Identifique funções com prefixo comum + dados compartilhados. Refatore para `Class TApp` com `Data` (dados) + `Method` (operações). Em TLPP, use `class` com modificadores `public/private/protected`.",
+    "descricao": "Conjuntos de >=3 Static Function com prefixo comum (>=3 chars) no mesmo arquivo são candidatos a refatoração para `Class ... Method`. Static Function compartilha state file-level — geralmente coexiste com Static var no topo do fonte. Detector roda como cross-file: agrupa `fonte_chunks` (tipo_simbolo='static_function') por arquivo + prefixo (testa lengths 6→3, escolhe o maior que ainda agrupa >=3). Suprime grupos cujo prefixo já foi capturado por um mais específico (ex: `_AppCalc` emitido suprime `_App` redundante). 1 finding por grupo, na linha da primeira função do grupo.",
+    "fix_guidance": "Refatore o grupo para `Class T<Nome>` com `Data` (state que era Static var) + `Method` (operações que eram Static Functions). Em TLPP, use `class` com modificadores `public`/`private`/`protected`. OOP melhora encapsulamento, facilita testabilidade isolada (instâncias) e elimina dependência implícita de state Static. Ver skill `[[advpl-refactoring]]` padrão 4.",
     "detection_kind": "cross-file",
-    "status": "planned"
+    "status": "active",
+    "impl_function": "_check_mod003_static_funcs_to_class"
   },
   {
     "regra_id": "MOD-004",

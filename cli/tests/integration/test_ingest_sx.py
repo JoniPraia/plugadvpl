@@ -617,6 +617,53 @@ class TestSxStatusCommand:
 
 
 class TestLintCrossFile:
+    def test_lint_cross_file_mod003_groups_static_functions_by_prefix(
+        self, tmp_path: Path, runner: CliRunner
+    ) -> None:
+        """v0.3.26 — MOD-003 (info): grupos de Static Function com mesmo
+        prefixo no mesmo arquivo sao candidatos a virar Class. Threshold: 3+
+        functions com prefixo comum (>=3 chars) no mesmo arquivo dispara 1
+        finding por grupo."""
+        src = tmp_path / "src"
+        src.mkdir()
+        # 4 Static Function com prefixo `_AppCalc*` no mesmo arquivo → MOD-003.
+        (src / "AppHelper.prw").write_bytes(
+            b'#include "totvs.ch"\n'
+            b'Static Function _AppCalcSum(a, b)\n'
+            b'    Return a + b\n'
+            b'Static Function _AppCalcAvg(a, b)\n'
+            b'    Return (a + b) / 2\n'
+            b'Static Function _AppCalcMax(a, b)\n'
+            b'    Return Max(a, b)\n'
+            b'Static Function _AppCalcMin(a, b)\n'
+            b'    Return Min(a, b)\n'
+            b'User Function ZAppEntry()\n'
+            b'    Return _AppCalcSum(1, 2)\n'
+        )
+        # Arquivo com so 2 Statics mesmo prefixo — NAO atinge threshold.
+        (src / "BelowThreshold.prw").write_bytes(
+            b'#include "totvs.ch"\n'
+            b'Static Function _XyzA()\n'
+            b'    Return Nil\n'
+            b'Static Function _XyzB()\n'
+            b'    Return Nil\n'
+        )
+        runner.invoke(app, ["--root", str(src), "init"])
+        runner.invoke(app, ["--root", str(src), "ingest"])
+
+        result = runner.invoke(
+            app, ["--root", str(src), "--format", "json", "lint", "--cross-file"]
+        )
+        assert result.exit_code == 0, result.stderr
+        payload = json.loads(result.stdout)
+        mod003 = [r for r in payload["rows"] if r["regra_id"] == "MOD-003"]
+        assert len(mod003) == 1, (
+            f"Esperado 1 finding MOD-003 (grupo _AppCalc com 4 fns); "
+            f"recebido {len(mod003)}: {mod003}"
+        )
+        # Arquivo do achado bate com AppHelper, NAO BelowThreshold.
+        assert "AppHelper" in mod003[0]["arquivo"]
+
     def test_lint_cross_file_detects_sx_rules(
         self, indexed_with_sx: Path, runner: CliRunner
     ) -> None:

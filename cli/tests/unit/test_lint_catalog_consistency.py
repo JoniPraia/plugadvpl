@@ -174,10 +174,16 @@ def test_all_check_functions_registered_in_orchestrator(impl: dict) -> None:
     for rid, data in impl.items():
         fn = data["fn"]
         # Single-file: aparece em lint_source() como `findings.extend(_check_xxx(...))`
-        # Cross-file SX-*: aparece em _CROSS_FILE_RULES tuple list
+        # Cross-file: aparece em _CROSS_FILE_RULES tuple list. Suporta tanto o
+        # formato antigo `(id, fn),` quanto o novo `(id, fn, requires_sx),` (v0.3.26).
         single_file_pattern = f"findings.extend({fn}("
-        cross_file_pattern = f"{fn}),"
-        if single_file_pattern not in text and cross_file_pattern not in text:
+        cross_file_pattern_old = f"{fn}),"
+        cross_file_pattern_new = f"{fn},"
+        if (
+            single_file_pattern not in text
+            and cross_file_pattern_old not in text
+            and cross_file_pattern_new not in text
+        ):
             not_registered.append(
                 f"{rid}: função {fn} existe mas NÃO está registrada em "
                 f"lint_source() nem em _CROSS_FILE_RULES — adicione "

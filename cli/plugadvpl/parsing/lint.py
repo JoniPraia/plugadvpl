@@ -1984,18 +1984,101 @@ def _check_sx011_x3_f3_consulta_inexistente(conn: sqlite3.Connection) -> list[di
 # --- Orchestrator cross-file --------------------------------------------------
 
 
-_CROSS_FILE_RULES: list[tuple[str, Any]] = [
-    ("SX-001", _check_sx001_x3_valid_unknown_func),
-    ("SX-002", _check_sx002_x7_destino_inexistente),
-    ("SX-003", _check_sx003_mv_param_unused_in_fontes),
-    ("SX-004", _check_sx004_pergunta_unused_in_fontes),
-    ("SX-005", _check_sx005_campo_usado_zero_refs),
-    ("SX-006", _check_sx006_perf_sql_in_x3_valid),
-    ("SX-007", _check_sx007_restricted_func_in_x3_valid),
-    ("SX-008", _check_sx008_xfilial_in_modo_c),
-    ("SX-009", _check_sx009_obrigat_with_empty_init),
-    ("SX-010", _check_sx010_pesquisar_sem_seek),
-    ("SX-011", _check_sx011_x3_f3_consulta_inexistente),
+def _check_mod003_static_funcs_to_class(
+    conn: sqlite3.Connection,
+) -> list[dict[str, Any]]:
+    """MOD-003 (info): grupos de Static Function com prefixo comum em mesmo arquivo.
+
+    Heuristica:
+      - Grupo = >= 3 Static Functions cujo nome compartilha prefixo de >= 3 chars
+        no mesmo arquivo.
+      - Prefixo derivado dos primeiros 3-6 chars (testa 6→3 e pega o maior
+        que ainda agrupa >=3 fns).
+      - Static = scope file-level, indica que dados/state SAO compartilhados
+        no fonte (Static Function geralmente coexiste com Static var no topo).
+
+    Emite 1 finding por grupo, na linha da PRIMEIRA funcao do grupo.
+    """
+    findings: list[dict[str, Any]] = []
+    rows = conn.execute(
+        """
+        SELECT arquivo, funcao, linha_inicio
+        FROM fonte_chunks
+        WHERE tipo_simbolo = 'static_function'
+        ORDER BY arquivo, linha_inicio
+        """
+    ).fetchall()
+    if not rows:
+        return findings
+
+    # Agrupa por arquivo.
+    by_file: dict[str, list[tuple[str, int]]] = {}
+    for arquivo, funcao, linha in rows:
+        by_file.setdefault(arquivo, []).append((funcao, int(linha or 1)))
+
+    for arquivo, fns in by_file.items():
+        if len(fns) < 3:
+            continue
+        # Pra cada candidato de prefix len (6 → 3), agrupa e ve se algum
+        # grupo bate threshold. Parar no primeiro tamanho que produz grupo
+        # >=3 (preferencia por prefixo mais longo = mais especifico).
+        emitted_prefixes: set[str] = set()
+        for prefix_len in (6, 5, 4, 3):
+            groups: dict[str, list[tuple[str, int]]] = {}
+            for nome, linha in fns:
+                if len(nome) < prefix_len:
+                    continue
+                key = nome[:prefix_len].lower()
+                groups.setdefault(key, []).append((nome, linha))
+            for prefix, group_fns in groups.items():
+                if len(group_fns) < 3:
+                    continue
+                # Evita re-emitir grupo que ja foi capturado por prefix mais longo.
+                # `any(p.startswith(prefix))`: algum prefix ja emitido eh MAIS
+                # ESPECIFICO que o atual (i.e., o atual eh prefixo dele) → skip.
+                if any(p.startswith(prefix) for p in emitted_prefixes):
+                    continue
+                emitted_prefixes.add(prefix)
+                # Primeira funcao do grupo (linha mais baixa).
+                first_nome, first_linha = min(group_fns, key=lambda x: x[1])
+                fn_names = ", ".join(sorted(n for n, _ in group_fns))
+                findings.append(
+                    {
+                        "arquivo": arquivo,
+                        "funcao": first_nome,
+                        "linha": first_linha,
+                        "regra_id": "MOD-003",
+                        "severidade": "info",
+                        "snippet": f"{len(group_fns)} Static Functions com prefixo `{prefix}*`",
+                        "sugestao_fix": (
+                            f"Grupo de {len(group_fns)} Static Functions com prefixo "
+                            f"`{prefix}*` no mesmo fonte ({fn_names}) sao candidatos a "
+                            "refatorar pra `Class ... Method`. OOP melhora encapsulamento, "
+                            "facilita testabilidade e elimina dependencia de state Static "
+                            "compartilhado. Em TLPP use `class` com modificadores "
+                            "`public`/`private`/`protected`."
+                        ),
+                    }
+                )
+    return findings
+
+
+# Tupla: (regra_id, check_fn, requires_sx).
+# requires_sx=True → so roda quando dicionario SX foi ingerido.
+# requires_sx=False → roda sempre (ex: MOD-003 usa so fonte_chunks).
+_CROSS_FILE_RULES: list[tuple[str, Any, bool]] = [
+    ("SX-001", _check_sx001_x3_valid_unknown_func, True),
+    ("SX-002", _check_sx002_x7_destino_inexistente, True),
+    ("SX-003", _check_sx003_mv_param_unused_in_fontes, True),
+    ("SX-004", _check_sx004_pergunta_unused_in_fontes, True),
+    ("SX-005", _check_sx005_campo_usado_zero_refs, True),
+    ("SX-006", _check_sx006_perf_sql_in_x3_valid, True),
+    ("SX-007", _check_sx007_restricted_func_in_x3_valid, True),
+    ("SX-008", _check_sx008_xfilial_in_modo_c, True),
+    ("SX-009", _check_sx009_obrigat_with_empty_init, True),
+    ("SX-010", _check_sx010_pesquisar_sem_seek, True),
+    ("SX-011", _check_sx011_x3_f3_consulta_inexistente, True),
+    ("MOD-003", _check_mod003_static_funcs_to_class, False),
 ]
 
 
@@ -2004,21 +2087,23 @@ def lint_cross_file(
     *,
     rules: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Aplica as 11 regras cross-file (SX-001..SX-011). Retorna lista ordenada.
+    """Aplica regras cross-file. Retorna lista ordenada.
 
-    Pré-requisito: migration 002 aplicada e dicionário SX ingerido (``ingest-sx``).
-    Se as tabelas SX não existirem, retorna lista vazia silenciosamente (não é erro).
+    v0.3.26: regras com `requires_sx=True` (SX-001..SX-011) skipam quando
+    migration 002 nao foi aplicada / `ingest-sx` nao rodou. Regras
+    `requires_sx=False` (MOD-003+) rodam sempre, usam so `fonte_chunks`.
 
     Args:
         conn: conexão SQLite.
-        rules: filtro opcional (lista de regra_ids). ``None`` = todas as 11.
+        rules: filtro opcional (lista de regra_ids). ``None`` = todas.
     """
-    if not _sx_present(conn):
-        return []
+    sx_available = _sx_present(conn)
     findings: list[dict[str, Any]] = []
     selected = set(rules) if rules else None
-    for regra_id, check_fn in _CROSS_FILE_RULES:
+    for regra_id, check_fn, requires_sx in _CROSS_FILE_RULES:
         if selected is not None and regra_id not in selected:
+            continue
+        if requires_sx and not sx_available:
             continue
         try:
             findings.extend(check_fn(conn))

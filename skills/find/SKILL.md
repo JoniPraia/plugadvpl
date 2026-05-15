@@ -26,7 +26,7 @@ A query funciona em 3 modos automaticos:
 ## Execucao
 
 ```bash
-uvx plugadvpl@0.3.25 --format md find $termo
+uvx plugadvpl@0.3.26 --format md find $termo
 ```
 
 > **Para agente IA:** prefira `--format md`. Default `table` trunca colunas (`signature` larga vira `ti...`). Flag eh global, vem **antes** do subcomando.

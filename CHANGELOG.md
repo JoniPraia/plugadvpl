@@ -4,6 +4,65 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.26] - 2026-05-15
+
+### MOD-003 implementado — primeira regra cross-file que NÃO requer SX. Sobra apenas PERF-006 (a mais complexa) pra fechar 100% do catálogo.
+
+### Added
+- **MOD-003 (info, cross-file) — grupos de Static Function por prefixo**.
+  Detector roda no orchestrator cross-file mas opera só sobre `fonte_chunks`
+  (não exige `ingest-sx`). Heurística:
+  - Agrupa Static Functions por **arquivo + prefixo**.
+  - Testa lengths de prefixo de **6 → 3 chars**, escolhe o maior que ainda
+    forma grupo de **>=3 funções**.
+  - Suprime grupos cujo prefixo já foi capturado por um mais específico
+    (ex: emitir `_AppCalc` evita re-emitir `_App` redundante).
+  - 1 finding por grupo, na linha da primeira função.
+  - Sugestão de fix orienta refatorar pra `Class T<Nome>` com `Data` +
+    `Method` (TLPP `class` com `public/private/protected`).
+
+### Changed
+- **`_CROSS_FILE_RULES` agora é tupla de 3** `(regra_id, check_fn, requires_sx)`.
+  - `requires_sx=True` (SX-001..SX-011) pula quando dicionário SX não foi
+    ingerido (comportamento existente).
+  - `requires_sx=False` (MOD-003) sempre roda.
+  - `lint_cross_file()` checa o flag por regra em vez de gate global no início.
+- Catálogo `lookups/lint_rules.json`: MOD-003 `status="planned"` → `"active"`
+  + `impl_function="_check_mod003_static_funcs_to_class"` + título atualizado
+  + descrição expandida com heurística.
+- Skill `advpl-code-review`:
+  - Frontmatter: `33 → 34` regras, `2 → 1` planned. Cita "12 cross-file
+    (11 SX + MOD-003)" — explicita que MOD-003 não exige SX.
+  - Tabela cross-file: entrada nova MOD-003 com nota "não requer ingest-sx".
+  - Bloco "Info / Checklist mental": só PERF-006 sobra.
+- `tests/unit/test_lint_catalog_consistency.py::test_all_check_functions_registered_in_orchestrator`
+  ajustado pra suportar tanto formato tupla antigo `(id, fn),` quanto novo
+  `(id, fn, requires_sx),`.
+- 18 skills bumpadas `@0.3.25` → `@0.3.26`.
+
+### Tests
+- `tests/integration/test_ingest_sx.py::TestLintCrossFile::test_lint_cross_file_mod003_groups_static_functions_by_prefix`:
+  fixture com 4 Static Functions `_AppCalc*` no mesmo arquivo (esperado:
+  1 finding) + arquivo separado com só 2 fns mesmo prefixo (não atinge
+  threshold, sem finding). Garantia de threshold=3 + supressão de
+  prefixos curtos redundantes.
+- 368 testes verde (era 367).
+
+### Notes
+- **Catalog status**: 34 active + 1 planned + 5 cross-file SX adicional
+  já cobertos = 35 total. Sobra **apenas PERF-006** pra fechar o catálogo
+  100%. PERF-006 é a mais complexa (cross-file SQL parser + cruzamento
+  com índices SIX) — release dedicada (~4-6h) vai fechar v0.3.27.
+- **Por que MOD-003 não usa SX**: opera sobre `fonte_chunks.tipo_simbolo
+  = 'static_function'` que é populado pelo `ingest` regular. Decisão
+  arquitetural: o grupo `cross-file` engloba qualquer regra que precise
+  agregar dados ENTRE fontes, não só SX. PERF-006 também será cross-file
+  sem SX (precisa de `indices` table do SX dictionary, mas pode skipar
+  graciosamente quando ausente).
+- **Threshold de 3 escolhido**: 2 funções mesmo prefixo é coincidência
+  comum em ADVPL (helper privado + variante). 3+ indica padrão deliberado.
+  Configurável no futuro via `--mod003-threshold N` se houver demanda.
+
 ## [0.3.25] - 2026-05-15
 
 ### BP-002b implementado — Private quando Local resolveria. Segunda das 4 lint planned originais (sobram MOD-003 + PERF-006). Detector com whitelist conservadora pra reduzir noise em código legacy ADVPL.

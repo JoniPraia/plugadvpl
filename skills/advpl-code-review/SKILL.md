@@ -1,10 +1,10 @@
 ---
-description: 33 regras de code review ADVPL/TLPP implementadas (22 single-file via regex + 11 cross-file SX que requerem ingest-sx). Mais 2 regras catalogadas porém ainda não detectadas. Use após gerar/editar fonte ADVPL, antes de marcar tarefa como concluída, ou quando o usuário pede "revise este código".
+description: 34 regras de code review ADVPL/TLPP implementadas (22 single-file via regex + 12 cross-file: 11 SX que requerem ingest-sx + MOD-003 só fontes). Mais 1 regra catalogada porém ainda não detectada (PERF-006). Use após gerar/editar fonte ADVPL, antes de marcar tarefa como concluída, ou quando o usuário pede "revise este código".
 ---
 
 # advpl-code-review — As regras de code review do plugadvpl
 
-`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **33 são efetivamente detectadas** (v0.3.25+): **22 single-file** via regex/AST/lookup sobre o conteúdo do fonte, e **11 cross-file `SX-*`** que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes). As outras 2 ficam **catalogadas como `status='planned'`** — sem detecção automática hoje, mas servem como roadmap + checklist mental.
+`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **34 são efetivamente detectadas** (v0.3.26+): **22 single-file** via regex/AST/lookup sobre o conteúdo do fonte, e **12 cross-file** — 11 `SX-*` que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes) + `MOD-003` que opera só em `fonte_chunks` (roda sem SX). A última (PERF-006, cross-file SQL+SIX) fica **catalogada como `status='planned'`** — sem detecção automática hoje, serve como checklist mental.
 
 > **Catálogo alinhado com a impl** desde v0.3.4. Antes (v0.3.0..v0.3.3), o
 > `lookups/lint_rules.json` tinha 25 itens em drift com `parsing/lint.py`
@@ -68,15 +68,15 @@ Disponíveis após `/plugadvpl:ingest-sx <pasta-csv>`. Acionadas com `--cross-fi
 | `SX-009`  | warning  | Campo obrigatório (`X3_OBRIGAT='X'`) com `X3_INIT` vazio/zero                  |
 | `SX-010`  | error    | Gatilho `X7_TIPO='P'` (Pesquisar) sem `X7_SEEK='S'` válido                      |
 | `SX-011`  | error    | `X3_F3` aponta pra alias SXB que não existe                                    |
+| `MOD-003` | info     | Grupos >=3 de Static Function com prefixo comum (>=3 chars) no mesmo arquivo — **novo em v0.3.26** (não requer ingest-sx) |
 
-## As 2 regras catalogadas mas não detectadas (v0.3.25)
+## A 1 regra catalogada mas não detectada (v0.3.26)
 
-Aparecem em `lookups/lint_rules.json` com `status="planned"`. Use como checklist mental.
+Aparece em `lookups/lint_rules.json` com `status="planned"`. Use como checklist mental.
 
 | ID         | Sev      | Título do catálogo                                                            |
 |------------|----------|-------------------------------------------------------------------------------|
 | `PERF-006` | info     | Query sem hint de índice ou ORDER BY não casando índice                       |
-| `MOD-003`  | info     | Grupos de funções com prefixo comum candidatas a classe                       |
 
 ## Severidades — política de bloqueio
 
@@ -458,9 +458,8 @@ Decisão: **remover** do SX3 + script de delete, OU implementar uso pendente.
 
 ### Info / Checklist mental (apenas regras `planned` — sem detector automático)
 
-Os 2 itens abaixo NÃO têm detector — só checklist humano. Os outros (PII, hardcoded creds, shadowing, restritas, RecCount, legacy cadastros, Protheus.doc, `Private` vs `Local`) são automatizados em v0.3.25+ — `lint <arq>` pega.
+O único item abaixo NÃO tem detector — só checklist humano. Os outros (PII, hardcoded creds, shadowing, restritas, RecCount, legacy cadastros, Protheus.doc, `Private` vs `Local`, grupos→classes) são automatizados em v0.3.26+ — `lint`/`lint --cross-file` pega.
 
-- [ ] Static Functions com prefixo comum + dados compartilhados → considerar `Class` (`MOD-003`).
 - [ ] WHERE/ORDER BY em coluna que está em índice SIX (`PERF-006`) — `tables <T>` mostra índices.
 
 ## Anti-padrões gerais
