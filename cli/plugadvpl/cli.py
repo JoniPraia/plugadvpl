@@ -254,7 +254,15 @@ def version() -> None:
 
 _CLAUDE_FRAGMENT_BEGIN = "<!-- BEGIN plugadvpl -->"
 _CLAUDE_FRAGMENT_END = "<!-- END plugadvpl -->"
-_CLAUDE_FRAGMENT_BODY = """## Plugadvpl — índice ADVPL local (LEIA ANTES de qualquer Read em .prw/.tlpp)
+# v0.3.23 (#1 do QA round 3): marker de versão dentro do fragment.
+# `_write_claude_md_fragment` substitui `__VERSION__` por `__version__` real
+# na hora de gravar; `_check_fragment_staleness` (em status) le este marker
+# pra detectar fragments gerados por versoes antigas e avisar o usuario.
+_CLAUDE_FRAGMENT_VERSION_MARKER_RE = re.compile(
+    r"<!--\s*plugadvpl-fragment-version:\s*([\d.+-]\S*)\s*-->"
+)
+_CLAUDE_FRAGMENT_BODY = """<!-- plugadvpl-fragment-version: __VERSION__ -->
+## Plugadvpl — índice ADVPL local (LEIA ANTES de qualquer Read em .prw/.tlpp)
 
 Este projeto possui um índice SQLite em `.plugadvpl/index.db` com metadados extraídos
 de TODOS os fontes ADVPL/TLPP do projeto: funções, tabelas referenciadas (read/write/reclock),
@@ -368,13 +376,53 @@ def init(ctx: typer.Context) -> None:
         typer.echo("OK  .plugadvpl/ adicionado ao .gitignore")
 
 
-def _write_claude_md_fragment(root: Path) -> None:
-    """Escreve/atualiza idempotentemente a região ``BEGIN/END plugadvpl`` em CLAUDE.md."""
+def _check_fragment_staleness(root: Path) -> str | None:
+    """Retorna mensagem descritiva se o fragment CLAUDE.md está desatualizado.
+
+    v0.3.23 (#1 do QA round 3). Lê CLAUDE.md, localiza a região BEGIN/END
+    plugadvpl, extrai o marker `<!-- plugadvpl-fragment-version: X.Y.Z -->`,
+    e compara com `__version__`.
+
+    Retornos:
+      - ``None``: fragment atualizado OU CLAUDE.md sem fragment (caso fresh
+        sem init ainda — não polui status).
+      - ``"foi gerado por v X.Y.Z"``: marker presente mas != runtime.
+      - ``"é de versão pré-v0.3.23 (sem versionamento)"``: marker ausente.
+    """
     claude_md = root / "CLAUDE.md"
+    if not claude_md.exists():
+        return None
+    try:
+        content = claude_md.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    if _CLAUDE_FRAGMENT_BEGIN not in content or _CLAUDE_FRAGMENT_END not in content:
+        return None  # sem fragment — usuário não rodou init aqui ainda.
+    # Janela do fragment.
+    start = content.index(_CLAUDE_FRAGMENT_BEGIN)
+    end = content.index(_CLAUDE_FRAGMENT_END) + len(_CLAUDE_FRAGMENT_END)
+    fragment = content[start:end]
+    m = _CLAUDE_FRAGMENT_VERSION_MARKER_RE.search(fragment)
+    if m is None:
+        return "é de versão pré-v0.3.23 (sem marker de versionamento)"
+    fragment_version = m.group(1)
+    if fragment_version != __version__:
+        return f"foi gerado por plugadvpl {fragment_version}"
+    return None
+
+
+def _write_claude_md_fragment(root: Path) -> None:
+    """Escreve/atualiza idempotentemente a região ``BEGIN/END plugadvpl`` em CLAUDE.md.
+
+    v0.3.23: substitui `__VERSION__` no body por `__version__` real do binario
+    pra que o `status` consiga detectar fragment desatualizado depois.
+    """
+    claude_md = root / "CLAUDE.md"
+    body_with_version = _CLAUDE_FRAGMENT_BODY.replace("__VERSION__", __version__)
     fragment = (
         _CLAUDE_FRAGMENT_BEGIN
         + "\n"
-        + _CLAUDE_FRAGMENT_BODY
+        + body_with_version
         + _CLAUDE_FRAGMENT_END
         + "\n"
     )
@@ -605,6 +653,21 @@ def status(
                 f"\n⚠ Índice criado com plugadvpl {stored}, binário atual é {runtime}.\n"
                 f"  Rode 'plugadvpl ingest --incremental' para atualizar o índice "
                 f"com regras/parsers da versão nova.",
+                fg=typer.colors.YELLOW,
+                err=True,
+            )
+
+        # v0.3.23 (#1 do QA round 3): aviso quando o fragment do CLAUDE.md ficou
+        # pra trás do binário (gerado por init de versão antiga). Consulta o
+        # arquivo, extrai o marker `<!-- plugadvpl-fragment-version: X.Y.Z -->`,
+        # e compara com __version__. Marker ausente também avisa (fragments
+        # pre-v0.3.23 não tinham versionamento).
+        fragment_state = _check_fragment_staleness(root)
+        if fragment_state is not None:
+            typer.secho(
+                f"\n⚠ Fragment do CLAUDE.md {fragment_state}, binário atual é {__version__}.\n"
+                f"  Rode 'plugadvpl init' para regenerar o fragment com a versão atual\n"
+                f"  (sobrescreve só a região BEGIN/END plugadvpl; resto do CLAUDE.md preservado).",
                 fg=typer.colors.YELLOW,
                 err=True,
             )

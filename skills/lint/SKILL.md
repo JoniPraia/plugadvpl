@@ -23,7 +23,7 @@ Roda lint plugadvpl em um arquivo ADVPL/TLPP, aplicando o catalogo de regras con
 ## Execucao
 
 ```bash
-uvx plugadvpl@0.3.22 --format md lint $ARGUMENTS
+uvx plugadvpl@0.3.23 --format md lint $ARGUMENTS
 ```
 
 > **Para agente IA:** prefira `--format md` (ou `--format json` se for parsear achados). Default `table` trunca a coluna `sugestao_fix` em terminais estreitos. Flag eh global, vem **antes** do subcomando.

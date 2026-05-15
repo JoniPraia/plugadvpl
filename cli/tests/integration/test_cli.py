@@ -7,6 +7,7 @@ diretório temporário com 3 fontes ADVPL sintéticos. Cada teste cobre
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from pathlib import Path
 
@@ -372,6 +373,54 @@ class TestStatus:
         assert result.exit_code == 0, result.stderr
         payload = json.loads(result.stdout)
         assert payload["rows"][0]["runtime_version"] == __version__
+
+    def test_status_warns_when_claude_md_fragment_is_stale(
+        self, indexed_project: Path, runner: CliRunner
+    ) -> None:
+        """v0.3.23 — Bug #1 do QA round 3: usuario com projeto init'd numa
+        versao antiga (ex: v0.3.0) tem fragment do CLAUDE.md desatualizado
+        (cita `--fts/--literal/--identifier` em vez de `-m fts|literal|identifier`).
+        Status agora detecta marker de versao no fragment e avisa quando
+        nao bate com runtime_version, orientando re-rodar `init`."""
+        # Simula fragment de versao antiga: re-grava CLAUDE.md com marker velho.
+        claude_md = indexed_project / "CLAUDE.md"
+        content = claude_md.read_text(encoding="utf-8")
+        # Substitui o marker pra versao antiga.
+        content = re.sub(
+            r"<!-- plugadvpl-fragment-version: [^>]+ -->",
+            "<!-- plugadvpl-fragment-version: 0.0.1-old -->",
+            content,
+        )
+        claude_md.write_text(content, encoding="utf-8")
+
+        result = runner.invoke(app, ["--root", str(indexed_project), "status"])
+        assert result.exit_code == 0
+        assert "fragment" in result.stderr.lower()
+        assert "0.0.1-old" in result.stderr or "init" in result.stderr.lower()
+
+    def test_status_no_fragment_warning_when_marker_matches(
+        self, indexed_project: Path, runner: CliRunner
+    ) -> None:
+        """Marker fresh do init recente — nao avisa."""
+        result = runner.invoke(app, ["--root", str(indexed_project), "status"])
+        assert result.exit_code == 0
+        assert "fragment" not in result.stderr.lower()
+
+    def test_status_warns_when_claude_md_has_no_fragment_marker(
+        self, indexed_project: Path, runner: CliRunner
+    ) -> None:
+        """Fragment pre-v0.3.23 nao tem marker. Status deve avisar tambem."""
+        claude_md = indexed_project / "CLAUDE.md"
+        content = claude_md.read_text(encoding="utf-8")
+        # Remove marker simulando fragment antigo (sem versionamento).
+        content = re.sub(
+            r"<!-- plugadvpl-fragment-version: [^>]+ -->\n?", "", content,
+        )
+        claude_md.write_text(content, encoding="utf-8")
+
+        result = runner.invoke(app, ["--root", str(indexed_project), "status"])
+        assert result.exit_code == 0
+        assert "fragment" in result.stderr.lower()
 
     def test_status_warns_when_binary_diverges_from_index(
         self, indexed_project: Path, runner: CliRunner

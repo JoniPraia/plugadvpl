@@ -4,6 +4,57 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.23] - 2026-05-15
+
+### Fragment versioning + V3 anonymization — fecha o **único** item ainda pendente do `gaps/PLUGADVPL_QA_REPORT_V3.md` (#1 do round 1, sobreviveu até round 3 porque exigia mecanismo de detecção de stale fragment). Com este release, **todos os 35 achados dos 3 rounds de QA estão endereçados**.
+
+### Added
+- **#1 — Fragment do CLAUDE.md tem marker de versionamento + warning em `status`**.
+  Comportamento novo:
+  - Toda execução de `init` injeta `<!-- plugadvpl-fragment-version: X.Y.Z -->`
+    como primeira linha do bloco BEGIN/END plugadvpl, onde `X.Y.Z` é o
+    `__version__` do binário no momento da injeção.
+  - `status` lê CLAUDE.md, extrai o marker, compara com `runtime_version`.
+    Quando difere (ou está ausente em fragments pré-v0.3.23), emite warning
+    amarelo em stderr: `⚠ Fragment do CLAUDE.md foi gerado por plugadvpl X.Y.Z,
+    binário atual é A.B.C. Rode 'plugadvpl init' para regenerar...`
+  - `init` já era idempotente (sobrescreve a região BEGIN/END preservando
+    o resto do CLAUDE.md) — só precisava do marker pra detecção funcionar.
+- Helper novo `_check_fragment_staleness(root) → str | None` em `cli.py`.
+  Retorna `None` se atualizado ou se CLAUDE.md sem fragment (caso fresh
+  pre-init não polui status); mensagem descritiva caso contrário.
+- Regex `_CLAUDE_FRAGMENT_VERSION_MARKER_RE` extrai o valor do marker.
+
+### Changed
+- `_CLAUDE_FRAGMENT_BODY` ganhou linha `<!-- plugadvpl-fragment-version: __VERSION__ -->`
+  no topo. `_write_claude_md_fragment` substitui `__VERSION__` por
+  `__version__` real na hora de gravar.
+- `gaps/PLUGADVPL_QA_REPORT copy.md` (committed acidentalmente em v0.3.22)
+  foi anonimizado (`MARFRIG`/`Marfrig` → `CLIENTE_X`/`cliente real`,
+  `D:\PrjProtheus\TESTE` → `D:\Projetos`) e renomeado pra
+  `gaps/PLUGADVPL_QA_REPORT_V3.md` — consistente com nomenclatura do
+  V1 e V2.
+
+### Tests
+- 3 testes novos em `TestStatus`:
+  - `test_status_warns_when_claude_md_fragment_is_stale` — fragment com
+    marker `0.0.1-old` deve disparar warning citando esse valor + `init`.
+  - `test_status_no_fragment_warning_when_marker_matches` — fragment fresh
+    do `init` recente não polui stderr.
+  - `test_status_warns_when_claude_md_has_no_fragment_marker` — fragment
+    pré-v0.3.23 sem marker deve disparar warning genérico.
+- 350 testes verde (era 347).
+
+### Notes
+- **Ciclo QA fechado**: 3 rounds de QA externo + 1 round automatizado (subagent),
+  35 achados totais, **35 endereçados** ao longo de 10 releases (v0.3.14-v0.3.23).
+  Backlog QA zerado. Próxima direção natural: pivot pra v0.4.0 Universo 3 ou
+  fechar últimas 4 lint planned (BP-007/BP-002b/MOD-003/PERF-006).
+- **Para usuários existentes**: o warning vai disparar na primeira `plugadvpl status`
+  pós-upgrade (porque marker estará ausente). Solução em 1 linha:
+  `plugadvpl init` regenera o fragment sobrescrevendo só a região BEGIN/END
+  plugadvpl — qualquer conteúdo manual no CLAUDE.md é preservado.
+
 ## [0.3.22] - 2026-05-15
 
 ### Closeout pack — fecha 9 dos 11 itens baixos restantes do `gaps/PLUGADVPL_QA_REPORT_V2.md`. Backlog QA round 2 efetivamente zerado (sobram 2 polish maiores explicitamente deferidos). Categoria SEC mais completa, gatilho com BFS bidirecional, sx-status com schema estavel.

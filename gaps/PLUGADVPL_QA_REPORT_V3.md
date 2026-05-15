@@ -3,7 +3,7 @@
 **Versão original do relatório:** plugadvpl `0.3.14` (2026-05-14)
 **Versão re-testada (1º ciclo):** plugadvpl `0.3.20` (2026-05-15)
 **Versão re-testada (2º ciclo):** plugadvpl **`0.3.21`** (2026-05-15)
-**Projeto-base:** `D:\PrjProtheus\TESTE\MARFRIG` (1.992 fontes ADVPL/TLPP indexados)
+**Projeto-base:** `D:\Projetos\CLIENTE_X` (1.992 fontes ADVPL/TLPP indexados)
 **Dicionário SX:** ingerido (`tabelas=11.264`, `campos=187.633`, `gatilhos=18.051`, `parametros=18.435`)
 
 ---
@@ -80,7 +80,7 @@ A linha 30 do `CLAUDE.md` do projeto continua dizendo `(modos `--fts`/`--literal
 
 ## Metodologia
 
-Exercício de QA exploratório com **5 campos sortidos** e **7 fontes de tipos/módulos diferentes**, executando os comandos do plugin contra dados reais do cliente Marfrig e cruzando com leitura manual dos `.prw` para identificar divergências.
+Exercício de QA exploratório com **5 campos sortidos** e **7 fontes de tipos/módulos diferentes**, executando os comandos do plugin contra dados reais do cliente cliente real e cruzando com leitura manual dos `.prw` para identificar divergências.
 
 ### Amostra de campos (variedade de prefixo, tipo e ocorrência)
 
@@ -90,7 +90,7 @@ Exercício de QA exploratório com **5 campos sortidos** e **7 fontes de tipos/m
 | `B1_DESC` | SB1 | Estoque | C, longa | Descrição usada em muitas regras de gatilho |
 | `D2_QUANT` | SD2 | Faturamento | N | Numérico de detalhe NF |
 | `E1_VENCTO` | SE1 | Financeiro | D | Data |
-| `ZEG_CODCLA` | ZEG | Customizado Marfrig | C(6) | Custom, nome único, baixa ocorrência |
+| `ZEG_CODCLA` | ZEG | Customizado cliente real | C(6) | Custom, nome único, baixa ocorrência |
 
 ### Amostra de fontes (tipos diferentes)
 
@@ -102,7 +102,7 @@ Exercício de QA exploratório com **5 campos sortidos** e **7 fontes de tipos/m
 | `IncPedExp.prw` | User Function / ExecAuto Caller | 422 LOC, chama `MsExecAuto` |
 | `mat10.PRW` | TReport (impressão) | Standard Protheus, 3.309 LOC |
 | `ANCTB102GR.prw` | Ponto de Entrada (PE) | 33 LOC, assinatura PARAMIXB, nome canônico |
-| `MGFCOM14.prw` | MVC + PE + ExecAuto + RPC + Dialog | 4.286 LOC, customização Marfrig pesada |
+| `MGFCOM14.prw` | MVC + PE + ExecAuto + RPC + Dialog | 4.286 LOC, customização cliente real pesada |
 
 ---
 
@@ -295,7 +295,7 @@ Possivelmente relacionado às discrepâncias de contagem entre `ingest summary` 
 
 **Severidade:** média
 **Evidência:**
-- `MGFCOM14.prw` → `pontos_entrada=["XMC14Bloqu","XMC14Libe","XMC14Rej","xC14BLot","xC14LLot","xC14RLot","xMC14Atu","xMC14CCAP","xMC14CTit","xMC14Ref"]` — detectados pelo prefixo X custom da Marfrig.
+- `MGFCOM14.prw` → `pontos_entrada=["XMC14Bloqu","XMC14Libe","XMC14Rej","xC14BLot","xC14LLot","xC14RLot","xMC14Atu","xMC14CCAP","xMC14CTit","xMC14Ref"]` — detectados pelo prefixo X custom da cliente real.
 - `ANCTB102GR.prw` → `pontos_entrada=[]` — PE canônico Protheus não detectado.
 
 Critério atual privilegia padrão custom do cliente e ignora padrão da plataforma. Ver também #6.
@@ -332,7 +332,7 @@ São chamadas legítimas (a rotina chama a si mesma via FwLoadModel/FWExecView),
 ### #13 — `ingest-sx` parece sobrescrever `project_root` no DB *(bug funcional)*
 
 **Severidade:** média (já contornável)
-**Evidência (sessão anterior):** após rodar `plugadvpl ingest-sx D:\PrjProtheus\TESTE\MARFRIG\CSV`, o campo `project_root` no `status` mudou de `D:\PrjProtheus\TESTE\MARFRIG` para `D:\PrjProtheus\TESTE\MARFRIG\CSV` (que é o `sx_csv_dir`). Os DBs físicos permaneceram no lugar certo (raiz do projeto). Um `plugadvpl ingest --incremental` posterior reescreveu `project_root` corretamente.
+**Evidência (sessão anterior):** após rodar `plugadvpl ingest-sx D:\Projetos\CLIENTE_X\CSV`, o campo `project_root` no `status` mudou de `D:\Projetos\CLIENTE_X` para `D:\Projetos\CLIENTE_X\CSV` (que é o `sx_csv_dir`). Os DBs físicos permaneceram no lugar certo (raiz do projeto). Um `plugadvpl ingest --incremental` posterior reescreveu `project_root` corretamente.
 
 **Hipótese:** `ingest-sx` está escrevendo no slot errado da tabela `meta` (sobrescrevendo `project_root` em vez de gravar só `sx_csv_dir`).
 
