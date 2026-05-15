@@ -189,9 +189,14 @@ _BP007_WINDOW_LINES = 30  # quantas linhas antes da funcao olhar
 # SEC-002: User Function sem prefixo de cliente/PE pattern.
 # Padrão Protheus PE: ^[A-Z]{2,4}\d{2,4}[A-Z_]*$ (com pelo menos 2 letras finais opcionais)
 _PE_NAME_RE = re.compile(r"^[A-Z]{2,4}\d{2,4}[A-Z_]*$")
-# Prefixos típicos de cliente. Note: matching feito case-insensitive sobre nome.
+# Prefixos típicos de cliente custom. v0.3.28 (Audit V4 #3 ALTA): removidos
+# `FAT|FIN|COM|EST|CTB|FIS|PCP|MNT` (eram modulos Protheus, casavam palavras
+# PT-BR comuns como FATURA/COMPRA/FINALIZA → falso negativo massivo) +
+# `U_` (dead code: parser extrai nome SEM o U_) + `MT[A-Z]/MA\d` (sao padroes
+# de PE oficial TOTVS, ja cobertos por _PE_NAME_RE). Sobram so prefixos
+# que sao genuinamente "iniciais de empresa" e improvaveis em palavras PT-BR.
 _CLIENT_PREFIX_RE = re.compile(
-    r"^(MGF|MZF|ZZF|U_|ZF|CLI|XX|MT[A-Z]|MA\d|FAT|FIN|COM|EST|CTB|FIS|PCP|MNT)",
+    r"^(MGF|MZF|ZZF|ZF|XX|XYZ|CLI)",
     re.IGNORECASE,
 )
 
@@ -620,8 +625,6 @@ def _check_bp007_no_protheus_doc(
     nas N=30 linhas antes da declaracao. Match loose (so o opening) — nao
     exigimos nome do header bater com o nome da funcao porque equipes
     fazem copy-paste; a presenca do bloco ja indica intenção de documentar.
-
-    Skipa `kind="mvc_hook"` (anonimos, nao sao funcoes reais).
     """
     findings: list[dict[str, Any]] = []
     funcoes = parsed.get("funcoes", []) or []
@@ -630,8 +633,6 @@ def _check_bp007_no_protheus_doc(
     lines = content.splitlines()
 
     for f in funcoes:
-        if f.get("kind") in {"mvc_hook"}:
-            continue
         nome = f.get("nome", "") or ""
         if not nome:
             continue
@@ -1577,7 +1578,7 @@ _INIT_RETURNS_EMPTY_RE = re.compile(
         | \bSpace\s*\(\s*\d+\s*\)       # Space(N)
         | \bCToD\s*\(\s*['"]\s*['"]\s*\) # CToD("")
         | \bNil\b
-        | \b\.F\.\b                     # bool false
+        | (?<![A-Za-z0-9_])\.F\.(?![A-Za-z0-9_])  # bool false (v0.3.28: \b\.F\.\b nunca casava — `.` é non-word)
         | \b0\s*$                       # apenas zero
     """,
     re.IGNORECASE | re.VERBOSE,
@@ -1914,7 +1915,7 @@ def _check_sx009_obrigat_with_empty_init(conn: sqlite3.Connection) -> list[dict[
                     "severidade": "warning",
                     "snippet": init[:200],
                     "sugestao_fix": (
-                        f"Campo {tabela}.{campo} é obrigatório mas X3_RELACAO inicializa "
+                        f"Campo {tabela}.{campo} é obrigatório mas X3_INIT inicializa "
                         "com vazio/zero — usuário sempre vai precisar digitar. Considere "
                         "default real ou tornar opcional."
                     ),
@@ -2252,9 +2253,18 @@ def persist_cross_file_findings(
     """Grava findings cross-file na tabela ``lint_findings`` (DELETE + INSERT por regra_id).
 
     Retorna ``count`` de rows inseridas. Idempotente: deleta findings cross-file
-    anteriores antes de inserir os novos (compara por ``regra_id LIKE 'SX-%'``).
+    anteriores antes de inserir os novos.
+
+    v0.3.28 (#1 Audit V4 CRITICO): deriva lista de regra_ids do _CROSS_FILE_RULES
+    em vez de hardcode `LIKE 'SX-%'`. Antes, MOD-003 e PERF-006 (cross-file
+    desde v0.3.26/27) acumulavam findings duplicados a cada execucao.
     """
-    conn.execute("DELETE FROM lint_findings WHERE regra_id LIKE 'SX-%'")
+    cross_ids = [regra_id for regra_id, _, _ in _CROSS_FILE_RULES]
+    placeholders = ",".join("?" * len(cross_ids))
+    conn.execute(
+        f"DELETE FROM lint_findings WHERE regra_id IN ({placeholders})",
+        cross_ids,
+    )
     if not findings:
         conn.commit()
         return 0

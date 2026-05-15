@@ -283,6 +283,27 @@ class TestSec002UserFunctionNoPrefix:
         findings = lint_source(_parsed_for(src), src)
         assert "SEC-002" not in _ids(findings)
 
+    def test_positive_pt_br_word_FATURA(self) -> None:
+        """v0.3.28 — Audit V4 #3 (ALTA): nomes em PT-BR comuns que começam
+        com modulo Protheus (FAT/FIN/COM/EST/...) escapavam SEC-002 por
+        coincidir com o prefix list. Falso negativo massivo em projetos
+        escritos em portugues."""
+        src = "User Function FATURA()\nReturn\n"
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-002" in _ids(findings), (
+            "FATURA (palavra PT-BR) NAO eh prefixo de cliente — deve disparar SEC-002"
+        )
+
+    def test_positive_pt_br_word_COMPRA(self) -> None:
+        src = "User Function COMPRA()\nReturn\n"
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-002" in _ids(findings)
+
+    def test_positive_pt_br_word_FINALIZA(self) -> None:
+        src = "User Function FINALIZA()\nReturn\n"
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-002" in _ids(findings)
+
 
 # --- PERF-001: SELECT * ------------------------------------------------------
 
@@ -332,6 +353,27 @@ class TestPerf002NoNotDel:
         )
         findings = lint_source(_parsed_for(src), src)
         assert "PERF-002" not in _ids(findings)
+
+    def test_negative_long_sql_with_notdel_after_300_chars(self) -> None:
+        """v0.3.28 — Audit V4 #2 (ALTA): SQL com 2+ JOINs ultrapassa 300 chars,
+        e %notDel% pode aparecer alem da janela truncada do snippet. Antes do
+        fix, _SQL_SNIPPET_MAX=300 fazia PERF-002 disparar falso positivo
+        massivo em queries MVC reais."""
+        # SQL >400 chars com %notDel% no fim — caso comum em MVC com JOIN
+        long_select = ", ".join(f"SA1.A1_COL{i:02d}" for i in range(40))
+        src = (
+            "User Function MGFP12()\n"
+            f"  TCQuery('SELECT {long_select} FROM SA1010 SA1 "
+            "INNER JOIN SC5010 SC5 ON SC5.C5_CLIENTE = SA1.A1_COD "
+            "WHERE SA1.%notDel% AND SC5.%notDel% AND %xfilial:SA1%')\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        # Antes do fix: PERF-002 disparava porque snippet truncado nao continha %notDel%.
+        assert "PERF-002" not in _ids(findings), (
+            f"SQL longo com %notDel% NAO deve disparar PERF-002. "
+            f"Findings: {[(f['regra_id'], f.get('snippet','')[:80]) for f in findings]}"
+        )
 
 
 # --- PERF-003: sem %xfilial% -------------------------------------------------

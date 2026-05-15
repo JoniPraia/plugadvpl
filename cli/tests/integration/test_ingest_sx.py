@@ -617,6 +617,41 @@ class TestSxStatusCommand:
 
 
 class TestLintCrossFile:
+    def test_lint_cross_file_sx009_detects_dot_F_dot_init(
+        self, sx_project: Path, tmp_path: Path, runner: CliRunner
+    ) -> None:
+        """v0.3.28 — Audit V4 #5 (MEDIA): SX-009 prometia detectar campo
+        obrigatorio com X3_INIT='.F.' mas regex `\\b\\.F\\.\\b` nunca casava
+        (`.` eh non-word, boundary impossivel). Drift silencioso entre
+        catalogo e impl. Fix: lookarounds em vez de \\b."""
+        csv_dir = tmp_path / "csv"
+        csv_dir.mkdir()
+        # SX3 com campo obrigatorio + X3_INIT = .F.
+        (csv_dir / "sx3.csv").write_text(
+            '"X3_ARQUIVO","X3_CAMPO","X3_TIPO","X3_TAMANHO","X3_DECIMAL",'
+            '"X3_TITULO","X3_DESCRIC","X3_VALID","X3_VLDUSER","X3_WHEN",'
+            '"X3_INIT","X3_OBRIGAT","D_E_L_E_T_"\n'
+            '"SA1","A1_XOBRIG","L",1,0,"Obr","","","","",".F.","x",""\n',
+            encoding="cp1252",
+        )
+        runner.invoke(app, ["--root", str(sx_project), "init"])
+        db = sx_project / ".plugadvpl" / "index.db"
+        ingest_sx(csv_dir, db)
+
+        result = runner.invoke(
+            app, ["--root", str(sx_project), "--format", "json", "lint", "--cross-file"]
+        )
+        assert result.exit_code == 0, result.stderr
+        payload = json.loads(result.stdout)
+        sx009 = [r for r in payload["rows"] if r["regra_id"] == "SX-009"]
+        assert any(r.get("funcao") == "A1_XOBRIG" for r in sx009), (
+            f"SX-009 deveria disparar pra A1_XOBRIG (obrigatorio + init=.F.). "
+            f"sx009={sx009}"
+        )
+        # Mensagem fix nao deve mais citar X3_RELACAO (#6 do audit V4)
+        assert all("X3_RELACAO" not in r.get("sugestao_fix", "") for r in sx009)
+        assert any("X3_INIT" in r.get("sugestao_fix", "") for r in sx009)
+
     def test_lint_cross_file_perf006_where_orderby_no_index(
         self,
         sx_project: Path,
@@ -673,6 +708,53 @@ class TestLintCrossFile:
         )
         assert not any("QryComIdx" in r["arquivo"] for r in perf), (
             f"QryComIdx usa A1_COD (indexado), nao deve disparar. perf={perf}"
+        )
+
+    def test_lint_cross_file_persist_does_not_accumulate_mod003(
+        self, tmp_path: Path, runner: CliRunner
+    ) -> None:
+        """v0.3.28 — Audit V4 #1 (CRITICO): persist_cross_file_findings
+        apagava so `regra_id LIKE 'SX-%'`. MOD-003 (v0.3.26) e PERF-006
+        (v0.3.27) acumulavam duplicados a cada execucao."""
+        src = tmp_path / "src"
+        src.mkdir()
+        # Fixture com grupo MOD-003 (4 _AppCalc*).
+        (src / "AppHelper.prw").write_bytes(
+            b'#include "totvs.ch"\n'
+            b'/*/{Protheus.doc} _AppCalcSum/*/\n'
+            b'Static Function _AppCalcSum(a, b)\n'
+            b'    Return a + b\n'
+            b'/*/{Protheus.doc} _AppCalcAvg/*/\n'
+            b'Static Function _AppCalcAvg(a, b)\n'
+            b'    Return (a + b) / 2\n'
+            b'/*/{Protheus.doc} _AppCalcMax/*/\n'
+            b'Static Function _AppCalcMax(a, b)\n'
+            b'    Return Max(a, b)\n'
+            b'/*/{Protheus.doc} _AppCalcMin/*/\n'
+            b'Static Function _AppCalcMin(a, b)\n'
+            b'    Return Min(a, b)\n'
+        )
+        runner.invoke(app, ["--root", str(src), "init"])
+        runner.invoke(app, ["--root", str(src), "ingest"])
+
+        # 1a execucao
+        runner.invoke(app, ["--root", str(src), "lint", "--cross-file"])
+        # 2a execucao — deve substituir, nao acumular
+        runner.invoke(app, ["--root", str(src), "lint", "--cross-file"])
+        # 3a execucao — pra confirmar
+        runner.invoke(app, ["--root", str(src), "lint", "--cross-file"])
+
+        db = src / ".plugadvpl" / "index.db"
+        conn = sqlite3.connect(str(db))
+        try:
+            n = conn.execute(
+                "SELECT COUNT(*) FROM lint_findings WHERE regra_id='MOD-003'"
+            ).fetchone()[0]
+        finally:
+            conn.close()
+        assert n == 1, (
+            f"MOD-003 deveria ter exatamente 1 finding apos 3 execucoes "
+            f"(persist deve substituir, nao acumular). Tem {n}."
         )
 
     def test_lint_cross_file_mod003_groups_static_functions_by_prefix(

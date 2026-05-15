@@ -4,6 +4,72 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.28] - 2026-05-15
+
+### Lint robustness pack — fecha 7 dos 15 achados de `gaps/PLUGADVPL_LINT_AUDIT_V4.md`. Foco em correctness técnica: persist cross-file, SQL truncation, regex frágeis. Sobram 8 médios/baixos no backlog (PERF-004 hungarian estrito, BP-001 RecLock variável, PERF-006 cross-table determinismo, etc).
+
+### Fixed
+- **#1 (CRÍTICO) — `persist_cross_file_findings` apagava só `LIKE 'SX-%'`**.
+  MOD-003 (v0.3.26) e PERF-006 (v0.3.27) acumulavam findings duplicados a
+  cada execução de `lint --cross-file`. Fix: deriva lista de regra_ids
+  diretamente de `_CROSS_FILE_RULES` e usa `DELETE WHERE regra_id IN (...)`.
+- **#2 (ALTA) — `_SQL_SNIPPET_MAX` bumpado 300 → 8000**. Antes, queries
+  MVC com 2+ JOINs ultrapassavam 300 chars e tinham `%notDel%`/`%xfilial%`
+  truncados pra fora do snippet → PERF-002/003/006 disparavam falso
+  positivo massivo em código real Protheus de faturamento/financeiro.
+  8000 cobre 99% de SQL ADVPL real; custo DB <1MB extra em projeto grande.
+- **#3 (ALTA) — `_CLIENT_PREFIX_RE` removeu prefixos PT-BR ambíguos**.
+  Antes incluía `FAT|FIN|COM|EST|CTB|FIS|PCP|MNT` (módulos Protheus, mas
+  casavam palavras PT-BR comuns como `FATURA`, `COMPRA`, `FINALIZA`,
+  `ESTOQUE`) → SEC-002 escapava o caso canônico (User Function PT-BR sem
+  prefix). Removidos também `U_` (dead code: parser extrai nome SEM `U_`)
+  e `MT[A-Z]/MA\\d` (já cobertos por `_PE_NAME_RE`). Sobram apenas iniciais
+  genuinamente "de empresa": `MGF|MZF|ZZF|ZF|XX|XYZ|CLI`.
+- **#5 (MÉDIA) — SX-009 `\\b\\.F\\.\\b` nunca casava**. `.` é non-word, então
+  `\\b` antes de `.` exige um word-char à esquerda — impossível em `init=.F.`
+  (`=` também é non-word). Drift catálogo×impl silencioso desde criação da
+  regra. Fix: trocou por lookarounds `(?<![A-Za-z0-9_])\\.F\\.(?![A-Za-z0-9_])`.
+- **#5 bonus — `inicializador` lia de `X3_RELACAO` em vez de `X3_INIT`**.
+  Bug de mapping no `parse_sx3` causava SX-009 ler o campo errado. X3_INIT
+  é o initializer canônico TOTVS (valor padrão); X3_RELACAO é autofill por
+  expressão. Fix: lê X3_INIT prioritariamente, fallback X3_RELACAO pra
+  compat com fixtures legadas.
+- **#6 (BAIXA) — Mensagem SX-009 citava `X3_RELACAO` em vez de `X3_INIT`**.
+  Texto do fix_guidance corrigido pra refletir o campo correto.
+- **#11 (BAIXA) — BP-007 skipava `kind="mvc_hook"` que não existe**. Parser
+  emite kinds `user_function/static_function/main_function/function/ws_method/method`
+  — nenhum `mvc_hook`. Branch removido (dead code + comentário enganoso).
+- **#15 (BAIXA) — BP-002 `fix_guidance` tinha frase de BP-006**. Última
+  frase falava "NUNCA misture funções de manutenção AdvPL básicas com
+  Framework dentro do mesmo bloco" — copy-paste do BP-006. Substituída
+  por dica MVC apropriada (`oModel:CommitData()` em vez de Begin/End
+  manual).
+
+### Tests
+- 6 testes RED→GREEN em `test_lint.py` + `test_ingest_sx.py`:
+  - `TestLintCrossFile::test_lint_cross_file_persist_does_not_accumulate_mod003` (#1)
+  - `TestPerf002NoNotDel::test_negative_long_sql_with_notdel_after_300_chars` (#2)
+  - `TestSec002UserFunctionNoPrefix::test_positive_pt_br_word_FATURA` (#3)
+  - `TestSec002UserFunctionNoPrefix::test_positive_pt_br_word_COMPRA` (#3)
+  - `TestSec002UserFunctionNoPrefix::test_positive_pt_br_word_FINALIZA` (#3)
+  - `TestLintCrossFile::test_lint_cross_file_sx009_detects_dot_F_dot_init` (#5+#6)
+- 375 testes verde (era 369).
+
+### Notes
+- **Backlog Audit V4**: dos 15 achados, 7 fechados nesta release. Continuam
+  pendentes (todos médios/baixos, sem urgência):
+  - #4 (PERF-004 dispara em `cnt`/`csv` — solução exigir `c[A-Z]\\w*` estrito)
+  - #7 (BP-001 perde RecLock com físico/variável — recall vs precision)
+  - #8 (PERF-006 cross-table match não-determinístico)
+  - #9 (SEC-005 não distingue função homônima local)
+  - #10 (PERF-006 sem fallback gracioso `indices` vazia)
+  - #12 (SEC-003 forma curta `\\b...\\b` ignora `cPwdHash` etc)
+  - #13 (BP-005 conta vírgula naive em default `{1,2}`)
+  - #14 (SX-005 carrega 50-250MB corpus em memória)
+- **Re-ingest recomendado**: `plugadvpl ingest --no-incremental` aplica fix
+  #2 (snippet 8000) em fontes já indexados. Sem isso, snippets antigos
+  continuam truncados a 300 e PERF-002/003/006 vão continuar com FP.
+
 ## [0.3.27] - 2026-05-15
 
 ### 🎉 Catálogo lint 100% ativo. Última regra `planned` (PERF-006) implementada — fecha o ciclo iniciado em v0.3.4 (catálogo × impl alignment) com **35/35 regras detectáveis automaticamente**.

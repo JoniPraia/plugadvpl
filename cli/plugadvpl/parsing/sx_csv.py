@@ -229,7 +229,14 @@ def parse_sx3(file_path: Path) -> list[dict[str, Any]]:
                 "titulo": row.get("X3_TITULO", "").strip(),
                 "descricao": row.get("X3_DESCRIC", "").strip(),
                 "validacao": row.get("X3_VALID", "").strip(),
-                "inicializador": row.get("X3_RELACAO", "").strip(),
+                # v0.3.28 (Audit V4 #5): X3_INIT eh o initializer canonico TOTVS
+                # (valor padrao do campo). X3_RELACAO eh outra coisa (autofill por
+                # expressao/relacao). Lemos X3_INIT prioritariamente, fallback pra
+                # X3_RELACAO so pra suportar dumps legados/fixtures antigas.
+                "inicializador": (
+                    row.get("X3_INIT", "").strip()
+                    or row.get("X3_RELACAO", "").strip()
+                ),
                 "obrigatorio": obrigatorio,
                 "custom": is_custom,
                 "f3": row.get("X3_F3", "").strip(),

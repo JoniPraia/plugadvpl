@@ -1074,7 +1074,13 @@ def extract_namespace(content: str) -> str:
     return _extract_namespace_from_stripped(strip_advpl(content))
 
 
-_SQL_SNIPPET_MAX = 300
+# v0.3.28 (Audit V4 #2 ALTA): bumpado de 300 → 8000 chars. Antes, queries
+# MVC com 2+ JOINs (>300 chars) tinham `%notDel%`/`%xfilial%` truncados pra
+# fora da janela do snippet → PERF-002/003/006 disparavam falso positivo
+# massivo em codigo legado de faturamento. 8000 cobre 99% de SQL ADVPL real
+# (queries de migracao podem ultrapassar mas sao raras). Custo DB: <1MB
+# extra em projeto grande.
+_SQL_SNIPPET_MAX = 8000
 
 
 def _infer_sql_operation(sql: str) -> str:

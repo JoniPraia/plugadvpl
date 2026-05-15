@@ -16,7 +16,7 @@
     "severidade": "critical",
     "categoria": "best-practice",
     "descricao": "Conta opens vs closes de `BEGIN TRANSACTION` por função; se opens > closes, reporta os opens extras. Sem `End Transaction`, em caso de exceção fica estado inconsistente (master sem detail, etc.); atomicidade quebrada.",
-    "fix_guidance": "Pareie `Begin Transaction` com `End Transaction`. Use `DisarmTransaction()` antes do `Break` em `Recover`. NUNCA misture funções de manutenção AdvPL básicas com Framework dentro do mesmo bloco.",
+    "fix_guidance": "Pareie `Begin Transaction` com `End Transaction`. Use `DisarmTransaction()` antes do `Break` em `Recover` para evitar deadlock. Em fluxo MVC, prefira `oModel:CommitData()` (que já encapsula transação atomicamente) em vez de `Begin/End Transaction` manual.",
     "detection_kind": "regex",
     "status": "active",
     "impl_function": "_check_bp002_transaction_unbalanced"
