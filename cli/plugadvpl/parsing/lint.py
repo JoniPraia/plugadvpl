@@ -153,6 +153,17 @@ _SEC003_CPF_LITERAL_RE = re.compile(r"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b")
 # CNPJ formatado: 99.999.999/9999-99
 _SEC003_CNPJ_LITERAL_RE = re.compile(r"\b\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}\b")
 
+# BP-007 (v0.3.24): funcao sem header Protheus.doc.
+# Pattern oficial TOTVS: bloco abre com `/*/{Protheus.doc} <NomeFn>` e fecha
+# com `/*/`. Detector busca o opening nas N linhas ANTES da declaracao da
+# funcao — 30 linhas eh janela conservadora (header tipico tem 10-20 linhas).
+# Match loose pra evitar FP: presença do opening conta, nao exigimos que o
+# nome no header bata exatamente com a funcao (algumas equipes copiam-cola).
+_BP007_DOC_OPEN_RE = re.compile(
+    r"/\*/\s*\{\s*Protheus\.doc\s*\}", re.IGNORECASE,
+)
+_BP007_WINDOW_LINES = 30  # quantas linhas antes da funcao olhar
+
 # SEC-002: User Function sem prefixo de cliente/PE pattern.
 # Padrão Protheus PE: ^[A-Z]{2,4}\d{2,4}[A-Z_]*$ (com pelo menos 2 letras finais opcionais)
 _PE_NAME_RE = re.compile(r"^[A-Z]{2,4}\d{2,4}[A-Z_]*$")
@@ -512,6 +523,60 @@ def _check_bp006_mixed_reclock_rawapi(
                 "sugestao_fix": (
                     "Não misture RecLock (high-level) com DbRLock/dbAppend() raw na mesma função; "
                     "padronize em RecLock+MsUnlock."
+                ),
+            }
+        )
+    return findings
+
+
+def _check_bp007_no_protheus_doc(
+    arquivo: str, parsed: dict[str, Any], content: str
+) -> list[dict[str, Any]]:
+    """BP-007 (info): funcao sem header Protheus.doc nas linhas anteriores.
+
+    Pra cada User/Static/Main Function ou Method, busca `/*/{Protheus.doc}`
+    nas N=30 linhas antes da declaracao. Match loose (so o opening) — nao
+    exigimos nome do header bater com o nome da funcao porque equipes
+    fazem copy-paste; a presenca do bloco ja indica intenção de documentar.
+
+    Skipa `kind="mvc_hook"` (anonimos, nao sao funcoes reais).
+    """
+    findings: list[dict[str, Any]] = []
+    funcoes = parsed.get("funcoes", []) or []
+    if not funcoes:
+        return findings
+    lines = content.splitlines()
+
+    for f in funcoes:
+        if f.get("kind") in {"mvc_hook"}:
+            continue
+        nome = f.get("nome", "") or ""
+        if not nome:
+            continue
+        linha_inicio = int(f.get("linha_inicio", 0))
+        if linha_inicio <= 0:
+            continue
+        # Janela: [max(0, linha_inicio - WINDOW), linha_inicio - 1] (1-indexed → slice 0-indexed).
+        start = max(0, linha_inicio - 1 - _BP007_WINDOW_LINES)
+        end = linha_inicio - 1
+        if end <= start:
+            window = ""
+        else:
+            window = "\n".join(lines[start:end])
+        if _BP007_DOC_OPEN_RE.search(window):
+            continue
+        findings.append(
+            {
+                "arquivo": arquivo,
+                "funcao": nome.upper(),
+                "linha": linha_inicio,
+                "regra_id": "BP-007",
+                "severidade": "info",
+                "snippet": _snippet_at_line(content, linha_inicio),
+                "sugestao_fix": (
+                    f"Adicione header Protheus.doc antes de `{nome}`: "
+                    "`/*/{Protheus.doc} <NOME>` + `@type function` + `@author` + `@since` + "
+                    "`@param`/`@return` + `/*/`. Padrão TOTVS pra geracao automatica de docs."
                 ),
             }
         )
@@ -1390,6 +1455,7 @@ def lint_source(parsed: dict[str, Any], content: str) -> list[dict[str, Any]]:
     findings.extend(_check_bp004_pergunte_no_check(arquivo, parsed, content))
     findings.extend(_check_bp005_too_many_params(arquivo, parsed, content))
     findings.extend(_check_bp006_mixed_reclock_rawapi(arquivo, parsed, content))
+    findings.extend(_check_bp007_no_protheus_doc(arquivo, parsed, content))
     findings.extend(_check_bp008_shadowed_reserved(arquivo, parsed, content))
     findings.extend(_check_sec001_rpcsetenv_in_restful(arquivo, parsed, content))
     findings.extend(_check_sec002_user_function_no_prefix(arquivo, parsed, content))

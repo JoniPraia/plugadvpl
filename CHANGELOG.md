@@ -4,6 +4,63 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.24] - 2026-05-15
+
+### BP-007 implementado — falta header Protheus.doc. Primeira das 4 lint planned restantes do catálogo (sobram BP-002b, MOD-003, PERF-006). User pediu "fechar lint antes de pivotar pra Universo 3".
+
+### Added
+- **BP-007 (info) — função sem header Protheus.doc**. Detector busca o
+  opening `/*/{Protheus.doc}` (case-insensitive) nas **30 linhas anteriores**
+  à declaração de cada `User Function`/`Static Function`/`Main Function`/
+  `Method`. Match loose (presença do bloco já conta — não exigimos que o
+  nome no header bata exatamente com o da função, equipes copiam-cola).
+  Skipa MVC hooks (`kind="mvc_hook"` = anonymous, não são funções reais).
+- Helpers em `lint.py`:
+  - `_BP007_DOC_OPEN_RE` — regex pra `/*/{Protheus.doc}` flexível
+    (espaços/case opcionais).
+  - `_BP007_WINDOW_LINES = 30` — janela conservadora (header típico
+    tem 10-20 linhas).
+
+### Changed
+- Catálogo `lookups/lint_rules.json`: BP-007 `status="planned"` → `"active"`
+  + `impl_function="_check_bp007_no_protheus_doc"`. Descrição expandida
+  com detalhes do detector (window, match loose, skip de mvc_hook).
+- Skill `advpl-code-review`:
+  - Frontmatter: `31 → 32` regras, `20 → 21` single-file, `4 → 3` planned.
+  - Tabela "Single-file": entrada nova BP-007 (info, novo em v0.3.24).
+  - Bloco "Info / Checklist mental": BP-007 sai (agora detectado);
+    sobram só os 3 planned restantes (BP-002b, MOD-003, PERF-006).
+- 18 skills bumpadas `@0.3.23` → `@0.3.24`.
+
+### Tests
+- 8 testes em `TestBP007NoProtheusDoc` (4 positivos + 4 negativos):
+  - `test_positive_user_function_without_doc`
+  - `test_positive_static_function_without_doc`
+  - `test_positive_method_without_doc`
+  - `test_positive_multiple_undocumented_functions`
+  - `test_negative_protheus_doc_present` (header completo)
+  - `test_negative_doc_is_minimal_but_present` (so opening + closing)
+  - `test_negative_mvc_hook_skipped`
+  - `test_negative_doc_for_each_of_multiple_functions`
+- `test_clean_code_returns_empty` em `TestLintSourceIntegration`
+  ajustado pra incluir Protheus.doc minimal — preserva contrato
+  "clean code = zero findings" agora que BP-007 está ativa.
+- 358 testes verde (era 350).
+
+### Notes
+- **Catalog status**: 32 active + 3 planned + 5 cross-file (3 + 2 das
+  cross-file SX já cobrem) = 35 total. Falta apenas BP-002b/MOD-003/PERF-006
+  pra fechar 100%. PERF-006 é a mais complexa (cross-file, requer parser
+  SQL pra mapear coluna usada vs índice SIX).
+- **Severidade `info`**: BP-007 não bloqueia nem alerta — é checklist
+  pra cobertura de docs. Em projetos com >>milhões de findings legados,
+  use `--severity warning` ou `--severity error` pra filtrar.
+- **Match loose justificado**: docstring do detector explica decisão.
+  Match estrito (com nome da função) gerava FPs em equipes que
+  copiavam-colavam header de função similar e esqueciam de renomear.
+  A presença do bloco já indica intenção de documentar — o nome errado
+  é problema separado (eventual lint futuro).
+
 ## [0.3.23] - 2026-05-15
 
 ### Fragment versioning + V3 anonymization — fecha o **único** item ainda pendente do `gaps/PLUGADVPL_QA_REPORT_V3.md` (#1 do round 1, sobreviveu até round 3 porque exigia mecanismo de detecção de stale fragment). Com este release, **todos os 35 achados dos 3 rounds de QA estão endereçados**.

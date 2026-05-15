@@ -80,10 +80,11 @@
     "titulo": "Função sem header Protheus.doc",
     "severidade": "info",
     "categoria": "best-practice",
-    "descricao": "Funções (User Function, Static Function, Method) deveriam ter header Protheus.doc com `@type`, `@author`, `@since`, `@param`, `@return`. Falta de doc dificulta manutenção e impede geração automática de documentação.",
-    "fix_guidance": "Adicione bloco `/*/{Protheus.doc} <NOME>` ... `/*/` antes da função, com pelo menos `@type function`, `@author`, `@since`.",
+    "descricao": "Funções (User Function, Static Function, Main Function, Method) deveriam ter header Protheus.doc com `@type`, `@author`, `@since`, `@param`, `@return`. Falta de doc dificulta manutenção e impede geração automática de documentação. Detector busca o opening `/*/{Protheus.doc}` (case-insensitive) nas 30 linhas antes da declaração da função. Match loose: presença do bloco já conta — não exigimos que o nome no header bata exatamente com o da função (equipes copiam-cola). Skipa MVC hooks (anonymous, não são funções reais).",
+    "fix_guidance": "Adicione bloco `/*/{Protheus.doc} <NOME>` ... `/*/` antes da função, com pelo menos `@type function`, `@author`, `@since`. Bloco minimo (so opening + closing) ja satisfaz o detector — encoraja documentacao incremental.",
     "detection_kind": "regex",
-    "status": "planned"
+    "status": "active",
+    "impl_function": "_check_bp007_no_protheus_doc"
   },
   {
     "regra_id": "BP-008",

@@ -431,7 +431,12 @@ class TestLintSourceIntegration:
         assert "MOD-002" in ids
 
     def test_clean_code_returns_empty(self) -> None:
+        # v0.3.24: BP-007 ativa exige Protheus.doc — adicionado pra manter
+        # contrato "clean code = zero findings".
         src = (
+            "/*/{Protheus.doc} MGFC01\n"
+            "@type function\n"
+            "/*/\n"
             "User Function MGFC01(a, b)\n"
             "  Local cMsg := 'ok'\n"
             "  FwLogMsg('INFO', cMsg, 'svc', 'cat')\n"
@@ -1504,3 +1509,117 @@ class TestSEC003PIIInLogs:
         assert "SEC-003" in _ids(findings), (
             "cPassword (forma longa) ainda deve disparar SEC-003"
         )
+
+
+# --- BP-007: funcao sem header Protheus.doc ----------------------------------
+
+
+class TestBP007NoProtheusDoc:
+    """BP-007 (info): funcao sem cabecalho Protheus.doc nas linhas anteriores."""
+
+    def test_positive_user_function_without_doc(self) -> None:
+        """User Function sem nenhum doc-comment antes — sinaliza."""
+        src = (
+            "User Function XYZNoDoc()\n"
+            "    Return .T.\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        bp = [f for f in findings if f["regra_id"] == "BP-007"]
+        assert len(bp) == 1
+        assert bp[0]["severidade"] == "info"
+        assert bp[0]["funcao"].upper() == "XYZNODOC"
+
+    def test_positive_static_function_without_doc(self) -> None:
+        """Static Function tambem deve ter doc."""
+        src = (
+            "Static Function helper()\n"
+            "    Return Nil\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-007" in _ids(findings)
+
+    def test_positive_method_without_doc(self) -> None:
+        """Method tambem qualifica."""
+        src = (
+            "Method M1() Class A\n"
+            "    Return Nil\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-007" in _ids(findings)
+
+    def test_positive_multiple_undocumented_functions(self) -> None:
+        """3 funcoes sem doc = 3 findings."""
+        src = (
+            "User Function ZA()\n"
+            "    Return .T.\n"
+            "Static Function helper()\n"
+            "    Return Nil\n"
+            "User Function ZB()\n"
+            "    Return .T.\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        bp = [f for f in findings if f["regra_id"] == "BP-007"]
+        assert len(bp) == 3
+
+    # --- Negativos ---
+
+    def test_negative_protheus_doc_present(self) -> None:
+        """User Function com header Protheus.doc completo — nao sinaliza."""
+        src = (
+            "/*/{Protheus.doc} XYZGood\n"
+            "Faz alguma coisa importante.\n"
+            "@type function\n"
+            "@author Equipe ABC\n"
+            "@since 2026-05-15\n"
+            "@param cArg, character, descricao\n"
+            "@return logical, .T. se ok\n"
+            "/*/\n"
+            "User Function XYZGood(cArg)\n"
+            "    Return .T.\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-007" not in _ids(findings)
+
+    def test_negative_doc_is_minimal_but_present(self) -> None:
+        """Doc minimo (so opening + closing) ja conta."""
+        src = (
+            "/*/{Protheus.doc} XYZmin\n"
+            "/*/\n"
+            "User Function XYZmin()\n"
+            "    Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-007" not in _ids(findings)
+
+    def test_negative_mvc_hook_skipped(self) -> None:
+        """MVC hooks (bCommit/bTudoOk/bLineOk) NAO sao funcoes reais — skip."""
+        src = (
+            "/*/{Protheus.doc} XYZModel\n"
+            "/*/\n"
+            "Static Function ModelDef()\n"
+            "    Local oModel := MPFormModel():New('M')\n"
+            "    oModel:SetCommit({|oM| .T.}, .T.)\n"
+            "Return oModel\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        # Hook anonimo nao deve gerar BP-007 (so a Static Function que tem doc).
+        assert "BP-007" not in _ids(findings)
+
+    def test_negative_doc_for_each_of_multiple_functions(self) -> None:
+        """3 funcoes, todas com doc = 0 findings."""
+        src = (
+            "/*/{Protheus.doc} ZA\n"
+            "/*/\n"
+            "User Function ZA()\n"
+            "    Return .T.\n"
+            "/*/{Protheus.doc} helper\n"
+            "/*/\n"
+            "Static Function helper()\n"
+            "    Return Nil\n"
+            "/*/{Protheus.doc} ZB\n"
+            "/*/\n"
+            "User Function ZB()\n"
+            "    Return .T.\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-007" not in _ids(findings)

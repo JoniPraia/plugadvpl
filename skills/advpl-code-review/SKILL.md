@@ -1,10 +1,10 @@
 ---
-description: 31 regras de code review ADVPL/TLPP implementadas (20 single-file via regex + 11 cross-file SX que requerem ingest-sx). Mais 4 regras catalogadas porém ainda não detectadas. Use após gerar/editar fonte ADVPL, antes de marcar tarefa como concluída, ou quando o usuário pede "revise este código".
+description: 32 regras de code review ADVPL/TLPP implementadas (21 single-file via regex + 11 cross-file SX que requerem ingest-sx). Mais 3 regras catalogadas porém ainda não detectadas. Use após gerar/editar fonte ADVPL, antes de marcar tarefa como concluída, ou quando o usuário pede "revise este código".
 ---
 
 # advpl-code-review — As regras de code review do plugadvpl
 
-`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **31 são efetivamente detectadas** (v0.3.19+): **20 single-file** via regex/AST/lookup sobre o conteúdo do fonte, e **11 cross-file `SX-*`** que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes). As outras 4 ficam **catalogadas como `status='planned'`** — sem detecção automática hoje, mas servem como roadmap + checklist mental.
+`plugadvpl` cataloga **35 regras de code review** para ADVPL/TLPP. Destas, **32 são efetivamente detectadas** (v0.3.24+): **21 single-file** via regex/AST/lookup sobre o conteúdo do fonte, e **11 cross-file `SX-*`** que cruzam o dicionário SX com os fontes (requer `/plugadvpl:ingest-sx` rodado antes). As outras 3 ficam **catalogadas como `status='planned'`** — sem detecção automática hoje, mas servem como roadmap + checklist mental.
 
 > **Catálogo alinhado com a impl** desde v0.3.4. Antes (v0.3.0..v0.3.3), o
 > `lookups/lint_rules.json` tinha 25 itens em drift com `parsing/lint.py`
@@ -34,6 +34,7 @@ Rode `/plugadvpl:lint <arq>` para resultado de fato — esta skill é o **guia m
 | `BP-004`   | warning  | `Pergunte("GRUPO", .F.)` sem uso subsequente de `MV_PAR*`                      |
 | `BP-005`   | warning  | Função declarada com **mais de 6 parâmetros**                                  |
 | `BP-006`   | error    | Mistura `RecLock` + `dbAppend()`/`DbRLock` raw na mesma função                  |
+| `BP-007`   | info     | Função sem header `/*/{Protheus.doc}` nas 30 linhas anteriores — **novo em v0.3.24** |
 | `BP-008`   | critical | Shadowing de variável reservada framework (`cFilAnt`, `cEmpAnt`, `dDataBase`, `PARAMIXB`, `lMsErroAuto`, `INCLUI`, etc. — **20 reservadas** cobertas) — novo em v0.3.5, expandido em v0.3.10 |
 | `SEC-001`  | critical | `RpcSetEnv` dentro de classe que herda de `WSRESTFUL`                          |
 | `SEC-002`  | warning  | `User Function` sem prefixo cliente (2-3 letras) ou nome de PE oficial         |
@@ -67,14 +68,13 @@ Disponíveis após `/plugadvpl:ingest-sx <pasta-csv>`. Acionadas com `--cross-fi
 | `SX-010`  | error    | Gatilho `X7_TIPO='P'` (Pesquisar) sem `X7_SEEK='S'` válido                      |
 | `SX-011`  | error    | `X3_F3` aponta pra alias SXB que não existe                                    |
 
-## As 4 regras catalogadas mas não detectadas (v0.3.19)
+## As 3 regras catalogadas mas não detectadas (v0.3.24)
 
 Aparecem em `lookups/lint_rules.json` com `status="planned"`. Use como checklist mental.
 
 | ID         | Sev      | Título do catálogo                                                            |
 |------------|----------|-------------------------------------------------------------------------------|
 | `BP-002b`  | warning  | Variável declarada como `Private`/`Public` em vez de `Local`                  |
-| `BP-007`   | info     | Função sem header Protheus.doc                                                |
 | `PERF-006` | info     | Query sem hint de índice ou ORDER BY não casando índice                       |
 | `MOD-003`  | info     | Grupos de funções com prefixo comum candidatas a classe                       |
 
@@ -92,7 +92,7 @@ Aparecem em `lookups/lint_rules.json` com `status="planned"`. Use como checklist
 ### Single-file
 
 1. Termine de editar o fonte.
-2. `/plugadvpl:lint <arquivo>` — roda as 20 regras single-file.
+2. `/plugadvpl:lint <arquivo>` — roda as 21 regras single-file.
 3. Filtre por severidade pra triagem rápida: `/plugadvpl:lint <arq> --severity critical,error`.
 4. Pra cada `critical`/`error`: corrija **antes** de prosseguir.
 5. Pra `warning`: corrija; justifique se não der (comentar no PR).
@@ -458,9 +458,8 @@ Decisão: **remover** do SX3 + script de delete, OU implementar uso pendente.
 
 ### Info / Checklist mental (apenas regras `planned` — sem detector automático)
 
-Os 4 itens abaixo NÃO têm detector — só checklist humano. Os outros (PII, hardcoded creds, shadowing, restritas, RecCount, legacy cadastros) são automatizados em v0.3.19+ — `lint <arq>` pega.
+Os 3 itens abaixo NÃO têm detector — só checklist humano. Os outros (PII, hardcoded creds, shadowing, restritas, RecCount, legacy cadastros, Protheus.doc) são automatizados em v0.3.24+ — `lint <arq>` pega.
 
-- [ ] Header Protheus.doc em todas as funções (`BP-007`).
 - [ ] Sem `Private`/`Public` quando `Local` resolve (`BP-002b`).
 - [ ] Static Functions com prefixo comum + dados compartilhados → considerar `Class` (`MOD-003`).
 - [ ] WHERE/ORDER BY em coluna que está em índice SIX (`PERF-006`) — `tables <T>` mostra índices.
@@ -487,7 +486,7 @@ Os 4 itens abaixo NÃO têm detector — só checklist humano. Os outros (PII, h
 
 ## Comandos plugadvpl relacionados
 
-- `/plugadvpl:lint <arq>` — roda as 20 regras single-file no arquivo.
+- `/plugadvpl:lint <arq>` — roda as 21 regras single-file no arquivo.
 - `/plugadvpl:lint` (sem arg) — roda no projeto inteiro.
 - `/plugadvpl:lint --cross-file` — roda as 11 regras SX-001..SX-011 (requer `ingest-sx`).
 - `/plugadvpl:lint <arq> --severity critical,error` — filtro por severidade.
