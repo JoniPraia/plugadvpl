@@ -65,6 +65,30 @@ class TestWorkflowTrigger:
         triggers = extract_execution_triggers(src)
         assert "workflow" not in _kinds(triggers)
 
+    def test_two_twfprocess_distinct_callbacks(self) -> None:
+        """v0.4.3 (C1): 2 TWFProcess no mesmo arquivo nao devem misturar callbacks.
+
+        Antes (bug): scope_end fixo de 5000 chars capturava callback do segundo
+        TWFProcess e atribuia ao primeiro. Agora scope eh limitado pelo proximo
+        TWFProcess (ou EOF se nao houver).
+        """
+        src = (
+            'User Function W1()\n'
+            '   oWF1 := TWFProcess():New("P1", "D1")\n'
+            '   oWF1:bReturn := {|o| Cb1(o)}\n'
+            'Return\n'
+            'User Function W2()\n'
+            '   oWF2 := TWFProcess():New("P2", "D2")\n'
+            '   oWF2:bReturn := {|o| Cb2(o)}\n'
+            'Return\n'
+        )
+        triggers = extract_execution_triggers(src)
+        wf = [t for t in triggers if t["kind"] == "workflow" and t["metadata"].get("process_id")]
+        assert len(wf) == 2
+        by_pid = {t["metadata"]["process_id"]: t for t in wf}
+        assert by_pid["P1"]["metadata"]["return_callback"].lower() == "cb1"
+        assert by_pid["P2"]["metadata"]["return_callback"].lower() == "cb2"
+
 
 # --- Schedule ---------------------------------------------------------------
 
@@ -142,6 +166,27 @@ class TestJobStandaloneTrigger:
         assert meta["stop_flag"] == "/stop_nfe.flg"
         assert meta["no_license"] is True
 
+    def test_rpcsetenv_six_literal_args_extracts_modulo(self) -> None:
+        """v0.4.3 (C3): RpcSetEnv com 6 args literais consecutivos extrai modulo.
+
+        Antes (bug): regex `(?:[^)]*?['\"](\\w*)['\"])?` consumia args 3 e 4
+        sem alcancar o 5o. Agora usa split top-level pra pegar o 5o exato.
+        """
+        src = (
+            'Main Function J()\n'
+            '   RpcSetEnv("01","01","","","FAT","J")\n'
+            '   While !File("/stop_j.flg")\n'
+            '      Sleep(60000)\n'
+            '   EndDo\n'
+            'Return\n'
+        )
+        triggers = extract_execution_triggers(src)
+        jobs = [t for t in triggers if t["kind"] == "job_standalone"]
+        assert len(jobs) == 1
+        assert jobs[0]["metadata"]["empresa"] == "01"
+        assert jobs[0]["metadata"]["filial"] == "01"
+        assert jobs[0]["metadata"]["modulo"] == "FAT"
+
     def test_negative_main_function_without_rpcsetenv(self) -> None:
         """Main Function sem RpcSetEnv (entry point standalone) — NAO eh job."""
         src = (
@@ -199,6 +244,27 @@ class TestMailSendTrigger:
         triggers = extract_execution_triggers(src)
         mails = [t for t in triggers if t["kind"] == "mail_send"]
         assert any(m["metadata"]["variant"] == "UDC" for m in mails)
+
+    def test_positive_tmailmanager_solo_without_tmailmessage(self) -> None:
+        """v0.4.3 (I1): TMailManager + :Send sem TMailMessage (legacy padrao).
+
+        Antes: detector exigia TMailMessage; fontes legados (anteriores ao
+        TMailMessage) eram ignorados. Agora TMailManager + :Send no mesmo
+        scope tambem vira trigger.
+        """
+        src = (
+            'User Function ZLegacy()\n'
+            '   Local oSrv := TMailManager():New()\n'
+            '   oSrv:Init("", SuperGetMv("MV_RELSERV"), SuperGetMv("MV_RELACNT"), "", 0, 587)\n'
+            '   oSrv:SmtpConnect()\n'
+            '   oSrv:SendMail(cFrom, aTo, cSubject, cBody)\n'
+            '   oSrv:Disconnect()\n'
+            'Return\n'
+        )
+        triggers = extract_execution_triggers(src)
+        mails = [t for t in triggers if t["kind"] == "mail_send"]
+        assert len(mails) >= 1
+        assert mails[0]["metadata"]["variant"] == "TMailManager"
 
     def test_negative_mail_in_comment(self) -> None:
         """MailAuto em comentario nao dispara."""

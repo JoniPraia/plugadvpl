@@ -60,6 +60,7 @@ from plugadvpl.query import (
     execauto_calls_query,
     execution_triggers_query,
     find_any,
+    protheus_doc_homonyms,
     protheus_doc_show,
     protheus_docs_orphans,
     protheus_docs_query,
@@ -1305,9 +1306,27 @@ def docs(
     formatado em Markdown. Use ``--orphans`` pra ver funções sem header.
     """
     if show:
-        d = _with_ro_db(ctx, lambda c: protheus_doc_show(c, show))
-        if d is None:
+        # v0.4.3 (I2): com homônimos, --arquivo desambiguar; sem --arquivo,
+        # avisa em stderr e mostra o primeiro alfabeticamente.
+        homonyms = _with_ro_db(ctx, lambda c: protheus_doc_homonyms(c, show))
+        if not homonyms:
             typer.echo(f"Nenhum Protheus.doc encontrado pra função '{show}'.", err=True)
+            raise typer.Exit(code=1)
+        if len(homonyms) > 1 and not arquivo:
+            typer.echo(
+                f"Aviso: '{show}' tem doc em {len(homonyms)} fontes: "
+                f"{', '.join(homonyms)}. Mostrando '{homonyms[0]}'. "
+                f"Use --arquivo <nome> pra escolher.",
+                err=True,
+            )
+        d = _with_ro_db(
+            ctx, lambda c: protheus_doc_show(c, show, arquivo=arquivo)
+        )
+        if d is None:
+            typer.echo(
+                f"Nenhum Protheus.doc encontrado pra '{show}' em '{arquivo}'.",
+                err=True,
+            )
             raise typer.Exit(code=1)
         typer.echo(render_pdoc_markdown(d))
         return

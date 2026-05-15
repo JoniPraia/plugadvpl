@@ -1068,6 +1068,39 @@ class TestDocs:
         funcs = {r["funcao"] for r in rows}
         assert "MT460NEW" in funcs
 
+    def test_docs_show_homonym_warns_and_supports_arquivo(
+        self, tmp_path: Path, runner: CliRunner
+    ) -> None:
+        """v0.4.3 (I2): 2 fontes com mesma funcao -> --show avisa em stderr
+        e --arquivo desambiguar."""
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "FnA.prw").write_bytes(
+            b'/*/{Protheus.doc} HomFn\nDoc do A.\n@author Anna\n/*/\n'
+            b'User Function HomFn()\nReturn\n'
+        )
+        (src / "FnB.prw").write_bytes(
+            b'/*/{Protheus.doc} HomFn\nDoc do B.\n@author Beto\n/*/\n'
+            b'User Function HomFn()\nReturn\n'
+        )
+        runner.invoke(app, ["--root", str(src), "init"])
+        runner.invoke(app, ["--root", str(src), "ingest"])
+
+        # Sem --arquivo: aviso em stderr + mostra primeiro alfabeticamente
+        result = runner.invoke(
+            app, ["--root", str(src), "docs", "--show", "HomFn"]
+        )
+        assert result.exit_code == 0
+        assert "2 fontes" in result.stderr or "Aviso" in result.stderr
+        assert "Anna" in result.stdout  # FnA.prw vem antes alfabeticamente
+
+        # Com --arquivo FnB.prw: mostra o do Beto
+        result2 = runner.invoke(
+            app, ["--root", str(src), "docs", "--show", "HomFn", "--arquivo", "FnB.prw"]
+        )
+        assert result2.exit_code == 0
+        assert "Beto" in result2.stdout
+
     def test_docs_persisted_in_db(self, docs_project: Path) -> None:
         """Sanity: tabela protheus_docs existe e tem 2 rows."""
         db = docs_project / ".plugadvpl" / "index.db"

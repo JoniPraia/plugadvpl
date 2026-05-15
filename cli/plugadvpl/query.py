@@ -1132,18 +1132,43 @@ def protheus_docs_orphans(conn: sqlite3.Connection) -> list[dict[str, Any]]:
 
 
 def protheus_doc_show(
-    conn: sqlite3.Connection, funcao: str
+    conn: sqlite3.Connection,
+    funcao: str,
+    *,
+    arquivo: str | None = None,
 ) -> dict[str, Any] | None:
     """Retorna doc completo de uma função (modo `--show`).
 
-    Se há múltiplos docs (raro — função homônima em fontes diferentes),
-    retorna o primeiro. Match case-insensitive.
+    v0.4.3 (I2): aceita ``arquivo`` opcional pra desambiguar quando há
+    homônimos. Caller pode usar :func:`protheus_doc_homonyms` antes pra
+    detectar e listar opções.
     """
     sql = f"SELECT {_PDOC_COLUMNS} FROM protheus_docs WHERE funcao = ? COLLATE NOCASE"
-    row = conn.execute(sql, (funcao,)).fetchone()
+    params: list[Any] = [funcao]
+    if arquivo:
+        sql += " AND arquivo = ? COLLATE NOCASE"
+        params.append(arquivo)
+    sql += " ORDER BY arquivo, linha_bloco_inicio LIMIT 1"
+    row = conn.execute(sql, params).fetchone()
     if row is None:
         return None
     return _row_to_pdoc(row)
+
+
+def protheus_doc_homonyms(
+    conn: sqlite3.Connection, funcao: str
+) -> list[str]:
+    """v0.4.3 (I2): lista arquivos com Protheus.doc pra ``funcao``.
+
+    Usado por `docs --show` pra avisar quando há ambiguidade. Retorna lista
+    ordenada de basenames.
+    """
+    rows = conn.execute(
+        "SELECT DISTINCT arquivo FROM protheus_docs "
+        "WHERE funcao = ? COLLATE NOCASE ORDER BY arquivo",
+        (funcao,),
+    ).fetchall()
+    return [r[0] for r in rows]
 
 
 def render_pdoc_markdown(d: dict[str, Any]) -> str:

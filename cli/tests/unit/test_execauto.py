@@ -256,6 +256,24 @@ class TestCatalog:
         assert "SC5" in mata410["tables_primary"]
         assert "SC6" in mata410["tables_primary"]
 
+    def test_catalog_no_duplicate_routines(self) -> None:
+        """v0.4.3 (I5): nome de rotina deve ser unico no catalogo.
+
+        Permite o lookup determinístico (`_routines_index` faz dict[upper_name]).
+        Duplicata silenciosa faria a 2a entrada sobrescrever a 1a sem warning.
+        """
+        cat = load_execauto_catalog()
+        names = [r["routine"].upper() for r in cat["routines"]]
+        dups = [n for n in set(names) if names.count(n) > 1]
+        assert not dups, f"Rotinas duplicadas no catalogo: {dups}"
+
+    def test_catalog_has_v043_additions(self) -> None:
+        """v0.4.3 (I5): novas rotinas comuns adicionadas — 6 entradas extras."""
+        cat = load_execauto_catalog()
+        names = {r["routine"] for r in cat["routines"]}
+        for novo in ("MATA020", "MATA040", "MATA112", "FATA010", "FATA050"):
+            assert novo in names, f"Esperado {novo} no catalogo v0.4.3"
+
 
 # --- arg_count + linha + snippet ------------------------------------------
 

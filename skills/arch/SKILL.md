@@ -39,7 +39,7 @@ Em vez de carregar 2000 linhas de fonte, voce recebe o "esqueleto":
 ## Execucao
 
 ```bash
-uvx plugadvpl@0.4.2 --format md arch $arquivo
+uvx plugadvpl@0.4.3 --format md arch $arquivo
 ```
 
 > **Para agente IA:** sempre passe `--format md` (ou `--format json` se for parsear). O default `table` usa Rich e trunca colunas em terminais estreitos (`ar...`, `ti...`). A flag `--format` vem **antes** do subcomando — eh global no callback.

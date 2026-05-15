@@ -30,8 +30,11 @@ _PDOC_BLOCK_RE = re.compile(
     r"[ \t]*"  # SEM \s — id, se houver, fica na MESMA linha do opening
     r"(?P<id>[\w:]+)?"
     r"(?P<body>.*?)"
-    r"/\*/",
-    re.IGNORECASE | re.DOTALL,
+    # v0.4.3 (C2): fechamento ANCORADO a start-of-line. `/*/` em meio a comentário
+    # de @example não fecha bloco (padrão oficial TOTVS — fechamento fica sozinho
+    # na própria linha).
+    r"^[ \t]*/\*/[ \t]*$",
+    re.IGNORECASE | re.DOTALL | re.MULTILINE,
 )
 
 # Próxima decl de função/método após o fechamento.
@@ -95,15 +98,13 @@ def infer_module(arquivo: str, funcao: str | None) -> str | None:
         # 1. Exact match (rotina exata no catálogo).
         if funcao_upper in idx:
             return idx[funcao_upper]["module"]
-        # 2. Prefix match (4 primeiros chars). Determinístico: ordena por
-        # nome de rotina e pega o primeiro alfabético entre os matches.
+        # 2. Prefix match (4 primeiros chars). v0.4.3 (C5): só aceita se TODOS
+        # os matches do prefixo apontam pro MESMO módulo. Ambiguidade → None
+        # (não inventar). Antes retornava SIGAEST silenciosamente para MATA*.
         prefix4 = funcao_upper[:4]
-        matches = sorted(
-            (e for k, e in idx.items() if k.startswith(prefix4)),
-            key=lambda e: e["routine"],
-        )
-        if matches:
-            return matches[0]["module"]
+        matched_modules = {e["module"] for k, e in idx.items() if k.startswith(prefix4)}
+        if len(matched_modules) == 1:
+            return matched_modules.pop()
     return None
 
 
@@ -200,15 +201,28 @@ def _line_at(content: str, offset: int) -> int:
     return content.count("\n", 0, offset) + 1
 
 
+_PDOC_ORPHAN_LINE_CAP = 80  # v0.4.3 (C4): cap de proximidade pra associar bloco→decl
+
+
 def _resolve_next_decl(
     content: str, after_offset: int
 ) -> tuple[str | None, int | None]:
-    """Acha próxima decl de função/método após offset. Retorna (nome, linha_1based)."""
+    """Acha próxima decl de função/método após offset. Retorna (nome, linha_1based).
+
+    v0.4.3 (C4): cap de ``_PDOC_ORPHAN_LINE_CAP`` linhas entre o offset (fim do
+    bloco) e a decl encontrada. Acima disso retorna (None, None) — bloco é
+    tratado como órfão (preserva sinal de cobertura BP-007 e impede que função
+    distante ganhe doc errada associada).
+    """
     m = _NEXT_DECL_RE.search(content, after_offset)
     if not m:
         return None, None
+    block_end_line = _line_at(content, max(0, after_offset - 1))
+    decl_line = _line_at(content, m.start())
+    if decl_line - block_end_line > _PDOC_ORPHAN_LINE_CAP:
+        return None, None
     name = m.group(1) or m.group(2)
-    return name, _line_at(content, m.start())
+    return name, decl_line
 
 
 def _parse_body(body: str) -> tuple[str, list[tuple[str, str]]]:

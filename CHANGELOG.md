@@ -4,6 +4,93 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-05-15
+
+### 🛡️ Polish pack — fecha 5 críticos + 4 importantes do code review pós-Universo 3
+
+Code review independente identificou 5 bugs críticos com repro confirmado nas
+3 features novas (v0.4.0/0.4.1/0.4.2) gerando dados errados em produção, mais
+4 melhorias importantes de UX/cobertura. Esta release corrige todos os 9.
+
+### Fixed
+- **C1 (CRÍTICO) — workflow callbacks misturados entre TWFProcess vizinhos**.
+  Antes (`triggers.py:142-152`): scope_end fixo de 5000 chars capturava
+  callback do segundo `TWFProcess` e atribuía ao primeiro em fontes com
+  múltiplos workflows. Agora: scope é limitado pela próxima instanciação
+  `TWFProcess():New(`. Test de regressão `test_two_twfprocess_distinct_callbacks`.
+- **C2 (CRÍTICO) — Protheus.doc fechava prematuramente em `/*/` literal dentro
+  de `@example`**. Antes (`protheus_doc.py:28-35`): regex non-greedy
+  `(?P<body>.*?)/\*/` casava qualquer `/*/`, mesmo em meio a comentário do
+  exemplo. Agora: fechamento ANCORADO a start-of-line (`^[ \t]*/\*/[ \t]*$`),
+  conforme padrão oficial TOTVS (fechamento fica sozinho na própria linha).
+  Test `test_example_with_inline_close_marker_does_not_close`.
+- **C3 (CRÍTICO) — RpcSetEnv perdia módulo com 6 args literais consecutivos**.
+  Antes (`triggers.py:79-85`): regex única falhava quando
+  `RpcSetEnv("01","01","","","FAT","J")` (sem vírgulas vazias) — o módulo
+  ficava `''`. Agora: helper `_parse_rpcsetenv_args` usa paren-balanced split
+  pra extrair args posicionais (5º arg = módulo). Test
+  `test_rpcsetenv_six_literal_args_extracts_modulo`.
+- **C4 (CRÍTICO) — bloco órfão de Protheus.doc "puxava" função 200+ linhas adiante**.
+  Antes: `_resolve_next_decl` sem cap de proximidade — função distante ganhava
+  doc errada e perdia sinal de "órfão". Agora: cap de 80 linhas; acima disso
+  `funcao=None, linha_funcao=None` (preserva BP-007). Test
+  `test_orphan_block_with_distant_function_treated_as_orphan`.
+- **C5 (CRÍTICO) — `infer_module` retornava SIGAEST silenciosamente para `MATA999`**.
+  Antes: prefix-match alfabético favorecia SIGAEST (porque MATA010-180 são
+  SIGAEST). Agora: ambiguidade real (prefix casa múltiplos módulos) → `None`
+  em vez de inventar. Prefixo `FINA` (100% SIGAFIN) ainda resolve. Test
+  `test_module_ambiguous_prefix_returns_none`.
+
+### Added
+- **I1 — TMailManager solo (sem TMailMessage) detection**. Fontes legados
+  com `TMailManager():New() + :SendMail()` (anteriores ao TMailMessage)
+  agora viram trigger `mail_send` corretamente. Test
+  `test_positive_tmailmanager_solo_without_tmailmessage`.
+- **I2 — `docs --show` com homônimos**. Antes: pegava o primeiro silenciosamente.
+  Agora: avisa em stderr quantos fontes têm a função, lista os basenames, e
+  aceita `--arquivo <nome>` pra desambiguar. Integration test
+  `test_docs_show_homonym_warns_and_supports_arquivo`.
+- **I5 — catálogo execauto ganha 6 rotinas comuns + dup test**:
+  - `MATA020` (SA2 — Cadastro Fornecedores SIGACOM)
+  - `MATA040` (SA6 — Cadastro Bancos SIGAFIN)
+  - `MATA112` (SE4 — Plano de Pagamento SIGAFIN)
+  - `FATA010` (AE1 — Bandeiras de Cartão SIGAFAT)
+  - `FATA050` (SC9 — Liberação de Pedidos SIGAFAT)
+  - Catálogo agora tem 31 rotinas (era 25)
+  - Test `test_catalog_no_duplicate_routines` previne sobrescrita silenciosa.
+- **I6 — índices em `funcao` nas tabelas Universo 3** (migration 008).
+  `idx_exec_funcao` em `execution_triggers`, `idx_execauto_funcao` em
+  `execauto_calls`. `protheus_docs` já tinha. Queries cross-ref
+  ("quais funções no fonte X chamam ExecAuto?") agora usam índice.
+
+### Migration
+- **Schema 7 → 8** (não-breaking; só adiciona índices em colunas existentes).
+
+### Tests
+- **+11 tests novos** (5 unit pra C1/C2/C3/C4/C5 + 1 unit pra I1 + 2 unit
+  pra I5 + 1 integration pra I2 + 2 sanity pra C4/C5 contornos):
+  - `test_triggers.py`: +3 (C1, C3, I1)
+  - `test_protheus_doc.py`: +5 (C2, C4×2, C5×2)
+  - `test_execauto.py`: +2 (I5×2)
+  - `test_cli.py::TestDocs`: +1 (I2)
+- **489 testes verde** (era 478). Cobertura GREEN end-to-end.
+
+### Deferred (próxima release polish)
+- I3 (WFPrepEnv standalone duplica trigger) — semântica ambígua, precisa
+  decisão de design separada
+- I4 (`op_code = nVar` sem flag dedicado) — adicionar coluna `op_dynamic`
+  em release dot futura
+- I7 (ambiguidade `--arquivo` quando 2 fontes mesmo basename) — JOIN com
+  `caminho_relativo` em release de polish UX
+- N1-N5 (refactors e doc) — backlog
+
+### Notes
+- **5 críticos com repro confirmado**: revisão pós-feature evitou que dados
+  errados ficassem em produção. Padrão a manter: `code-reviewer` agente
+  pós-grandes-features.
+- **Próximo grande tema**: pivot pra **Universo 4** (a definir — candidatos:
+  qualidade & métricas, complexidade ciclomática, hot-paths, ownership).
+
 ## [0.4.2] - 2026-05-15
 
 ### 🎉 Universo 3 — fechamento (Feature C: Protheus.doc agregada)

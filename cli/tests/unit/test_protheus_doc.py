@@ -213,6 +213,19 @@ class TestModuleInference:
         """Path SIGAFIN deve vencer prefixo MATA*."""
         assert infer_module("src/SIGAFIN/MATA410.prw", "MATA410") == "SIGAFIN"
 
+    def test_module_ambiguous_prefix_returns_none(self) -> None:
+        """v0.4.3 (C5): prefix `MATA` casa rotinas de SIGAEST/SIGAFAT/SIGACOM.
+
+        Antes: retornava SIGAEST silenciosamente (sort alfabético favorecia).
+        Agora: ambiguidade real → None (não inventar). MATA999 não existe no
+        catálogo e o prefixo é ambíguo entre 3 módulos.
+        """
+        assert infer_module("X.prw", "MATA999") is None
+
+    def test_module_unambiguous_prefix_still_resolves(self) -> None:
+        """Prefixo `FINA` mapeia 100% pra SIGAFIN — sem ambiguidade, resolve."""
+        assert infer_module("X.prw", "FINA999") == "SIGAFIN"
+
 
 # --- Edge cases -----------------------------------------------------------
 
@@ -235,6 +248,40 @@ class TestEdgeCases:
         docs = extract_protheus_docs(src)
         assert len(docs) == 1
         assert docs[0]["linha_funcao"] is None
+
+    def test_orphan_block_with_distant_function_treated_as_orphan(self) -> None:
+        """v0.4.3 (C4): bloco órfão NÃO deve "puxar" função muito longe.
+
+        Cap: max 80 linhas entre /*/ fechamento e próxima decl. Acima disso
+        funcao=None, linha_funcao=None (preserva sinal de "órfão" e impede
+        que a função seguinte ganhe doc errada).
+        """
+        # 100 linhas vazias entre /*/ e a decl
+        spacer = "\n".join(["// linha de filler"] * 100)
+        src = (
+            '/*/{Protheus.doc} Soltinho\nDoc.\n/*/\n'
+            f'{spacer}\n'
+            'User Function MuitoDepois()\n'
+            'Return\n'
+        )
+        docs = extract_protheus_docs(src)
+        assert len(docs) == 1
+        d = docs[0]
+        assert d["funcao"] is None, (
+            "Esperado funcao=None pra bloco com decl 100+ linhas adiante"
+        )
+        assert d["linha_funcao"] is None
+
+    def test_block_with_function_within_cap_resolves(self) -> None:
+        """Sanity: decl dentro do cap (5 linhas) ainda resolve."""
+        src = (
+            '/*/{Protheus.doc} Fn\nDoc.\n/*/\n'
+            '// 1\n// 2\n// 3\n'
+            'User Function Fn()\nReturn\n'
+        )
+        d = extract_protheus_docs(src)[0]
+        assert d["funcao"] == "Fn"
+        assert d["linha_funcao"] is not None
 
     def test_summary_stops_at_first_tag(self) -> None:
         """Summary = linhas até primeira @tag, não inclui tags."""
@@ -277,6 +324,35 @@ class TestEdgeCases:
         assert d["history"][0]["date"] == "18/10/2025"
         assert d["history"][0]["user"] == "fvernier"
         assert "Refactor" in d["history"][0]["desc"]
+
+    def test_example_with_inline_close_marker_does_not_close(self) -> None:
+        """v0.4.3 (C2): `/*/` literal em meio de comentário no @example NÃO
+        deve fechar o bloco prematuramente.
+
+        Antes (bug): regex non-greedy `(?P<body>.*?)/\\*/` casava o primeiro
+        `/*/` que aparecesse — mesmo dentro do exemplo. Agora o fechamento
+        exige start-of-line (padrão oficial TOTVS — `/*/` fica sozinho na
+        própria linha).
+        """
+        src = (
+            '/*/{Protheus.doc} Fn\n'
+            'Doc.\n'
+            '@example\n'
+            '   //  /*/ exemplo dentro do comentario\n'
+            '   Local x := 1\n'
+            '/*/\n'
+            'User Function Fn()\n'
+            'Return\n'
+        )
+        docs = extract_protheus_docs(src)
+        assert len(docs) == 1
+        d = docs[0]
+        assert d["funcao"] == "Fn"
+        # O exemplo deve incluir o código completo (incluindo a linha do `/*/` interno).
+        assert d["examples"], "esperado pelo menos 1 example"
+        ex = d["examples"][0]
+        assert "Local x" in ex
+        assert "exemplo dentro" in ex
 
     def test_example_with_at_inside_code(self) -> None:
         """@example com '@' dentro do código não conta como nova tag."""

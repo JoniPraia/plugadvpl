@@ -75,14 +75,9 @@ _JOB_MAIN_RE = re.compile(
     r"^[ \t]*Main\s+Function\s+(\w+)\s*\(",
     re.IGNORECASE | re.MULTILINE,
 )
-# RpcSetEnv qualquer formato (literal ou variável).
-_JOB_RPCSETENV_RE = re.compile(
-    r"\bRpcSetEnv\s*\(\s*"
-    r"(?:['\"]([^'\"]*)['\"]|(\w+))\s*,\s*"        # emp
-    r"(?:['\"]([^'\"]*)['\"]|(\w+))"               # fil
-    r"(?:[^)]*?['\"](\w*)['\"])?",                 # módulo (5º arg, opcional)
-    re.IGNORECASE,
-)
+# RpcSetEnv — só localiza o início; args extraídos via _parse_rpcsetenv_args
+# (v0.4.3 C3: regex única era frágil quando os 6 args vinham literais consecutivos).
+_JOB_RPCSETENV_RE = re.compile(r"\bRpcSetEnv\s*\(", re.IGNORECASE)
 # RpcSetType(3) — sem licença.
 _JOB_RPCSETTYPE_RE = re.compile(r"\bRpcSetType\s*\(\s*3\s*\)", re.IGNORECASE)
 # Sleep(N*1000) ou Sleep(N) em ms — extrai segundos.
@@ -102,6 +97,10 @@ _MAIL_UDC_CONNECT_RE = re.compile(r"^\s*CONNECT\s+SMTP\b", re.IGNORECASE | re.MU
 _MAIL_TMAILMANAGER_RE = re.compile(r"\bTMailManager\s*\(", re.IGNORECASE)
 _MAIL_TMAILMESSAGE_RE = re.compile(r"\bTMailMessage\s*\(", re.IGNORECASE)
 _MAIL_SEND_METHOD_RE = re.compile(r":\s*Send\s*\(", re.IGNORECASE)
+# v0.4.3 (I1): TMailManager:SendMail/SmtpConnect — variantes legadas (sem TMailMessage).
+_MAIL_TMM_SEND_METHODS_RE = re.compile(
+    r":\s*(?:SendMail|SmtpConnect|Send)\s*\(", re.IGNORECASE,
+)
 # Anexo: ATTACHMENT (UDC) ou :AttachFile(
 _MAIL_ATTACH_RE = re.compile(
     r"\bATTACHMENT\b|:\s*AttachFile\s*\(", re.IGNORECASE,
@@ -127,6 +126,89 @@ def _snippet_at(content: str, linha: int, max_len: int = 200) -> str:
     return ""
 
 
+# --- Helpers ----------------------------------------------------------------
+
+
+def _split_top_level_commas(s: str) -> list[str]:
+    """Split por vírgulas top-level (ignora dentro de (), {}, []).
+
+    Usado pra extrair args de chamadas com aridade variável onde regex única
+    fica frágil (vide RpcSetEnv com 6 literais consecutivos — C3 v0.4.3).
+    Caller espera passar conteúdo já stripado (strings → spaces).
+    """
+    parts: list[str] = []
+    depth_paren = depth_brace = depth_bracket = 0
+    last = 0
+    for i, c in enumerate(s):
+        if c == "(":
+            depth_paren += 1
+        elif c == ")":
+            depth_paren -= 1
+        elif c == "{":
+            depth_brace += 1
+        elif c == "}":
+            depth_brace -= 1
+        elif c == "[":
+            depth_bracket += 1
+        elif c == "]":
+            depth_bracket -= 1
+        elif (
+            c == ","
+            and depth_paren == 0
+            and depth_brace == 0
+            and depth_bracket == 0
+        ):
+            parts.append(s[last:i])
+            last = i + 1
+    parts.append(s[last:])
+    return parts
+
+
+def _find_balanced_paren(s: str, open_idx: int) -> int:
+    """Dado idx de `(`, retorna idx do `)` casado. -1 se não casar."""
+    depth = 0
+    for i in range(open_idx, len(s)):
+        c = s[i]
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+            if depth == 0:
+                return i
+    return -1
+
+
+def _parse_rpcsetenv_args(content: str, original: str, open_paren_offset: int) -> dict[str, str]:
+    """Extrai (empresa, filial, modulo) de uma chamada RpcSetEnv pelos args
+    posicionais. v0.4.3 (C3): substitui regex frágil que falhava com 6 args
+    literais consecutivos.
+
+    Args:
+        content: source stripado (strings → spaces) onde o match foi encontrado.
+        original: source original (não usado aqui — kept simples).
+        open_paren_offset: índice do `(` em ``content``.
+    """
+    close = _find_balanced_paren(content, open_paren_offset)
+    if close == -1:
+        return {"empresa": "", "filial": "", "modulo": ""}
+    args = _split_top_level_commas(content[open_paren_offset + 1 : close])
+
+    def _arg(idx: int) -> str:
+        if idx >= len(args):
+            return ""
+        token = args[idx].strip()
+        # Remove aspas se literal; caso contrário devolve identificador (variável).
+        if len(token) >= 2 and token[0] == token[-1] and token[0] in ("'", '"'):
+            return token[1:-1]
+        return token
+
+    return {
+        "empresa": _arg(0),
+        "filial": _arg(1),
+        "modulo": _arg(4),  # 5º arg (0-indexed)
+    }
+
+
 # --- Detectores -------------------------------------------------------------
 
 
@@ -134,13 +216,21 @@ def _detect_workflow(content: str, stripped: str) -> list[dict[str, Any]]:
     """Detecta `TWFProcess`, `MsWorkflow`, `WFPrepEnv` + extrai metadata."""
     out: list[dict[str, Any]] = []
     # TWFProcess (moderno) — emite 1 trigger por chamada com process_id.
-    for m in _WF_TWFPROCESS_RE.finditer(stripped):
+    # v0.4.3 (C1): coleta TODAS as posições primeiro pra calcular scope_end como
+    # próxima instanciação (vs janela fixa de 5000 chars que misturava callbacks
+    # entre TWFProcess vizinhos no mesmo fonte).
+    twfprocess_matches = list(_WF_TWFPROCESS_RE.finditer(stripped))
+    for i, m in enumerate(twfprocess_matches):
         process_id = m.group(1) or ""
         description = m.group(2) or ""
         linha = _line_at(stripped, m.start())
-        # Buscar callbacks no contexto da função (até 50 linhas pra frente).
         scope_start = m.start()
-        scope_end = min(len(stripped), scope_start + 5000)
+        if i + 1 < len(twfprocess_matches):
+            # Cap pelo próximo TWFProcess (preserva isolamento entre workflows).
+            scope_end = twfprocess_matches[i + 1].start()
+        else:
+            # Último — vai até EOF (mas com cap defensivo de 5000 chars).
+            scope_end = min(len(stripped), scope_start + 5000)
         scope = stripped[scope_start:scope_end]
         callbacks: dict[str, str] = {}
         for cm in _WF_CALLBACK_RE.finditer(scope):
@@ -263,9 +353,13 @@ def _detect_job_standalone(content: str, stripped: str) -> list[dict[str, Any]]:
             continue
         empresa = filial = modulo = ""
         if rpc_match:
-            empresa = rpc_match.group(1) or rpc_match.group(2) or ""
-            filial = rpc_match.group(3) or rpc_match.group(4) or ""
-            modulo = rpc_match.group(5) or ""
+            # v0.4.3 (C3): args via paren-balanced split (regex única era frágil
+            # quando 6 args vinham literais consecutivos sem vírgulas vazias).
+            # rpc_match.end() é offset em `body` (slice de `stripped`).
+            parsed_args = _parse_rpcsetenv_args(body, body, rpc_match.end() - 1)
+            empresa = parsed_args["empresa"]
+            filial = parsed_args["filial"]
+            modulo = parsed_args["modulo"]
         # Sleep — extrai intervalo em segundos (assume Sleep(N*1000) = N segundos).
         sleep_seconds = 0
         sm = _JOB_SLEEP_RE.search(body)
@@ -335,6 +429,14 @@ def _detect_mail_send(content: str, stripped: str) -> list[dict[str, Any]]:
     # TMailMessage:Send (preferido — TMailManager sozinho é só conexão).
     for m in _MAIL_TMAILMESSAGE_RE.finditer(stripped):
         _emit(m.start(), "TMailManager")
+    # v0.4.3 (I1): TMailManager solo (sem TMailMessage) — legacy. Detecta se há
+    # TMailManager + chamada de envio (`:SendMail`/`:Send`) no mesmo fonte e
+    # ainda nao temos trigger no fonte.
+    if not any(t["target"] == "TMailManager" for t in out):
+        tmm_match = _MAIL_TMAILMANAGER_RE.search(stripped)
+        send_match = _MAIL_TMM_SEND_METHODS_RE.search(stripped)
+        if tmm_match and send_match:
+            _emit(tmm_match.start(), "TMailManager")
     return out
 
 

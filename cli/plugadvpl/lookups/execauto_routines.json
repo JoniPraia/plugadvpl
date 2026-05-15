@@ -17,11 +17,31 @@
       "verified": true
     },
     {
+      "routine": "MATA020",
+      "module": "SIGACOM",
+      "type": "cadastro",
+      "label": "Cadastro de Fornecedores",
+      "tables_primary": ["SA2"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com",
+      "verified": true
+    },
+    {
       "routine": "MATA030",
       "module": "SIGAFIN",
       "type": "cadastro",
       "label": "Cadastro de Clientes",
       "tables_primary": ["SA1"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com",
+      "verified": true
+    },
+    {
+      "routine": "MATA040",
+      "module": "SIGAFIN",
+      "type": "cadastro",
+      "label": "Cadastro de Bancos",
+      "tables_primary": ["SA6"],
       "tables_secondary": [],
       "source_url": "https://tdn.totvs.com",
       "verified": true
@@ -65,6 +85,16 @@
       "tables_secondary": [],
       "source_url": "https://tdn.totvs.com/pages/viewpage.action?pageId=318605213",
       "verified": true
+    },
+    {
+      "routine": "MATA112",
+      "module": "SIGAFIN",
+      "type": "cadastro",
+      "label": "Plano de Pagamento",
+      "tables_primary": ["SE4"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com",
+      "verified": false
     },
     {
       "routine": "MATA120",
@@ -165,6 +195,26 @@
       "tables_secondary": ["SF4", "SB1"],
       "source_url": "https://tdn.totvs.com/pages/releaseview.action?pageId=6784012",
       "verified": true
+    },
+    {
+      "routine": "FATA010",
+      "module": "SIGAFAT",
+      "type": "cadastro",
+      "label": "Cadastro de Bandeira de Cartao",
+      "tables_primary": ["AE1"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com",
+      "verified": false
+    },
+    {
+      "routine": "FATA050",
+      "module": "SIGAFAT",
+      "type": "movimento",
+      "label": "Liberacao de Pedidos de Venda",
+      "tables_primary": ["SC9"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com",
+      "verified": false
     },
     {
       "routine": "MATA460",

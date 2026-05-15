@@ -47,7 +47,7 @@ MGFCOMBO.prw  MGFCOMBO  621   MATA410   SIGAFAT   inclusao   SC5,SC6,SF4,SB1
 ## Execução
 
 ```bash
-uvx plugadvpl@0.4.2 --format md execauto $ARGUMENTS
+uvx plugadvpl@0.4.3 --format md execauto $ARGUMENTS
 ```
 
 > **Para agente IA:** prefira `--format md` (sem truncamento). Default `table` Rich trunca colunas. Flag global vem **antes** do subcomando.
