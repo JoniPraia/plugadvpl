@@ -23,13 +23,14 @@
   },
   {
     "regra_id": "BP-002b",
-    "titulo": "Variáveis declaradas como Private ou Public em vez de Local",
+    "titulo": "Variável declarada como Private quando Local resolveria",
     "severidade": "warning",
     "categoria": "best-practice",
-    "descricao": "Variáveis devem ser declaradas como `Local` exceto quando há necessidade explícita de escopo mais amplo. `Private` e `Public` poluem a call stack e podem ser sobrescritas acidentalmente por funções chamadas.",
-    "fix_guidance": "Substitua `Private`/`Public` por `Local` quando possível. Usos legítimos de `Private`: passar variáveis para models MVC ou frameworks legados que esperam por elas (`MV_PAR*`).",
+    "descricao": "Variáveis devem ser declaradas como `Local` exceto quando há necessidade explícita de escopo mais amplo. `Private` polui a call stack e pode ser sobrescrita acidentalmente por funções chamadas. Foca em `Private` (Public é coberto por MOD-002 — evita duplo finding na mesma linha). Whitelist de padrões legítimos: `MV_PAR01..MV_PAR99` (convenção `Pergunte()` injeta no escopo); `lMsErroAuto`/`lMsHelpAuto` (convenção `MsExecAuto`); reservadas framework (`cFilAnt`, `cEmpAnt`, etc — overlap com BP-008 aceito por categorias diferentes). Strings/comentários limpos pelo `strip_advpl`.",
+    "fix_guidance": "Substitua `Private` por `Local` quando possível. Manter `Private` SO quando há necessidade explícita: (a) compartilhar com função chamada que espera Private, (b) variáveis `MV_PAR*` injetadas por `Pergunte`, (c) state runtime de `MsExecAuto` (`lMsErroAuto`/`lMsHelpAuto`).",
     "detection_kind": "regex",
-    "status": "planned"
+    "status": "active",
+    "impl_function": "_check_bp002b_private_when_local"
   },
   {
     "regra_id": "BP-003",

@@ -4,6 +4,67 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.25] - 2026-05-15
+
+### BP-002b implementado — Private quando Local resolveria. Segunda das 4 lint planned originais (sobram MOD-003 + PERF-006). Detector com whitelist conservadora pra reduzir noise em código legacy ADVPL.
+
+### Added
+- **BP-002b (warning) — `Private <var>` em vez de `Local`**. Detector com
+  whitelist pra padrões legítimos:
+  - `MV_PAR01..MV_PAR99` — convenção `Pergunte()` (variáveis injetadas
+    no escopo Private).
+  - `lMsErroAuto`/`lMsHelpAuto` — convenção `MsExecAuto` (BP-003 cita).
+  - 18 reservadas framework (`cFilAnt`, `cEmpAnt`, `dDataBase`, etc) —
+    overlap com BP-008 aceito (categorias diferentes: best-practice vs
+    critical, mensagens distintas).
+  
+  **Decisão de design:** foca em `Private` apenas. `Public` é coberto
+  por MOD-002 — evitar duplo finding na mesma linha. BP-002b e MOD-002
+  cobrem aspectos distintos do mesmo problema (escopo amplo desnecessário).
+- Helpers em `lint.py`:
+  - `_BP002B_PRIVATE_RE` — captura linha completa `Private ...` ate EOL,
+    parser interno extrai nomes via split por `,` e remoção do `:= valor`.
+  - `_BP002B_WHITELIST` — set com lMsErroAuto/lMsHelpAuto + 18 reservadas.
+  - `_BP002B_MV_PAR_RE` — `^MV_PAR\\d{2}$` (case-insensitive).
+
+### Changed
+- Catálogo `lookups/lint_rules.json`: BP-002b `status="planned"` → `"active"`
+  + `impl_function="_check_bp002b_private_when_local"` + título atualizado
+  pra "Private quando Local resolveria" (antes mencionava também Public,
+  agora desambiguado).
+- Skill `advpl-code-review`:
+  - Frontmatter: `32 → 33` regras, `21 → 22` single-file, `3 → 2` planned.
+  - Tabela "Single-file": entrada nova BP-002b (warning, novo em v0.3.25)
+    com whitelist citada.
+  - Bloco "Info / Checklist mental": BP-002b sai (agora detectado);
+    sobram só MOD-003 + PERF-006 (cross-file).
+- 18 skills bumpadas `@0.3.24` → `@0.3.25`.
+
+### Tests
+- 9 testes em `TestBP002bPrivateWhenLocal` (3 positivos + 6 negativos):
+  - `test_positive_private_simple_var`, `test_positive_private_multivar`,
+    `test_positive_private_with_assign`.
+  - `test_negative_private_mv_par`, `test_negative_private_msexecauto_state`,
+    `test_negative_local_decl_not_flagged`, `test_negative_static_decl_not_flagged`,
+    `test_negative_public_not_flagged_handled_by_mod002` (verifica que
+    `Public` dispara MOD-002 mas NÃO BP-002b — separação clean),
+    `test_negative_in_comment`.
+- 367 testes verde (era 358).
+
+### Notes
+- **Catalog status**: 33 active + 2 planned + 5 cross-file SX = 40
+  detectores efetivos. Fechamento total exige MOD-003 (cross-file
+  semântica) + PERF-006 (cross-file SQL parser). Ambos são
+  implementações maiores (~3-6h cada).
+- **Whitelist "MV_PAR01..MV_PAR99"**: usa regex `^MV_PAR\\d{2}$`
+  case-insensitive. Cobre o range típico TOTVS (Pergunte raramente
+  passa de MV_PAR99). Se algum projeto usa MV_PAR100+, vão receber
+  BP-002b — fix: trocar pra `Local`/`Static` ou adicionar à whitelist.
+- **Whitelist com framework reservadas (18 nomes)**: redundante com
+  BP-008 (que dispara `critical` no shadowing). Mantemos o overlap
+  porque BP-008 é categoria `critical`/security e BP-002b é
+  `warning`/best-practice — desligar uma das duas perde sinal.
+
 ## [0.3.24] - 2026-05-15
 
 ### BP-007 implementado — falta header Protheus.doc. Primeira das 4 lint planned restantes do catálogo (sobram BP-002b, MOD-003, PERF-006). User pediu "fechar lint antes de pivotar pra Universo 3".

@@ -1623,3 +1623,116 @@ class TestBP007NoProtheusDoc:
         )
         findings = lint_source(_parsed_for(src), src)
         assert "BP-007" not in _ids(findings)
+
+
+# --- BP-002b: variavel Private quando Local resolveria ----------------------
+
+
+class TestBP002bPrivateWhenLocal:
+    """BP-002b (warning): `Private <var>` em vez de `Local`, exceto em casos
+    legitimos (MV_PAR*, lMsErroAuto, framework reservadas)."""
+
+    def test_positive_private_simple_var(self) -> None:
+        """Private comum sem motivo aparente — sinaliza."""
+        src = (
+            "User Function ZBad()\n"
+            "    Private cVal := 'x'\n"
+            "    Private nCount := 0\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        bp = [f for f in findings if f["regra_id"] == "BP-002b"]
+        assert len(bp) == 2
+        assert bp[0]["severidade"] == "warning"
+
+    def test_positive_private_multivar(self) -> None:
+        """Multi-var: cada nome conta como 1 finding."""
+        src = (
+            "User Function ZBad()\n"
+            "    Private cA, cB, nC\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        bp = [f for f in findings if f["regra_id"] == "BP-002b"]
+        assert len(bp) == 3
+
+    def test_positive_private_with_assign(self) -> None:
+        """Private cVar := valor — flagged."""
+        src = (
+            "User Function ZBad()\n"
+            "    Private oModel := FwLoadModel('X')\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-002b" in _ids(findings)
+
+    # --- Negativos (whitelist) ---
+
+    def test_negative_private_mv_par(self) -> None:
+        """Private MV_PAR01..MV_PAR99 = convencao Pergunte()."""
+        src = (
+            "User Function ZGood()\n"
+            "    Private MV_PAR01 := ''\n"
+            "    Private MV_PAR02 := 0\n"
+            "    Pergunte('MGFREL01', .F.)\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-002b" not in _ids(findings)
+
+    def test_negative_private_msexecauto_state(self) -> None:
+        """Private lMsErroAuto/lMsHelpAuto = convencao MsExecAuto."""
+        src = (
+            "User Function ZGood()\n"
+            "    Private lMsErroAuto := .F.\n"
+            "    Private lMsHelpAuto := .F.\n"
+            "    MsExecAuto({|x,y,z| MATA410(x,y,z)}, aCab, aIt, 3)\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-002b" not in _ids(findings)
+
+    def test_negative_local_decl_not_flagged(self) -> None:
+        """Local correto — nao dispara."""
+        src = (
+            "User Function ZGood()\n"
+            "    Local cVal := 'x'\n"
+            "    Local nCount := 0\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-002b" not in _ids(findings)
+
+    def test_negative_static_decl_not_flagged(self) -> None:
+        """Static (constante por fonte) tambem ok — nao dispara."""
+        src = (
+            "Static cCache := ''\n"
+            "User Function ZGood()\n"
+            "    cCache := 'novo'\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-002b" not in _ids(findings)
+
+    def test_negative_public_not_flagged_handled_by_mod002(self) -> None:
+        """Public eh coberto por MOD-002 — BP-002b foca em Private."""
+        src = (
+            "User Function ZBad()\n"
+            "    Public cGlobal := 'x'\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        ids = _ids(findings)
+        assert "MOD-002" in ids
+        assert "BP-002b" not in ids
+
+    def test_negative_in_comment(self) -> None:
+        """Private em comentario nao dispara."""
+        src = (
+            "User Function ZGood()\n"
+            "    // Antes era: Private cVal := 'x'\n"
+            "    Local cVal := 'x'\n"
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "BP-002b" not in _ids(findings)

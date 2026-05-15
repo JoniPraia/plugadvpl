@@ -153,6 +153,28 @@ _SEC003_CPF_LITERAL_RE = re.compile(r"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b")
 # CNPJ formatado: 99.999.999/9999-99
 _SEC003_CNPJ_LITERAL_RE = re.compile(r"\b\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}\b")
 
+# BP-002b (v0.3.25): variavel Private com nome generico em vez de Local.
+# Foca em Private (Public ja eh coberto por MOD-002 — evitar duplo finding na
+# mesma linha). Whitelist pra padroes legitimos:
+#   - MV_PAR01..MV_PAR99 — convencao Pergunte() (variaveis injetadas)
+#   - lMsErroAuto, lMsHelpAuto — convencao MsExecAuto (BP-003 cita)
+# Reservadas framework (cFilAnt etc) ja sao flagadas por BP-008 — overlap aceito,
+# regras tem categorias diferentes (best-practice vs critical).
+_BP002B_PRIVATE_RE = re.compile(
+    r"^[ \t]*Private[ \t]+(.+)$",
+    re.IGNORECASE | re.MULTILINE,
+)
+_BP002B_WHITELIST = {
+    "lMsErroAuto", "lMsHelpAuto",
+    # Reservadas framework — overlap com BP-008, mas evita duplo finding na
+    # categoria best-practice (BP-008 eh critical, mensagem diferente).
+    "cFilAnt", "cEmpAnt", "cUserName", "cModulo", "cTransac", "nProgAnt",
+    "oMainWnd", "__cInternet", "__Language", "nUsado", "dDataBase",
+    "PARAMIXB", "aRotina", "cFunBkp", "cFunName", "lAutoErrNoFile",
+    "INCLUI", "ALTERA",
+}
+_BP002B_MV_PAR_RE = re.compile(r"^MV_PAR\d{2}$", re.IGNORECASE)
+
 # BP-007 (v0.3.24): funcao sem header Protheus.doc.
 # Pattern oficial TOTVS: bloco abre com `/*/{Protheus.doc} <NomeFn>` e fecha
 # com `/*/`. Detector busca o opening nas N linhas ANTES da declaracao da
@@ -526,6 +548,66 @@ def _check_bp006_mixed_reclock_rawapi(
                 ),
             }
         )
+    return findings
+
+
+def _check_bp002b_private_when_local(
+    arquivo: str, parsed: dict[str, Any], content: str
+) -> list[dict[str, Any]]:
+    """BP-002b (warning): `Private <var>` em vez de `Local`.
+
+    Foca em `Private` — `Public` eh coberto por MOD-002 (evita duplo finding).
+    Whitelist:
+      - `MV_PAR01..MV_PAR99` (convencao Pergunte injecta no escopo)
+      - `lMsErroAuto`/`lMsHelpAuto` (convencao MsExecAuto)
+      - Reservadas framework (cFilAnt etc) — overlap com BP-008
+    Strings/comentarios sao limpos pelo strip_advpl.
+    """
+    findings: list[dict[str, Any]] = []
+    stripped = strip_advpl(content, strip_strings=False)
+    funcoes = parsed.get("funcoes", []) or []
+
+    for m in _BP002B_PRIVATE_RE.finditer(stripped):
+        decl = m.group(1).strip()
+        # Parse multi-var: extrai os identificadores ate o 1o `:=` ou `,`
+        # de cada segmento (ignora valor da atribuicao). Split por `,` no nivel
+        # 0 (sem balancear parens — heuristica suficiente pra `Private a,b,c`).
+        names: list[str] = []
+        # Pega o lado esquerdo de := se existir, antes do primeiro :=
+        before_assign = decl.split(":=", 1)[0]
+        for part in before_assign.split(","):
+            name = part.strip()
+            if not name:
+                continue
+            # Pode ter espacos no meio (`cA cB`?) — pega o primeiro identificador.
+            name = re.split(r"\s+", name, maxsplit=1)[0].strip()
+            if name and re.match(r"^[A-Za-z_]\w*$", name):
+                names.append(name)
+        for name in names:
+            # Whitelist check (case-insensitive vs lowercase form do whitelist)
+            name_lower = name.lower()
+            if any(name_lower == w.lower() for w in _BP002B_WHITELIST):
+                continue
+            if _BP002B_MV_PAR_RE.match(name):
+                continue
+            linha = _line_at(stripped, m.start())
+            findings.append(
+                {
+                    "arquivo": arquivo,
+                    "funcao": _funcao_at_line(funcoes, linha),
+                    "linha": linha,
+                    "regra_id": "BP-002b",
+                    "severidade": "warning",
+                    "snippet": _snippet_at_line(content, linha),
+                    "sugestao_fix": (
+                        f"Trocar `Private {name}` por `Local {name}`. Private "
+                        "polui call stack e pode ser sobrescrita por funcoes "
+                        "chamadas. Manter Private SO quando ha necessidade "
+                        "explicita (MV_PAR* via Pergunte, lMsErroAuto via "
+                        "MsExecAuto, ou ponte pra framework legado)."
+                    ),
+                }
+            )
     return findings
 
 
@@ -1454,6 +1536,7 @@ def lint_source(parsed: dict[str, Any], content: str) -> list[dict[str, Any]]:
     findings.extend(_check_bp003_msexecauto_no_check(arquivo, parsed, content))
     findings.extend(_check_bp004_pergunte_no_check(arquivo, parsed, content))
     findings.extend(_check_bp005_too_many_params(arquivo, parsed, content))
+    findings.extend(_check_bp002b_private_when_local(arquivo, parsed, content))
     findings.extend(_check_bp006_mixed_reclock_rawapi(arquivo, parsed, content))
     findings.extend(_check_bp007_no_protheus_doc(arquivo, parsed, content))
     findings.extend(_check_bp008_shadowed_reserved(arquivo, parsed, content))
