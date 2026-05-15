@@ -57,6 +57,7 @@ from plugadvpl.query import (
 )
 from plugadvpl.query import (
     doctor_diagnostics,
+    execauto_calls_query,
     execution_triggers_query,
     find_any,
     gatilho_query,
@@ -1161,6 +1162,93 @@ def workflow(
             [f"plugadvpl find {target}" for target in {r["target"] for r in rows[:3] if r["target"]}]
             if rows
             else ["plugadvpl ingest --no-incremental  # se nada detectado"]
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# v0.4.1 — Universo 3 (Rastreabilidade) Feature B: execauto
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def execauto(
+    ctx: typer.Context,
+    routine: Annotated[
+        str | None,
+        typer.Option("--routine", "-r", help="Filtra por rotina TOTVS (MATA410, FINA050, ...)."),
+    ] = None,
+    modulo: Annotated[
+        str | None,
+        typer.Option("--modulo", "-m", help="Filtra por módulo (SIGAFAT, SIGACOM, SIGAFIN, ...)."),
+    ] = None,
+    arquivo: Annotated[
+        str | None,
+        typer.Option("--arquivo", "-a", help="Filtra por arquivo (basename, case-insensitive)."),
+    ] = None,
+    op: Annotated[
+        str | None,
+        typer.Option("--op", "-o", help="Filtra por operação: inc|alt|exc (op_code 3/4/5)."),
+    ] = None,
+    dynamic: Annotated[
+        bool | None,
+        typer.Option(
+            "--dynamic/--no-dynamic",
+            help="--dynamic só não-resolvíveis; --no-dynamic só resolvidas; default: ambos.",
+        ),
+    ] = None,
+) -> None:
+    """Lista chamadas MsExecAuto resolvidas (Universo 3 / Feature B).
+
+    Resolve a indireção do codeblock ``{|args| Rotina(args)}`` e cruza com o
+    catálogo TOTVS pra inferir tabelas tocadas, módulo, e tipo de operação
+    (inclusão/alteração/exclusão).
+
+    Sem filtros: lista todas as chamadas. Use ``--routine MATA410`` pra ver
+    quem inclui Pedido de Venda; ``--dynamic`` pra revisar calls não-resolvíveis.
+    """
+    from plugadvpl.parsing.execauto import load_execauto_catalog  # lazy
+    rows = _with_ro_db(
+        ctx,
+        lambda c: execauto_calls_query(
+            c, routine=routine, modulo=modulo, arquivo=arquivo, op=op, dynamic=dynamic,
+        ),
+    )
+    display_rows = [
+        {
+            "arquivo": r["arquivo"],
+            "funcao": r["funcao"],
+            "linha": r["linha"],
+            "routine": r["routine"] or "(dynamic)",
+            "module": r["module"] or "",
+            "op": r["op_label"] or (str(r["op_code"]) if r["op_code"] is not None else ""),
+            "tabelas": ",".join(r["tables_resolved"]),
+            "snippet": (r["snippet"] or "")[:80],
+        }
+        for r in rows
+    ]
+    _render_from_ctx(
+        ctx,
+        display_rows,
+        columns=["arquivo", "funcao", "linha", "routine", "module", "op", "tabelas", "snippet"],
+        title=(
+            f"ExecAuto calls"
+            + (f" (routine={routine})" if routine else "")
+            + (f" (modulo={modulo})" if modulo else "")
+            + (f" (arquivo={arquivo})" if arquivo else "")
+            + (f" (op={op})" if op else "")
+            + (" (dynamic)" if dynamic else "")
+        ),
+        next_steps=(
+            [
+                f"plugadvpl arch {arq}"
+                for arq in {r["arquivo"] for r in rows[:3]}
+            ]
+            if rows
+            else [
+                "plugadvpl ingest --no-incremental  # se esperava findings",
+                "plugadvpl execauto --dynamic       # ver calls não-resolvíveis",
+            ]
         ),
     )
 

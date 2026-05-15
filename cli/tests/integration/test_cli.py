@@ -761,6 +761,165 @@ class TestWorkflow:
         assert count >= 4, f"esperado >=4 triggers, encontrado {count}"
 
 
+class TestExecauto:
+    """v0.4.1 — Universo 3 / Feature B: comando `execauto` lista chamadas resolvidas."""
+
+    @pytest.fixture
+    def execauto_project(self, tmp_path: Path, runner: CliRunner) -> Path:
+        """Projeto com 3 fontes cobrindo MATA410 (inc), FINA050 (inc), e dynamic."""
+        src = tmp_path / "src"
+        src.mkdir()
+        # MATA410 inclusao — SC5/SC6 + secundarias.
+        (src / "MGFCOMBO.prw").write_bytes(
+            b'User Function MGFCOMBO()\n'
+            b'   MsExecAuto({|x,y,z| MATA410(x,y,z)}, aCab, aIt, 3)\n'
+            b'Return\n'
+        )
+        # FINA050 inclusao — SE2.
+        (src / "MGFFIN50.prw").write_bytes(
+            b'User Function MGFFIN50()\n'
+            b'   MsExecAuto({|x,y| FINA050(x,y)}, aArr, 3)\n'
+            b'Return\n'
+        )
+        # Dynamic — &(cVar).
+        (src / "MGFDYN.prw").write_bytes(
+            b'User Function MGFDYN()\n'
+            b'   MsExecAuto({|x,y,z| &(cRot).(x,y,z)}, aCab, aIt, 3)\n'
+            b'Return\n'
+        )
+        runner.invoke(app, ["--root", str(src), "init"])
+        runner.invoke(app, ["--root", str(src), "ingest"])
+        return src
+
+    def test_execauto_lists_all(
+        self, execauto_project: Path, runner: CliRunner
+    ) -> None:
+        """Sem filtro: lista as 3 chamadas (MATA410, FINA050, dynamic)."""
+        result = runner.invoke(
+            app, ["--root", str(execauto_project), "--format", "json", "execauto"]
+        )
+        assert result.exit_code == 0, result.stderr
+        rows = json.loads(result.stdout)["rows"]
+        assert len(rows) == 3
+        routines = {r["routine"] or "(dynamic)" for r in rows}
+        assert routines == {"MATA410", "FINA050", "(dynamic)"}
+
+    def test_execauto_filter_by_routine(
+        self, execauto_project: Path, runner: CliRunner
+    ) -> None:
+        """`--routine MATA410` retorna só a chamada com SC5/SC6."""
+        result = runner.invoke(
+            app,
+            [
+                "--root", str(execauto_project), "--format", "json",
+                "execauto", "--routine", "MATA410",
+            ],
+        )
+        assert result.exit_code == 0, result.stderr
+        rows = json.loads(result.stdout)["rows"]
+        assert len(rows) == 1
+        assert rows[0]["routine"] == "MATA410"
+        assert rows[0]["module"] == "SIGAFAT"
+        assert "SC5" in rows[0]["tabelas"]
+        assert "SC6" in rows[0]["tabelas"]
+        assert rows[0]["op"] == "inclusao"
+
+    def test_execauto_filter_by_modulo(
+        self, execauto_project: Path, runner: CliRunner
+    ) -> None:
+        """`--modulo SIGAFIN` localiza só FINA050."""
+        result = runner.invoke(
+            app,
+            [
+                "--root", str(execauto_project), "--format", "json",
+                "execauto", "--modulo", "SIGAFIN",
+            ],
+        )
+        assert result.exit_code == 0, result.stderr
+        rows = json.loads(result.stdout)["rows"]
+        assert len(rows) == 1
+        assert rows[0]["routine"] == "FINA050"
+
+    def test_execauto_filter_dynamic_only(
+        self, execauto_project: Path, runner: CliRunner
+    ) -> None:
+        """`--dynamic` retorna só calls não-resolvíveis."""
+        result = runner.invoke(
+            app,
+            [
+                "--root", str(execauto_project), "--format", "json",
+                "execauto", "--dynamic",
+            ],
+        )
+        assert result.exit_code == 0, result.stderr
+        rows = json.loads(result.stdout)["rows"]
+        assert len(rows) == 1
+        assert rows[0]["routine"] == "(dynamic)"
+
+    def test_execauto_filter_op_inc(
+        self, execauto_project: Path, runner: CliRunner
+    ) -> None:
+        """`--op inc` retorna só inclusões (op_code=3)."""
+        result = runner.invoke(
+            app,
+            [
+                "--root", str(execauto_project), "--format", "json",
+                "execauto", "--op", "inc",
+            ],
+        )
+        assert result.exit_code == 0, result.stderr
+        rows = json.loads(result.stdout)["rows"]
+        # Todas as 3 fixtures usam op=3, então 3 rows
+        assert len(rows) == 3
+        for r in rows:
+            assert r["op"] == "inclusao"
+
+    def test_arch_exposes_tabelas_via_execauto_resolvidas(
+        self, execauto_project: Path, runner: CliRunner
+    ) -> None:
+        """v0.4.1 enrichment: `arch` mostra tabelas inferidas via ExecAuto."""
+        result = runner.invoke(
+            app,
+            [
+                "--root", str(execauto_project), "--format", "json",
+                "arch", "MGFCOMBO.prw",
+            ],
+        )
+        assert result.exit_code == 0, result.stderr
+        row = json.loads(result.stdout)["rows"][0]
+        # Bool antigo continua
+        assert row.get("tabelas_via_execauto") is True
+        # Novo campo: lista de tabelas resolvidas
+        resolved = row.get("tabelas_via_execauto_resolvidas", [])
+        assert "SC5" in resolved
+        assert "SC6" in resolved
+
+    def test_arch_resolved_empty_when_dynamic_only(
+        self, execauto_project: Path, runner: CliRunner
+    ) -> None:
+        """Fonte com só call dynamic → resolved = []."""
+        result = runner.invoke(
+            app,
+            [
+                "--root", str(execauto_project), "--format", "json",
+                "arch", "MGFDYN.prw",
+            ],
+        )
+        assert result.exit_code == 0, result.stderr
+        row = json.loads(result.stdout)["rows"][0]
+        assert row.get("tabelas_via_execauto_resolvidas", []) == []
+
+    def test_execauto_persisted_in_db(self, execauto_project: Path) -> None:
+        """Sanity: tabela execauto_calls existe e tem rows."""
+        db = execauto_project / ".plugadvpl" / "index.db"
+        conn = sqlite3.connect(db)
+        try:
+            count = conn.execute("SELECT COUNT(*) FROM execauto_calls").fetchone()[0]
+        finally:
+            conn.close()
+        assert count == 3
+
+
 class TestMissingDb:
     def test_query_without_db_exits_2(
         self, synthetic_project: Path, runner: CliRunner

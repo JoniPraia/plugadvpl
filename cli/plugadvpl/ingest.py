@@ -36,6 +36,10 @@ from plugadvpl.db import (
 )
 from plugadvpl.parsing import lint as lint_module
 from plugadvpl.parsing.parser import _PE_NAME_RE, parse_source
+from plugadvpl.parsing.execauto import (
+    extract_execauto_calls,
+    serialize_tables as serialize_execauto_tables,
+)
 from plugadvpl.parsing.triggers import (
     extract_execution_triggers,
     serialize_metadata as serialize_trigger_metadata,
@@ -150,6 +154,7 @@ def _delete_dependents(conn: sqlite3.Connection, arquivo: str) -> None:
         "defines",
         "lint_findings",
         "execution_triggers",  # v0.4.0 — Universo 3 Feature A
+        "execauto_calls",      # v0.4.1 — Universo 3 Feature B
     ):
         conn.execute(f"DELETE FROM {table} WHERE arquivo=?", (arquivo,))
     conn.execute(
@@ -606,6 +611,39 @@ def _write_parsed(  # noqa: PLR0912, PLR0915 — escrita verbosa: 12 tabelas dep
         )
         counters["execution_triggers"] = counters.get("execution_triggers", 0) + len(trigger_rows)
 
+    # v0.4.1 (Universo 3 Feature B): execauto_calls
+    execauto = extract_execauto_calls(content)
+    if execauto:
+        execauto_rows: list[tuple[Any, ...]] = []
+        for c in execauto:
+            linha = int(c.get("linha", 0))
+            funcao = _resolve_funcao_origem(linha)
+            execauto_rows.append((
+                arquivo,
+                funcao,
+                linha,
+                c.get("routine"),
+                c.get("module"),
+                c.get("routine_type"),
+                c.get("op_code"),
+                c.get("op_label"),
+                serialize_execauto_tables(c.get("tables_resolved", []) or []),
+                1 if c.get("dynamic_call") else 0,
+                c.get("arg_count"),
+                (c.get("snippet", "") or "")[:500],
+            ))
+        conn.executemany(
+            """
+            INSERT INTO execauto_calls (
+                arquivo, funcao, linha, routine, module, routine_type,
+                op_code, op_label, tables_resolved_json, dynamic_call,
+                arg_count, snippet
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            execauto_rows,
+        )
+        counters["execauto_calls"] = counters.get("execauto_calls", 0) + len(execauto_rows)
+
     counters["arquivos_ok"] += 1
 
 
@@ -760,6 +798,7 @@ def ingest(
             "params": 0,
             "lint_findings": 0,
             "execution_triggers": 0,  # v0.4.0
+            "execauto_calls": 0,      # v0.4.1
             "duration_ms": 0,
             # v0.3.13: caller (CLI) usa esses campos pra detectar a pegadinha do
             # `--incremental` após `uv tool upgrade` — quando lookup_bundle muda
@@ -797,6 +836,7 @@ def ingest(
             ("chamadas_funcao", "total_chamadas"),
             ("lint_findings", "total_lint_findings"),
             ("execution_triggers", "total_execution_triggers"),  # v0.4.0
+            ("execauto_calls", "total_execauto_calls"),  # v0.4.1
         ):
             n = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
             set_meta(conn, key, str(n))

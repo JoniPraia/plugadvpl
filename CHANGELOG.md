@@ -4,6 +4,74 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-05-15
+
+### 🚀 Universo 3 — Rastreabilidade Feature B (ExecAuto chain expansion)
+
+Resolve a indireção do `MsExecAuto({|x,y,z| MATA410(x,y,z)}, ...)` e cruza
+com catálogo TOTVS (25 rotinas) pra **inferir tabelas tocadas indiretamente**.
+Antes: `arch` mostrava `tabelas: []` mesmo o fonte chamando `MATA410` (que
+toca SC5/SC6) via ExecAuto. Agora: `tabelas_via_execauto_resolvidas: ["SC5","SC6","SF4","SB1"]`.
+
+### Added
+- **Catálogo `lookups/execauto_routines.json`** — 25 rotinas TOTVS canônicas
+  (MATA010/030/050/075/103/110/120/125/150/180/220/242/261/310/311/410/460/461,
+  FINA040/050/070/080, CTBA102, EECAP100, TMSA500) com `routine`, `module`,
+  `type`, `tables_primary`, `tables_secondary`, `source_url`, `verified`.
+  Rotinas faltantes ainda são detectadas (com `module=null`); expansão via PR.
+- **Detector `parsing/execauto.py`** — `extract_execauto_calls(content)` extrai
+  chamadas `MsExecAuto`/`ExecAuto` (case-insensitive), parseia codeblock pra
+  achar a rotina, detecta `op_code` (3/4/5 → inclusao/alteracao/exclusao),
+  flag `dynamic_call` pra `&(cVar)` ou codeblock vazio.
+- **Tabela `execauto_calls`** (schema v5→v6, migration 006) — 1 row por chamada
+  com `arquivo, funcao, linha, routine, module, routine_type, op_code,
+  op_label, tables_resolved_json, dynamic_call, arg_count, snippet`. 3 índices.
+- **Comando `plugadvpl execauto`** com filtros `--routine`/`--modulo`/
+  `--arquivo`/`--op` (inc/alt/exc)/`--dynamic`. Skill `/plugadvpl:execauto`.
+- **Enrichment de `arch`** — campo novo `tabelas_via_execauto_resolvidas:
+  list[str]` agregando tabelas inferidas. Campo bool antigo
+  `tabelas_via_execauto` continua (não-breaking).
+- **Counter** `execauto_calls` no contador de ingest + meta `total_execauto_calls`.
+
+### Tests
+- **26 testes unit** (`tests/unit/test_execauto.py`):
+  TestRoutineResolution (6), TestOpCodeDetection (5), TestDynamicCall (2),
+  TestEdgeCases (6), TestCatalog (3), TestMetadataFields (4).
+  Cobre todas as 8 sintaxes documentadas no spec + 11 edge cases.
+- **8 testes integration** (`tests/integration/test_cli.py::TestExecauto`):
+  fixture com 3 fontes (MATA410 inc, FINA050 inc, dynamic), exercita
+  `--routine`/`--modulo`/`--dynamic`/`--op` + arch enrichment + DB sanity.
+- **434 testes verde** (era 408).
+
+### Migration
+- **Schema 5 → 6** (não-breaking; só adiciona tabela). DBs v0.4.0 são reindexados
+  automaticamente no próximo `init`.
+
+### Casos de uso
+1. *"Quem inclui Pedido de Venda automaticamente?"* →
+   `/plugadvpl:execauto --routine MATA410 --op inc`
+2. *"Quais fontes integram com SIGAFIN via ExecAuto?"* →
+   `/plugadvpl:execauto --modulo SIGAFIN`
+3. *"Cobertura real de tabelas deste fonte?"* →
+   `arch X.prw` agora mostra `tabelas_via_execauto_resolvidas`
+4. *"Auditar exclusões automáticas"* →
+   `/plugadvpl:execauto --op exc`
+5. *"Calls não-resolvíveis (precisam revisão manual)?"* →
+   `/plugadvpl:execauto --dynamic`
+
+### Notes
+- **Spec aprovado** em `docs/universo3/B-execauto-chain.md` antes do código
+  (workflow research → spec MD → approval → code).
+- **Próximo passo Universo 3**: Feature C (Protheus.doc agregada por módulo —
+  `/plugadvpl:docs <modulo>`).
+- **Limitações conhecidas** (em `skills/execauto/SKILL.md`):
+  - Variável armazenada (`bExec := {...}; MsExecAuto(bExec, ...)`) → flag dynamic
+    (precisaria data-flow analysis, fora do MVP)
+  - Macro-substituição `&(cRot)` → flag dynamic (raro)
+  - Rotinas fora do catálogo → detectadas com `module=null` (PR-friendly)
+  - `op_code` por convenção (último arg numérico literal); `nOpc` em variável
+    fica `null`
+
 ## [0.4.0] - 2026-05-15
 
 ### 🚀 Universo 3 — Rastreabilidade (Feature A: Workflow + Schedule + Job + Mail)

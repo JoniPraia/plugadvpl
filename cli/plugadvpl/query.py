@@ -244,6 +244,12 @@ def arch(conn: sqlite3.Connection, arquivo: str) -> list[dict[str, Any]]:
             # expande a rotina chamada). Caller deve checar a rotina pelo nome
             # e/ou rodar `tables` na rotina alvo pra cobertura completa.
             "tabelas_via_execauto": "EXEC_AUTO_CALLER" in capabilities,
+            # v0.4.1 (Universo 3 Feature B): tabelas inferidas via lookup do
+            # catalogo execauto_routines.json. Lista vazia se: (a) nao ha
+            # MsExecAuto no fonte; (b) rotina nao esta no catalogo; (c) call
+            # eh dynamic. Cliente pode cruzar com `plugadvpl execauto --arquivo`
+            # pra ver detalhe por chamada.
+            "tabelas_via_execauto_resolvidas": arch_execauto_tables(conn, arquivo_),
             "includes": _json_or_default(incs_json, []),
         }
     ]
@@ -891,3 +897,104 @@ def execution_triggers_query(
             "snippet": snippet or "",
         })
     return out
+
+
+_EXECAUTO_OP_MAP = {
+    "inc": 3, "inclusao": 3, "include": 3,
+    "alt": 4, "alteracao": 4, "alter": 4,
+    "exc": 5, "exclusao": 5, "exclude": 5, "delete": 5,
+}
+
+
+def execauto_calls_query(
+    conn: sqlite3.Connection,
+    *,
+    routine: str | None = None,
+    modulo: str | None = None,
+    arquivo: str | None = None,
+    op: str | None = None,
+    dynamic: bool | None = None,
+) -> list[dict[str, Any]]:
+    """Lista chamadas MsExecAuto resolvidas (Universo 3 Feature B).
+
+    Args:
+        conn: conexão SQLite.
+        routine: filtra por rotina (`MATA410` etc, case-insensitive).
+        modulo: filtra por módulo (`SIGAFAT` etc, case-insensitive).
+        arquivo: filtra por arquivo (basename).
+        op: filtra por operação (`inc`/`alt`/`exc` ou full `inclusao`/...).
+        dynamic: True = só dynamic_call, False = só resolved, None = ambos.
+
+    Returns:
+        Lista de dicts com campos do schema `execauto_calls` + `tables_resolved`
+        já parseado para list[str].
+    """
+    sql = (
+        "SELECT arquivo, funcao, linha, routine, module, routine_type, "
+        "op_code, op_label, tables_resolved_json, dynamic_call, arg_count, snippet "
+        "FROM execauto_calls"
+    )
+    where: list[str] = []
+    params: list[Any] = []
+    if routine:
+        where.append("upper(routine) = upper(?)")
+        params.append(routine)
+    if modulo:
+        where.append("upper(module) = upper(?)")
+        params.append(modulo)
+    if arquivo:
+        where.append("arquivo = ? COLLATE NOCASE")
+        params.append(arquivo)
+    if op:
+        op_norm = _EXECAUTO_OP_MAP.get(op.lower())
+        if op_norm is None:
+            return []
+        where.append("op_code = ?")
+        params.append(op_norm)
+    if dynamic is not None:
+        where.append("dynamic_call = ?")
+        params.append(1 if dynamic else 0)
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    sql += " ORDER BY arquivo, linha"
+    rows = conn.execute(sql, params).fetchall()
+    out: list[dict[str, Any]] = []
+    for (
+        arq, fn, ln, rt, mod, rtype, opc, oplbl, tjson, dyn, argc, snippet
+    ) in rows:
+        from plugadvpl.parsing.execauto import parse_tables
+        out.append({
+            "arquivo": arq,
+            "funcao": fn or "",
+            "linha": int(ln or 0),
+            "routine": rt,
+            "module": mod,
+            "routine_type": rtype,
+            "op_code": opc,
+            "op_label": oplbl,
+            "tables_resolved": parse_tables(tjson),
+            "dynamic_call": bool(dyn),
+            "arg_count": argc,
+            "snippet": snippet or "",
+        })
+    return out
+
+
+def arch_execauto_tables(
+    conn: sqlite3.Connection, arquivo: str
+) -> list[str]:
+    """Tabelas inferidas via ExecAuto pra um fonte (cross-ref Feature B).
+
+    Retorna lista únicos+ordenada de tables_resolved de todas as chamadas
+    `execauto_calls` daquele `arquivo`.
+    """
+    rows = conn.execute(
+        "SELECT tables_resolved_json FROM execauto_calls WHERE arquivo = ? COLLATE NOCASE",
+        (arquivo,),
+    ).fetchall()
+    from plugadvpl.parsing.execauto import parse_tables
+    seen: set[str] = set()
+    for (tjson,) in rows:
+        for t in parse_tables(tjson):
+            seen.add(t)
+    return sorted(seen)

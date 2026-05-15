@@ -1,0 +1,260 @@
+{
+  "schema_version": 1,
+  "_meta": {
+    "description": "Catalogo de rotinas TOTVS canonicas chamadas via MsExecAuto. Usado por parsing/execauto.py pra resolver tabelas tocadas indiretamente.",
+    "verified_legend": "true=fonte oficial TOTVS conferida; false=fonte secundaria/comunidade, conferir via PR",
+    "expansion_policy": "Adicionar rotinas via PR conforme demanda. Rotinas faltantes sao detectadas mas com module=null e tables_resolved=[]."
+  },
+  "routines": [
+    {
+      "routine": "MATA010",
+      "module": "SIGAEST",
+      "type": "cadastro",
+      "label": "Cadastro de Produtos",
+      "tables_primary": ["SB1"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com",
+      "verified": true
+    },
+    {
+      "routine": "MATA030",
+      "module": "SIGAFIN",
+      "type": "cadastro",
+      "label": "Cadastro de Clientes",
+      "tables_primary": ["SA1"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com",
+      "verified": true
+    },
+    {
+      "routine": "MATA050",
+      "module": "SIGAFAT",
+      "type": "cadastro",
+      "label": "Cadastro de Transportadoras",
+      "tables_primary": ["SA4"],
+      "tables_secondary": [],
+      "source_url": "https://centraldeatendimento.totvs.com/hc/pt-br/articles/8058455139479",
+      "verified": true
+    },
+    {
+      "routine": "MATA075",
+      "module": "SIGAEST",
+      "type": "movimento",
+      "label": "Movimento de Lote",
+      "tables_primary": ["SB8"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com",
+      "verified": false
+    },
+    {
+      "routine": "MATA103",
+      "module": "SIGACOM",
+      "type": "movimento",
+      "label": "Documento de Entrada (NF Compra)",
+      "tables_primary": ["SF1", "SD1"],
+      "tables_secondary": ["SF4", "SE2"],
+      "source_url": "https://mastersiga.tomticket.com/kb/compras/sigacom-documento-de-entrada-rotina-automatica-mata103-execauto",
+      "verified": true
+    },
+    {
+      "routine": "MATA110",
+      "module": "SIGACOM",
+      "type": "movimento",
+      "label": "Solicitacao de Compra",
+      "tables_primary": ["SC1"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com/pages/viewpage.action?pageId=318605213",
+      "verified": true
+    },
+    {
+      "routine": "MATA120",
+      "module": "SIGACOM",
+      "type": "movimento",
+      "label": "Pedido de Compra",
+      "tables_primary": ["SC7"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com",
+      "verified": true
+    },
+    {
+      "routine": "MATA125",
+      "module": "SIGACOM",
+      "type": "movimento",
+      "label": "Autorizacao de Entrega",
+      "tables_primary": ["SCA", "SCB"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com",
+      "verified": false
+    },
+    {
+      "routine": "MATA150",
+      "module": "SIGACOM",
+      "type": "movimento",
+      "label": "Cotacao de Compra",
+      "tables_primary": ["SC8"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com",
+      "verified": true
+    },
+    {
+      "routine": "MATA180",
+      "module": "SIGAEST",
+      "type": "cadastro",
+      "label": "Complemento de Produto",
+      "tables_primary": ["SB5"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com/pages/releaseview.action?pageId=358453385",
+      "verified": true
+    },
+    {
+      "routine": "MATA220",
+      "module": "SIGAEST",
+      "type": "cadastro",
+      "label": "Estrutura de Produto",
+      "tables_primary": ["SG1"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com",
+      "verified": false
+    },
+    {
+      "routine": "MATA242",
+      "module": "SIGAPCP",
+      "type": "movimento",
+      "label": "Desmontagem de Produtos",
+      "tables_primary": ["SD3"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com/pages/viewpage.action?pageId=393362555",
+      "verified": true
+    },
+    {
+      "routine": "MATA261",
+      "module": "SIGAEST",
+      "type": "movimento",
+      "label": "Transferencia Multipla",
+      "tables_primary": ["SD3"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com/pages/viewpage.action?pageId=379292916",
+      "verified": true
+    },
+    {
+      "routine": "MATA310",
+      "module": "SIGAEST",
+      "type": "movimento",
+      "label": "Movimento Interno - Saida",
+      "tables_primary": ["SD3"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com",
+      "verified": true
+    },
+    {
+      "routine": "MATA311",
+      "module": "SIGAEST",
+      "type": "movimento",
+      "label": "Movimento Interno - Entrada",
+      "tables_primary": ["SD3"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com",
+      "verified": true
+    },
+    {
+      "routine": "MATA410",
+      "module": "SIGAFAT",
+      "type": "movimento",
+      "label": "Pedido de Venda",
+      "tables_primary": ["SC5", "SC6"],
+      "tables_secondary": ["SF4", "SB1"],
+      "source_url": "https://tdn.totvs.com/pages/releaseview.action?pageId=6784012",
+      "verified": true
+    },
+    {
+      "routine": "MATA460",
+      "module": "SIGAFAT",
+      "type": "movimento",
+      "label": "Documento de Saida (NF) - Geracao",
+      "tables_primary": ["SF2", "SD2"],
+      "tables_secondary": [],
+      "source_url": "https://centraldeatendimento.totvs.com",
+      "verified": true
+    },
+    {
+      "routine": "MATA461",
+      "module": "SIGAFAT",
+      "type": "movimento",
+      "label": "Documento de Saida (NF) - Manutencao",
+      "tables_primary": ["SF2", "SD2"],
+      "tables_secondary": [],
+      "source_url": "https://centraldeatendimento.totvs.com",
+      "verified": true
+    },
+    {
+      "routine": "FINA040",
+      "module": "SIGAFIN",
+      "type": "movimento",
+      "label": "Contas a Receber - Inclusao Titulo",
+      "tables_primary": ["SE1"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com",
+      "verified": true
+    },
+    {
+      "routine": "FINA050",
+      "module": "SIGAFIN",
+      "type": "movimento",
+      "label": "Contas a Pagar - Inclusao Titulo",
+      "tables_primary": ["SE2"],
+      "tables_secondary": [],
+      "source_url": "https://protheusadvpl.com.br/execauto-fina050/",
+      "verified": true
+    },
+    {
+      "routine": "FINA070",
+      "module": "SIGAFIN",
+      "type": "movimento",
+      "label": "Baixa de Contas a Receber",
+      "tables_primary": ["SE1", "SE5"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com",
+      "verified": true
+    },
+    {
+      "routine": "FINA080",
+      "module": "SIGAFIN",
+      "type": "movimento",
+      "label": "Baixa de Contas a Pagar",
+      "tables_primary": ["SE2", "SE5"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com",
+      "verified": true
+    },
+    {
+      "routine": "CTBA102",
+      "module": "SIGACTB",
+      "type": "movimento",
+      "label": "Lancamento Contabil",
+      "tables_primary": ["CT2"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com",
+      "verified": true
+    },
+    {
+      "routine": "EECAP100",
+      "module": "SIGAEEC",
+      "type": "movimento",
+      "label": "Pedido de Exportacao",
+      "tables_primary": ["EEC", "EE7"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com/pages/releaseview.action?pageId=394219396",
+      "verified": false
+    },
+    {
+      "routine": "TMSA500",
+      "module": "SIGATMS",
+      "type": "movimento",
+      "label": "Documento de Transporte",
+      "tables_primary": ["DT6"],
+      "tables_secondary": [],
+      "source_url": "https://tdn.totvs.com/display/public/PROT/TUMGXW_DT_MsExecAuto_Manutencao_de_Documentos_de_Transporte_TMSA500",
+      "verified": false
+    }
+  ]
+}
