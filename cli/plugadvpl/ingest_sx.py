@@ -253,20 +253,22 @@ def ingest_sx(
                     len({tuple(r.get(c, "") for c in pk_cols) for r in rows})
                     if pk_cols else len(rows)
                 )
-                inserted = _bulk_insert(conn, table, columns, rows)
+                csv_rows = _bulk_insert(conn, table, columns, rows)
                 conn.commit()
-                counters["per_table"][table] = inserted
-                counters["total_rows"] += inserted
+                # v0.3.21 (#15 do QA round 2): per_table guarda o numero REAL de
+                # rows que sobreviveram no DB (distinct PKs). Antes guardava o
+                # csv_rows processado, gerando discrepancia entre summary e
+                # sx-status (caso real cliente: summary=58796 vs sx-status=46669).
+                counters["per_table"][table] = distinct
+                counters["total_rows"] += distinct
                 counters["csvs_ok"] += 1
                 if progress_callback is not None:
-                    progress_callback(csv_name, inserted)
-                # Aviso de dedup quando linhas do CSV colidiram na PK. Limite de 1
-                # linha pra evitar ruído em diffs minúsculos (1 dup em 60k = ok),
-                # mas com info suficiente pra IA/usuário investigar.
-                lost = inserted - distinct
+                    progress_callback(csv_name, distinct)
+                # Aviso de dedup quando linhas do CSV colidiram na PK.
+                lost = csv_rows - distinct
                 if lost > 0:
                     print(
-                        f"WARN: tabela '{table}': {inserted} linhas CSV "
+                        f"WARN: tabela '{table}': {csv_rows} linhas CSV "
                         f"→ {distinct} distintas após PK dedup "
                         f"({lost} duplicada(s) na PK {pk_cols} foram sobrescrita(s)).",
                         file=sys.stderr,

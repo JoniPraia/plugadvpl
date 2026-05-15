@@ -284,12 +284,29 @@ def _extract_functions_from_stripped(stripped: str) -> list[dict[str, Any]]:
             }
         )
 
+    # v0.3.21 (#13/#14 do QA round 2): WSMETHOD verb-only (sem nome explicito,
+    # padrao de classes WSRESTFUL) virava nome=verbo solto ('GET', 'POST') —
+    # colide entre classes diferentes. Construimos primeiro o map dos verb-only
+    # via _WSMETHOD_REST_BARE_RE (que captura verb + classe), e usamos como
+    # fonte de truth pra nomear como `<Classe>.<VERB>`.
+    rest_bare_by_offset: dict[int, tuple[str, str]] = {}  # offset → (verb, classe)
+    for m in _WSMETHOD_REST_BARE_RE.finditer(stripped):
+        rest_bare_by_offset[m.start()] = (m.group(1).upper(), m.group(2))
+
     for m in _WSMETHOD_RE.finditer(stripped):
+        offset = m.start()
+        if offset in rest_bare_by_offset:
+            verb, classe = rest_bare_by_offset[offset]
+            nome = f"{classe}.{verb}"
+            classe_field = classe
+        else:
+            nome = m.group(2)
+            classe_field = ""
         result.append(
             {
-                "nome": m.group(2),
+                "nome": nome,
                 "kind": "ws_method",
-                "classe": "",
+                "classe": classe_field,
                 "linha_inicio": _line_at(stripped, m.start()),
                 "_offset": m.start(),
             }

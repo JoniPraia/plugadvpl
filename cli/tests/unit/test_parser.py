@@ -731,6 +731,33 @@ class TestParseSource:
             f"tem {result['pontos_entrada']}"
         )
 
+    def test_wsrestful_methods_appear_in_funcoes(self) -> None:
+        """v0.3.21 — Bug #13/#14 do QA round 2: WSRESTFUL verb-only
+        (`WSMETHOD GET WSSERVICE PortaldeViagem`) ficava fora de `funcoes`
+        porque `_WSMETHOD_RE` exige `<name>` antes de `WS...`. Cascata
+        quebrava call graph dos metodos REST: `find function GET`,
+        `callees GET`, `callers SetResponse` ficavam cegos.
+
+        Fix: capturar via _WSMETHOD_REST_BARE_RE em paralelo, com
+        nome=`<Classe>.<VERB>` pra ser identificavel."""
+        from plugadvpl.parsing.parser import parse_source
+        fixture = (
+            Path(__file__).parent.parent
+            / "fixtures" / "synthetic" / "ws_restful_classic.prw"
+        )
+        result = parse_source(fixture)
+        nomes = [f["nome"] for f in result["funcoes"]]
+        # Fixture tem 2 metodos: GET e POST de PortaldeViagem.
+        assert any("PortaldeViagem.GET" in n or "PortaldeViagem:GET" in n
+                   for n in nomes), (
+            f"Esperado funcao 'PortaldeViagem.GET' (ou similar) em funcoes, "
+            f"recebido {nomes}"
+        )
+        assert any("PortaldeViagem.POST" in n or "PortaldeViagem:POST" in n
+                   for n in nomes), (
+            f"Esperado funcao 'PortaldeViagem.POST' em funcoes, recebido {nomes}"
+        )
+
     def test_wsrestful_classic_classified_as_webservice(self) -> None:
         """v0.3.16 — Bug #5/#7 do QA report: classes WSRESTFUL clássicas
         (com `WSMETHOD GET WSSERVICE <Class>` em vez de `WSMETHOD GET <name>

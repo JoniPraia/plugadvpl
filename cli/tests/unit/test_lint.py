@@ -1296,6 +1296,21 @@ class TestSEC004HardcodedCreds:
         findings = lint_source(_parsed_for(src), src)
         assert "SEC-004" not in _ids(findings)
 
+    def test_positive_rpcsetenv_var_emp_fil_literal_user_pwd(self) -> None:
+        """v0.3.21 — Bug #4 do QA round 2: caso real comum eh emp/fil virem
+        de variaveis (cEmp, cFil, vindos de parametro/argv) e user/pwd
+        ficarem literais hardcoded. Antes do fix o regex exigia literal nos
+        4 slots — o caso mais leak (var nos 2 primeiros) escapava."""
+        src = (
+            "User Function ZJob(cEmp, cFil)\n"
+            '    RpcSetEnv(cEmp, cFil, "admin", "totvs", "FAT")\n'
+            "Return\n"
+        )
+        findings = lint_source(_parsed_for(src), src)
+        assert "SEC-004" in _ids(findings), (
+            "RpcSetEnv com user/pwd literal deve disparar mesmo com var nos slots 1+2"
+        )
+
 
 # --- SEC-003: PII / dados sensiveis em logs -----------------------------------
 

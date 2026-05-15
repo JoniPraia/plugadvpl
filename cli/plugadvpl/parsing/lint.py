@@ -65,17 +65,20 @@ _WSRESTFUL_CLASS_RE = re.compile(
 )
 _END_CLASS_RE = re.compile(r"^[ \t]*ENDCLASS\b|^[ \t]*END\s+CLASS\b", re.IGNORECASE | re.MULTILINE)
 
-# SEC-004 (v0.3.19): credenciais hardcoded em codigo fonte.
+# SEC-004 (v0.3.19, ajustado v0.3.21 #4 do QA round 2): hardcoded creds.
 # Padroes confirmados via TDN + comunidade (Terminal de Informacao, BlackTDN).
-# RpcSetEnv(emp, fil, USER, PWD, mod, ...) — slots 3 e 4 sao user/senha em texto plano.
-# Captura quando os slots 3+4 sao strings literais NAO-VAZIAS (vazio = "usar admin"
-# por convencao, smell mas nao leak).
+# RpcSetEnv(emp, fil, USER, PWD, mod, ...) — slots 3 e 4 sao user/senha texto plano.
+# Captura quando user E pwd sao strings literais NAO-VAZIAS (vazio = "usar admin"
+# por convencao, smell mas nao leak). Slots 1+2 (emp/fil) podem ser literal OU
+# variavel — caso real comum eh `RpcSetEnv(cEmp, cFil, "admin", "totvs", "FAT")`,
+# user/pwd hardcoded mas emp/fil vindo de parametro.
+_SEC004_ARG_RE = r"(?:\w+|['\"][^'\"]*['\"])"  # variavel OU literal
 _SEC004_RPCSETENV_LITERAL_RE = re.compile(
     r"\bRpcSetEnv\s*\("
-    r"\s*['\"][^'\"]*['\"]\s*,"        # emp (qualquer)
-    r"\s*['\"][^'\"]*['\"]\s*,"        # fil (qualquer)
-    r"\s*['\"]([^'\"]+)['\"]\s*,"      # user (NAO vazio) — group 1
-    r"\s*['\"]([^'\"]+)['\"]",         # pwd (NAO vazio) — group 2
+    rf"\s*{_SEC004_ARG_RE}\s*,"        # emp (var ou literal qualquer)
+    rf"\s*{_SEC004_ARG_RE}\s*,"        # fil (var ou literal qualquer)
+    r"\s*['\"]([^'\"]+)['\"]\s*,"      # user (LITERAL nao-vazio) — group 1
+    r"\s*['\"]([^'\"]+)['\"]",         # pwd (LITERAL nao-vazio) — group 2
     re.IGNORECASE,
 )
 # PREPARE ENVIRONMENT ... PASSWORD '<literal>' (UDC tbiconn.ch).

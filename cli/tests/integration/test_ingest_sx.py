@@ -166,6 +166,38 @@ class TestIngestSx:
         counters = ingest_sx(csv_dir, db)
         assert counters["per_table"]["tabelas"] == 1  # 'DEL' filtrado
 
+    def test_ingest_sx_per_table_reflects_db_count_not_csv_count(
+        self,
+        sx_project: Path,
+        tmp_path: Path,
+        runner: CliRunner,
+    ) -> None:
+        """v0.3.21 — Bug #15 do QA round 2: counters['per_table'][table] guardava
+        len(rows) processadas do CSV, NAO COUNT(*) real do DB apos dedup. Resultado
+        bizarro: summary mostrava 1918 pastas, sx-status mostrava 1833 (caso real
+        do cliente). v0.3.14 ja avisava no stderr mas o numero do summary mentia.
+
+        Agora per_table[table] === SELECT COUNT(*) FROM <table> apos dedup."""
+        csv_dir = tmp_path / "csv"
+        csv_dir.mkdir()
+        # Mesma fixture do warning test: 3 rows colapsam em 1.
+        (csv_dir / "sxa.csv").write_text(
+            '"XA_ALIAS","XA_ORDEM","XA_DESCRIC","XA_AGRUP","XA_PROPRI","D_E_L_E_T_"\n'
+            '"SA1","01","Geral","","",""\n'
+            '"SA1","01","Outro","","",""\n'
+            '"SA1","01","Mais um","","",""\n',
+            encoding="cp1252",
+        )
+        runner.invoke(app, ["--root", str(sx_project), "init"])
+        db = sx_project / ".plugadvpl" / "index.db"
+        counters = ingest_sx(csv_dir, db)
+        # Antes do fix: per_table["pastas"] == 3 (mente). Depois: == 1.
+        assert counters["per_table"]["pastas"] == 1, (
+            f"per_table['pastas'] deveria refletir DB count (1) apos dedup, "
+            f"recebido {counters['per_table']['pastas']}. v0.3.14 warning ja "
+            "mostra a perda; agora o number do summary tambem deve estar correto."
+        )
+
     def test_ingest_sx_warns_when_dedup_lost_rows(
         self,
         sx_project: Path,

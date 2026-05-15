@@ -4,6 +4,57 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.3.21] - 2026-05-14
+
+### Bug pack — fecha 3 itens técnicos médios do `gaps/PLUGADVPL_QA_REPORT_V2.md` que sobraram após v0.3.20. Foco: corrigir false negatives em SEC-004 + numero correto no summary do `ingest-sx` + nomenclatura útil pros métodos REST do WSRESTFUL no call graph.
+
+### Fixed
+- **#15 — `ingest-sx` per_table mostra numero CORRETO (distinct, não inserted)**.
+  Antes: `counters["per_table"][table] = inserted` (= len(rows) processadas
+  do CSV). Agora: `= distinct` (= rows que sobreviveram após PK dedup). Caso
+  real cliente: summary mostrava 58.796 consultas, sx-status mostrava 46.669
+  — discrepância sumiu. WARN em stderr da v0.3.14 continua mostrando o
+  numero CSV original (`{csv_rows} linhas CSV → {distinct} distintas`)
+  pra rastreabilidade.
+- **#4 — SEC-004 RpcSetEnv aceita variável nos slots emp/fil**. Antes o
+  regex exigia string literal nos 4 slots (`RpcSetEnv("01","01","admin","totvs",...)`).
+  O caso real mais comum é emp/fil virem de parâmetro/argv (`cEmp`, `cFil`)
+  com user/pwd hardcoded — exatamente o leak crítico. Novo helper
+  `_SEC004_ARG_RE = r"(?:\\w+|['\"][^'\"]*['\"])"` aceita variável OU literal
+  nos slots 1+2; user/pwd continuam exigindo literal não-vazio.
+- **#13/#14 — WSRESTFUL verb-only popula `funcoes` com nome qualificado**.
+  Antes: `WSMETHOD GET WSSERVICE PortaldeViagem` virava `funcao={"nome":"GET"}` —
+  nome ambíguo, colidia entre classes. Cascata: `find function GET` retornava
+  todos GETs misturados; chunks indexados ficavam sem distinção; call graph
+  dos métodos REST corrompia. Agora: novo cross-check com
+  `_WSMETHOD_REST_BARE_RE` (já existia da v0.3.16) re-nomeia matches
+  verb-only pra `<Classe>.<VERB>` (ex: `PortaldeViagem.GET`,
+  `PortaldeViagem.POST`) + popula `classe`. Métodos com nome explícito
+  (`WSMETHOD GET clientes WSSERVICE Vendas`) continuam intactos.
+
+### Tests
+- `tests/integration/test_ingest_sx.py::TestIngestSx::test_ingest_sx_per_table_reflects_db_count_not_csv_count` (#15 RED→GREEN).
+- `tests/unit/test_lint.py::TestSEC004HardcodedCreds::test_positive_rpcsetenv_var_emp_fil_literal_user_pwd` (#4 RED→GREEN).
+- `tests/unit/test_parser.py::TestParseSource::test_wsrestful_methods_appear_in_funcoes` (#13/#14 RED→GREEN).
+- 339 testes verde (era 336).
+
+### Notes
+- **Backlog QA round 2 reduzido**: dos 15 itens menores que sobraram após
+  v0.3.20, fechamos 4 (#4, #13, #14, #15). Continuam pendentes (todos baixos):
+  #3 (SEC-004 PASSWORD com `;` continuação multiline), #5 (SEC-003 cobre só
+  A1_*/RA_* — falta A2_*/RH_*), #6 (gatilho upstream traversal), #7 (impacto
+  fontes sem boundary docs), #8 (PARAMIXB busca em raw), #11 (skills
+  arch/callers não documentam novas flags), #16 (sx_status schema instável),
+  #17 (fix_guidance longo), #18 (hint só globais), #19 (callees nesting test),
+  #20 (encoding skills misto).
+- **WSRESTFUL ricos**: `find function PortaldeViagem.GET` agora funciona,
+  `callees PortaldeViagem.GET` retorna chamadas internas (resolvendo via
+  v0.3.15 chunk parent), `callers PortaldeViagem.GET` mostra quem invoca
+  (raro em REST puro — geralmente vazio, é endpoint exposto).
+- **Re-ingest recomendado**: `plugadvpl ingest --no-incremental` aplica
+  fix #15 (per_table correto) + fix #13/#14 (nomes WSRESTFUL ricos) em
+  fontes ja indexados. SEC-004 #4 só dispara em ingest novo / re-ingest.
+
 ## [0.3.20] - 2026-05-14
 
 ### SEC-003 false positives + skill drift sync — fecha os 5 itens de maior prioridade do `gaps/PLUGADVPL_QA_REPORT_V2.md` (round 2 do QA externo). Trinca crítica: `Help` interpretado como log + regex de variável PII casando palavras PT-BR comuns + skills com contagens/recomendações desatualizadas.
