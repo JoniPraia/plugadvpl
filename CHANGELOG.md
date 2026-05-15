@@ -4,6 +4,78 @@ Todas as mudanças notáveis estão documentadas aqui, seguindo [Keep a Changelo
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-15
+
+### 🚀 Universo 3 — Rastreabilidade (Feature A: Workflow + Schedule + Job + Mail)
+
+**Killer feature do v0.4.x**: indexação dos 4 mecanismos canônicos TOTVS de
+**execução não-direta**. Antes do v0.4.0 era impossível responder via plugin
+"essa rotina é alvo de workflow ou helper?", "que jobs do AppServer existem
+nesse projeto?", "qual schedule dispara `FATR020`?", "onde envio email com
+anexo?". Agora 1 comando responde tudo: `/plugadvpl:workflow`.
+
+### Added
+- **Tabela `execution_triggers`** (schema v5, migration `005_universo3_execution_triggers.sql`)
+  com colunas `id, arquivo, funcao, linha, kind, target, metadata_json, snippet`.
+  3 índices: `idx_exec_arquivo`, `idx_exec_kind`, `idx_exec_target`.
+- **Detector `parsing/triggers.py`** com 4 detectores:
+  - `workflow` — `TWFProcess():New(...)`, `MsWorkflow(`, `WFPrepEnv(` em callbacks.
+    Metadata: `process_id`, `description`, `template`, `to`, `subject`,
+    `return_callback`, `timeout_callback`, `is_legacy`.
+  - `schedule` — `Static Function SchedDef()` retornando array
+    `{cTipo, cPergunte, cAlias, aOrdem, cTitulo}`. Metadata: `sched_type` (P/R),
+    `pergunte` (referência SX1), `alias`, `ordens`, `titulo`.
+  - `job_standalone` — `Main Function` + `RpcSetEnv` + `Sleep` loop (daemon
+    ONSTART). Metadata: `main_name`, `empresa`, `filial`, `modulo`,
+    `sleep_seconds`, `stop_flag`, `no_license`.
+  - `mail_send` — `MailAuto(`, `SEND MAIL` UDC, `TMailManager`/`TMailMessage`.
+    Metadata: `variant`, `has_attachment`, `uses_mv_rel` (cross-ref com SEC-004).
+- **Comando `plugadvpl workflow`** (e skill `/plugadvpl:workflow`) com filtros
+  `--kind`, `--target`, `--arquivo`. Usa metadata JSON pra detalhe por tipo.
+- **Resolução de `funcao`** — usa o índice de chunks (v0.3.15+) pra mapear
+  cada trigger à função-pai onde foi declarado.
+- **Idempotência** — DELETE+INSERT no `_clear_for_arquivo` (padrão v0.3.28).
+- **Counter** `execution_triggers` no contador de ingest + `total_execution_triggers`
+  em `meta` (visível via `plugadvpl status`).
+
+### Tests
+- **14 testes unit** (`tests/unit/test_triggers.py`):
+  5 classes (TestWorkflowTrigger, TestScheduleTrigger, TestJobStandaloneTrigger,
+  TestMailSendTrigger, TestMultiTriggerSource), positivos + negativos por kind.
+- **5 testes integration** (`tests/integration/test_cli.py::TestWorkflow`):
+  fixture `triggers_project` com 3 fontes (1 workflow, 1 schedule, 1 job+mail
+  multi-trigger), exercita todos os filtros + sanity check no DB.
+- **408 testes verde** (era 389).
+
+### Migration
+- **Schema 4 → 5** (breaking; `plugadvpl init` em DBs existentes força reindex).
+  Nenhum dado de v0.3.x perdido — `chunks`, `lint_findings`, `simbolos`, etc
+  continuam intactos. Apenas a tabela nova é criada.
+
+### Casos de uso
+1. *"Esta User Function `XYZAprov` é alvo de workflow?"* →
+   `/plugadvpl:workflow --target XYZAprov` (se aparecer com `kind=workflow`, é callback).
+2. *"Que Main Functions deste projeto são jobs daemon?"* →
+   `/plugadvpl:workflow --kind job_standalone`.
+3. *"Esse `FATR020.prw` é agendável?"* →
+   `/plugadvpl:workflow --arquivo FATR020.prw --kind schedule`
+   (metadata.pergunte aponta o grupo SX1 — cruzar com `/plugadvpl:param`).
+4. *"Onde envio email com anexo?"* →
+   `/plugadvpl:workflow --kind mail_send` + filtrar `metadata.has_attachment=True`.
+5. *"Esse fonte usa SX6 ou hardcoded?"* →
+   `mail_send` com `metadata.uses_mv_rel=True` (correto) ou `False`
+   (cruzar com SEC-004 do lint).
+
+### Notes
+- **Spec aprovado** em `docs/universo3/A-workflow-schedule.md` antes do código
+  (workflow novo: research → spec MD → approval → code).
+- **Próximo passo Universo 3**: Feature B (ExecAuto chain expansion — primeiro
+  arg do `MsExecAuto` resolvido pra alvo + tabelas) e Feature C (Protheus.doc
+  agregada por módulo).
+- **Limitações conhecidas** (documentadas em `skills/workflow/SKILL.md`):
+  frequência de schedule (`SCHTSK`/`SCHFIL`/`SCHSERV`), AppServer.ini
+  (`[ONSTART]`), e `TWebChannel` workflow webview ficam fora do MVP.
+
 ## [0.3.30] - 2026-05-15
 
 ### 🎉 Audit V4 closeout — fecha 3 dos 4 últimos itens. Sobra apenas #14 (SX-005 carrega 50-250MB corpus em monorepo gigante) que o próprio auditor classificou como "tradeoff aceitável, comment já justifica". **Backlog técnico zerado para uso prático.** 14 dos 15 achados de Audit V4 endereçados em 3 releases (v0.3.28, v0.3.29, v0.3.30).

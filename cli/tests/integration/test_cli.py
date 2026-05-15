@@ -641,6 +641,126 @@ class TestLint:
         )
 
 
+class TestWorkflow:
+    """v0.4.0 — Universo 3 / Feature A: comando `workflow` lista execution_triggers."""
+
+    @pytest.fixture
+    def triggers_project(self, tmp_path: Path, runner: CliRunner) -> Path:
+        """Projeto com 4 fontes cobrindo cada kind + 1 multi-trigger."""
+        src = tmp_path / "src"
+        src.mkdir()
+        # 1) workflow (TWFProcess)
+        (src / "WFSalNeg.prw").write_bytes(
+            b'User Function WfSalNeg()\n'
+            b'  Local oWF := TWFProcess():New("SALNEG", "Saldo Negativo")\n'
+            b'  oWF:bReturn := {|o| U_WfRetSN(o)}\n'
+            b'  oWF:Start()\n'
+            b'Return\n'
+        )
+        # 2) schedule (SchedDef)
+        (src / "FATR020.prw").write_bytes(
+            b'User Function FATR020()\n'
+            b'Return\n'
+            b'\n'
+            b'Static Function SchedDef()\n'
+            b'  Local a := { "R", "FAT020", "SF2", {1,2}, "Faturamento" }\n'
+            b'Return a\n'
+        )
+        # 3) multi-trigger: job_standalone + mail_send no mesmo fonte
+        (src / "JobAviso.prw").write_bytes(
+            b'Main Function JobAviso()\n'
+            b'  RpcSetEnv("01","01",,,"FAT","JobAviso")\n'
+            b'  While !File("/stop_aviso.flg")\n'
+            b'    MailAuto("a@x", "b@y", "Aviso", "msg", {})\n'
+            b'    Sleep(60000)\n'
+            b'  EndDo\n'
+            b'  RpcClearEnv()\n'
+            b'Return\n'
+        )
+        runner.invoke(app, ["--root", str(src), "init"])
+        runner.invoke(app, ["--root", str(src), "ingest"])
+        return src
+
+    def test_workflow_lists_all_kinds(
+        self, triggers_project: Path, runner: CliRunner
+    ) -> None:
+        """Sem filtro: lista os 4 kinds (workflow/schedule/job_standalone/mail_send)."""
+        result = runner.invoke(
+            app, ["--root", str(triggers_project), "--format", "json", "workflow"]
+        )
+        assert result.exit_code == 0, result.stderr
+        rows = json.loads(result.stdout)["rows"]
+        kinds = {r["kind"] for r in rows}
+        assert kinds == {"workflow", "schedule", "job_standalone", "mail_send"}, (
+            f"esperado os 4 kinds, recebido {kinds}"
+        )
+
+    def test_workflow_filter_by_kind(
+        self, triggers_project: Path, runner: CliRunner
+    ) -> None:
+        """`--kind job_standalone` retorna só jobs daemon."""
+        result = runner.invoke(
+            app,
+            [
+                "--root", str(triggers_project), "--format", "json",
+                "workflow", "--kind", "job_standalone",
+            ],
+        )
+        assert result.exit_code == 0, result.stderr
+        rows = json.loads(result.stdout)["rows"]
+        assert len(rows) == 1
+        assert rows[0]["kind"] == "job_standalone"
+        assert rows[0]["target"] == "JobAviso"
+
+    def test_workflow_filter_by_arquivo(
+        self, triggers_project: Path, runner: CliRunner
+    ) -> None:
+        """`--arquivo JobAviso.prw` retorna 2 triggers (job + mail) do multi-source."""
+        result = runner.invoke(
+            app,
+            [
+                "--root", str(triggers_project), "--format", "json",
+                "workflow", "--arquivo", "JobAviso.prw",
+            ],
+        )
+        assert result.exit_code == 0, result.stderr
+        rows = json.loads(result.stdout)["rows"]
+        kinds = {r["kind"] for r in rows}
+        assert kinds == {"job_standalone", "mail_send"}, (
+            f"esperado job+mail no mesmo fonte, recebido {kinds}"
+        )
+
+    def test_workflow_filter_by_target(
+        self, triggers_project: Path, runner: CliRunner
+    ) -> None:
+        """`--target FAT020` (pergunte SX1) localiza o schedule."""
+        result = runner.invoke(
+            app,
+            [
+                "--root", str(triggers_project), "--format", "json",
+                "workflow", "--target", "FAT020",
+            ],
+        )
+        assert result.exit_code == 0, result.stderr
+        rows = json.loads(result.stdout)["rows"]
+        assert len(rows) == 1
+        assert rows[0]["kind"] == "schedule"
+
+    def test_workflow_persisted_in_db(
+        self, triggers_project: Path
+    ) -> None:
+        """Sanity check: execution_triggers tabela existe e tem rows do ingest."""
+        db = triggers_project / ".plugadvpl" / "index.db"
+        conn = sqlite3.connect(db)
+        try:
+            count = conn.execute(
+                "SELECT COUNT(*) FROM execution_triggers"
+            ).fetchone()[0]
+        finally:
+            conn.close()
+        assert count >= 4, f"esperado >=4 triggers, encontrado {count}"
+
+
 class TestMissingDb:
     def test_query_without_db_exits_2(
         self, synthetic_project: Path, runner: CliRunner

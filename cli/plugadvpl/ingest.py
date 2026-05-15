@@ -36,6 +36,10 @@ from plugadvpl.db import (
 )
 from plugadvpl.parsing import lint as lint_module
 from plugadvpl.parsing.parser import _PE_NAME_RE, parse_source
+from plugadvpl.parsing.triggers import (
+    extract_execution_triggers,
+    serialize_metadata as serialize_trigger_metadata,
+)
 from plugadvpl.scan import scan_sources
 
 if TYPE_CHECKING:
@@ -145,6 +149,7 @@ def _delete_dependents(conn: sqlite3.Connection, arquivo: str) -> None:
         "log_calls",
         "defines",
         "lint_findings",
+        "execution_triggers",  # v0.4.0 — Universo 3 Feature A
     ):
         conn.execute(f"DELETE FROM {table} WHERE arquivo=?", (arquivo,))
     conn.execute(
@@ -575,6 +580,32 @@ def _write_parsed(  # noqa: PLR0912, PLR0915 — escrita verbosa: 12 tabelas dep
             lint_rows,
         )
 
+    # v0.4.0 (Universo 3 Feature A): execution_triggers
+    triggers = extract_execution_triggers(content)
+    if triggers:
+        trigger_rows: list[tuple[Any, ...]] = []
+        for t in triggers:
+            linha = int(t.get("linha", 0))
+            funcao = _resolve_funcao_origem(linha)
+            trigger_rows.append((
+                arquivo,
+                funcao,
+                linha,
+                t.get("kind", ""),
+                t.get("target", "") or "",
+                serialize_trigger_metadata(t.get("metadata", {})),
+                (t.get("snippet", "") or "")[:500],
+            ))
+        conn.executemany(
+            """
+            INSERT INTO execution_triggers (
+                arquivo, funcao, linha, kind, target, metadata_json, snippet
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            trigger_rows,
+        )
+        counters["execution_triggers"] = counters.get("execution_triggers", 0) + len(trigger_rows)
+
     counters["arquivos_ok"] += 1
 
 
@@ -728,6 +759,7 @@ def ingest(
             "chamadas": 0,
             "params": 0,
             "lint_findings": 0,
+            "execution_triggers": 0,  # v0.4.0
             "duration_ms": 0,
             # v0.3.13: caller (CLI) usa esses campos pra detectar a pegadinha do
             # `--incremental` após `uv tool upgrade` — quando lookup_bundle muda
@@ -764,6 +796,7 @@ def ingest(
             ("fonte_chunks", "total_chunks"),
             ("chamadas_funcao", "total_chamadas"),
             ("lint_findings", "total_lint_findings"),
+            ("execution_triggers", "total_execution_triggers"),  # v0.4.0
         ):
             n = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
             set_meta(conn, key, str(n))

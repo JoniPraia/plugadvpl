@@ -832,3 +832,62 @@ def sx_status(conn: sqlite3.Connection) -> list[dict[str, Any]]:
         else:
             out[table] = 0
     return [out]
+
+
+# v0.4.0 (Universo 3 Feature A) -----------------------------------------------
+
+
+_EXEC_TRIGGER_KINDS = {"workflow", "schedule", "job_standalone", "mail_send"}
+
+
+def execution_triggers_query(
+    conn: sqlite3.Connection,
+    *,
+    kind: str | None = None,
+    target: str | None = None,
+    arquivo: str | None = None,
+) -> list[dict[str, Any]]:
+    """Lista execution_triggers indexados (Universo 3 Feature A).
+
+    Args:
+        conn: conexão SQLite.
+        kind: filtra por tipo (`workflow`/`schedule`/`job_standalone`/`mail_send`).
+        target: filtra por nome alvo (case-insensitive, exact match).
+        arquivo: filtra por arquivo (case-insensitive, exact match).
+
+    Returns:
+        Lista de dicts com `arquivo`, `funcao`, `linha`, `kind`, `target`,
+        `metadata` (parsed do JSON), `snippet`.
+    """
+    sql = "SELECT arquivo, funcao, linha, kind, target, metadata_json, snippet FROM execution_triggers"
+    where: list[str] = []
+    params: list[Any] = []
+    if kind:
+        if kind not in _EXEC_TRIGGER_KINDS:
+            return []
+        where.append("kind = ?")
+        params.append(kind)
+    if target:
+        where.append("upper(target) = upper(?)")
+        params.append(target)
+    if arquivo:
+        where.append("arquivo = ? COLLATE NOCASE")
+        params.append(arquivo)
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    sql += " ORDER BY arquivo, linha"
+    rows = conn.execute(sql, params).fetchall()
+    out: list[dict[str, Any]] = []
+    for arq, fn, ln, k, tgt, meta_json, snippet in rows:
+        # Lazy import pra não criar ciclo plugadvpl.query → plugadvpl.parsing.
+        from plugadvpl.parsing.triggers import parse_metadata
+        out.append({
+            "arquivo": arq,
+            "funcao": fn or "",
+            "linha": int(ln or 0),
+            "kind": k,
+            "target": tgt or "",
+            "metadata": parse_metadata(meta_json or "{}"),
+            "snippet": snippet or "",
+        })
+    return out

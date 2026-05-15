@@ -57,6 +57,7 @@ from plugadvpl.query import (
 )
 from plugadvpl.query import (
     doctor_diagnostics,
+    execution_triggers_query,
     find_any,
     gatilho_query,
     grep_fts,
@@ -1091,6 +1092,75 @@ def sx_status_cmd(ctx: typer.Context) -> None:
             ["plugadvpl ingest-sx <pasta-csv>"]
             if rows and not rows[0].get("sx_ingerido")
             else ["plugadvpl impacto A1_COD"]
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# v0.4.0 — Universo 3 (Rastreabilidade) Feature A: workflow
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def workflow(
+    ctx: typer.Context,
+    kind: Annotated[
+        str | None,
+        typer.Option(
+            "--kind",
+            "-k",
+            help="Filtra por tipo: workflow|schedule|job_standalone|mail_send",
+        ),
+    ] = None,
+    target: Annotated[
+        str | None,
+        typer.Option("--target", "-t", help="Filtra por nome alvo (callback/Main/pergunte)."),
+    ] = None,
+    arquivo: Annotated[
+        str | None,
+        typer.Option("--arquivo", "-a", help="Filtra por arquivo (basename)."),
+    ] = None,
+) -> None:
+    """Lista execution_triggers indexados (Universo 3 / Feature A).
+
+    Detecta 4 mecanismos canônicos TOTVS de "execução não-direta":
+
+    - ``workflow``       — TWFProcess / MsWorkflow / WFPrepEnv (callbacks)
+    - ``schedule``       — Static Function SchedDef() (configurador SIGACFG)
+    - ``job_standalone`` — Main Function + RpcSetEnv (daemon ONSTART)
+    - ``mail_send``      — MailAuto / SEND MAIL UDC / TMailManager
+
+    Sem filtros: lista tudo. Com ``--kind`` mostra só uma categoria.
+    """
+    rows = _with_ro_db(
+        ctx, lambda c: execution_triggers_query(c, kind=kind, target=target, arquivo=arquivo),
+    )
+    # Renderiza só os campos top-level; metadata fica em JSON.
+    display_rows = [
+        {
+            "arquivo": r["arquivo"],
+            "funcao": r["funcao"],
+            "linha": r["linha"],
+            "kind": r["kind"],
+            "target": r["target"],
+            "snippet": (r["snippet"] or "")[:80],
+        }
+        for r in rows
+    ]
+    _render_from_ctx(
+        ctx,
+        display_rows,
+        columns=["arquivo", "funcao", "linha", "kind", "target", "snippet"],
+        title=(
+            f"Execution triggers"
+            + (f" (kind={kind})" if kind else "")
+            + (f" (target={target})" if target else "")
+            + (f" (arquivo={arquivo})" if arquivo else "")
+        ),
+        next_steps=(
+            [f"plugadvpl find {target}" for target in {r["target"] for r in rows[:3] if r["target"]}]
+            if rows
+            else ["plugadvpl ingest --no-incremental  # se nada detectado"]
         ),
     )
 
